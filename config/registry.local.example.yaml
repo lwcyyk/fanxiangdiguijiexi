@@ -1,0 +1,8 @@
+backend: web3
+chain_id: 31337
+contract_address: "0x0000000000000000000000000000000000000000"
+rpc_url_env: RESOLVER_IDENTITY_RPC_URL
+private_key_env: RESOLVER_IDENTITY_TX_PRIVATE_KEY
+confirmations: 2
+poll_interval_seconds: 5
+# Do not store private keys, mnemonics, production RPC URLs, or secrets in this file.

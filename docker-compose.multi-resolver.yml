@@ -1,0 +1,198 @@
+version: '2.4'
+
+services:
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    entrypoint: ["anvil"]
+    command: ["--host", "0.0.0.0", "--port", "8545"]
+    ports:
+      - "18545:8545"
+    healthcheck:
+      test: ["CMD-SHELL", "cast block-number --rpc-url http://127.0.0.1:8545 >/dev/null 2>&1"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    networks:
+      resolver-e2e-net:
+        ipv4_address: 172.30.0.20
+
+  resolver-r2:
+    image: coredns/coredns:1.11.3
+    command: ["-conf", "/etc/coredns/Corefile"]
+    volumes:
+      - ./docker/coredns/r2/Corefile:/etc/coredns/Corefile:ro
+    healthcheck:
+      test: ["CMD", "/coredns", "-version"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+    networks:
+      resolver-e2e-net:
+        ipv4_address: 172.30.0.12
+
+  resolver-r1:
+    image: coredns/coredns:1.11.3
+    command: ["-conf", "/etc/coredns/Corefile"]
+    volumes:
+      - ./docker/coredns/r1/Corefile:/etc/coredns/Corefile:ro
+    depends_on:
+      resolver-r2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/coredns", "-version"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+    networks:
+      resolver-e2e-net:
+        ipv4_address: 172.30.0.11
+
+  agent-r1:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.python
+    command: ["python", "tools/run_agent.py", "--host", "0.0.0.0", "--port", "8010"]
+    env_file:
+      - ./docker/state/agent-r1.env
+      - ./docker/state/web3.env
+    environment:
+      RESOLVER_IDENTITY_DB: /data/resolver_identity.db
+      RESOLVER_IDENTITY_SIGNATURE_SECRET: multi-agent-secret
+      RESOLVER_IDENTITY_AGENT_SIGNATURE_SECRET: multi-agent-secret
+      RESOLVER_IDENTITY_AGENT_TERMINAL_UPSTREAMS: "1.1.1.1:53:udp"
+    volumes:
+      - ./docker/state:/data
+    depends_on:
+      resolver-r1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/healthz', timeout=2)"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    networks:
+      resolver-e2e-net:
+        ipv4_address: 172.30.0.21
+
+  agent-r2:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.python
+    command: ["python", "tools/run_agent.py", "--host", "0.0.0.0", "--port", "8010"]
+    env_file:
+      - ./docker/state/agent-r2.env
+      - ./docker/state/web3.env
+    environment:
+      RESOLVER_IDENTITY_DB: /data/resolver_identity.db
+      RESOLVER_IDENTITY_SIGNATURE_SECRET: multi-agent-secret
+      RESOLVER_IDENTITY_AGENT_SIGNATURE_SECRET: multi-agent-secret
+      RESOLVER_IDENTITY_AGENT_RESOLVER_ID: operator-a/r2
+      RESOLVER_IDENTITY_AGENT_ENDPOINT_IP: 172.30.0.12
+      RESOLVER_IDENTITY_AGENT_ENDPOINT_PORT: "1053"
+      RESOLVER_IDENTITY_AGENT_ENDPOINT_TRANSPORT: udp
+      RESOLVER_IDENTITY_UPSTREAM_IP: 1.1.1.1
+      RESOLVER_IDENTITY_UPSTREAM_PORT: "53"
+      RESOLVER_IDENTITY_UPSTREAM_TRANSPORT: udp
+      RESOLVER_IDENTITY_AGENT_CONFIG_VERSION: "1"
+      RESOLVER_IDENTITY_AGENT_TERMINAL_UPSTREAMS: "1.1.1.1:53:udp"
+    volumes:
+      - ./docker/state:/data
+    depends_on:
+      resolver-r2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/healthz', timeout=2)"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    networks:
+      resolver-e2e-net:
+        ipv4_address: 172.30.0.22
+
+  indexer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.python
+    command: ["python", "tools/run_indexer.py", "--host", "0.0.0.0", "--port", "8001"]
+    environment:
+      RESOLVER_IDENTITY_DB: /data/resolver_identity.db
+      RESOLVER_IDENTITY_SIGNATURE_SECRET: multi-agent-secret
+    volumes:
+      - ./docker/state:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/healthz', timeout=2)"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    networks:
+      resolver-e2e-net:
+        ipv4_address: 172.30.0.23
+
+  event-watcher:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.python
+    command: ["python", "tools/run_event_watcher.py", "--db", "/data/resolver_identity.db", "--interval", "1"]
+    env_file:
+      - ./docker/state/web3.env
+    environment:
+      RESOLVER_IDENTITY_DB: /data/resolver_identity.db
+      RESOLVER_IDENTITY_SIGNATURE_SECRET: multi-agent-secret
+    volumes:
+      - ./docker/state:/data
+    depends_on:
+      anvil:
+        condition: service_healthy
+      indexer:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "from pathlib import Path; assert Path('/data/resolver_identity.db').exists()"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    networks:
+      resolver-e2e-net:
+        ipv4_address: 172.30.0.24
+
+  local-wrapper:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.python
+    command: ["python", "tools/run_wrapper.py", "--bind-host", "0.0.0.0", "--udp-port", "1053", "--tcp-port", "1053", "--upstream-ip", "172.30.0.11", "--upstream-port", "1053", "--upstream-transport", "udp", "--db", "/data/resolver_identity.db", "--signature-secret", "multi-agent-secret", "--agent-base-urls", "172.30.0.11:1053:udp=http://agent-r1:8010"]
+    env_file:
+      - ./docker/state/web3.env
+    environment:
+      RESOLVER_IDENTITY_DB: /data/resolver_identity.db
+      RESOLVER_IDENTITY_SIGNATURE_SECRET: multi-agent-secret
+      RESOLVER_IDENTITY_AGENT_SIGNATURE_SECRET: multi-agent-secret
+    volumes:
+      - ./docker/state:/data
+    depends_on:
+      resolver-r1:
+        condition: service_healthy
+      resolver-r2:
+        condition: service_healthy
+      agent-r1:
+        condition: service_healthy
+      indexer:
+        condition: service_healthy
+      event-watcher:
+        condition: service_healthy
+    ports:
+      - "1053:1053/udp"
+      - "1053:1053/tcp"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; q=bytes.fromhex('123401000001000000000000')+b'\\x07example\\x04test\\x00\\x00\\x01\\x00\\x01'; s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); s.settimeout(2); s.sendto(q,('127.0.0.1',1053)); s.recvfrom(4096)"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    networks:
+      resolver-e2e-net:
+        ipv4_address: 172.30.0.25
+
+networks:
+  resolver-e2e-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

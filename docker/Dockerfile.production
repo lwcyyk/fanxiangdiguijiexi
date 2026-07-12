@@ -1,0 +1,25 @@
+FROM python:3.13.11-slim AS builder
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
+WORKDIR /build
+COPY pyproject.toml README.md requirements-production.lock ./
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip install --require-hashes -r requirements-production.lock
+COPY src ./src
+RUN /opt/venv/bin/pip install --no-deps . \
+    && /opt/venv/bin/pip uninstall --yes pip setuptools
+
+FROM python:3.13.11-slim
+
+ENV PATH=/opt/venv/bin:$PATH \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+RUN groupadd --gid 10001 resolver && useradd --uid 10001 --gid resolver --home-dir /nonexistent --no-create-home resolver
+WORKDIR /app
+COPY --from=builder /opt/venv /opt/venv
+COPY --chown=resolver:resolver tools/run_admin.py tools/run_agent.py tools/run_event_watcher.py tools/run_indexer.py tools/run_wrapper.py tools/db_admin.py ./tools/
+COPY --chown=resolver:resolver contracts/out/ResolverIdentityRegistryV1.sol/ResolverIdentityRegistryV1.json ./contracts/out/ResolverIdentityRegistryV1.sol/ResolverIdentityRegistryV1.json
+RUN mkdir -p /var/lib/resolver-identity && chown resolver:resolver /var/lib/resolver-identity
+USER resolver
+ENTRYPOINT ["python"]

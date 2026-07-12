@@ -1,0 +1,9 @@
+.:1053 {
+    log
+    errors
+    hosts {
+        203.0.113.10 example.test
+        fallthrough
+    }
+    forward . 1.1.1.1 8.8.8.8
+}

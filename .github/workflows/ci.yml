@@ -1,0 +1,77 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: python -m pip install '.[dev,web3]'
+      - run: ruff check src tests tools
+      - run: coverage run -m pytest -q
+      - run: coverage report
+      - run: python -m compileall -q src tests tools
+      - if: matrix.python-version == '3.13'
+        run: pip-audit -r requirements-production.lock --require-hashes
+      - if: matrix.python-version == '3.13'
+        run: pip-audit -r requirements-production.lock --require-hashes --format cyclonedx-json --output resolver-identity-sbom.cdx.json
+      - run: python -m piptools compile pyproject.toml --extra web3 --strip-extras --generate-hashes --output-file /tmp/requirements-production.lock --quiet
+        if: matrix.python-version == '3.13'
+      - run: diff -u requirements-production.lock /tmp/requirements-production.lock
+        if: matrix.python-version == '3.13'
+      - if: matrix.python-version == '3.13'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: resolver-identity-sbom
+          path: resolver-identity-sbom.cdx.json
+          if-no-files-found: error
+
+  solidity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1
+      - run: forge test -vvv
+        working-directory: contracts
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - run: |
+          cp .env.production.example .env.production
+          cp deploy/issuer-keys.example.json deploy/issuer-keys.json
+          mkdir -p deploy/secrets
+          printf 'placeholder' > deploy/secrets/admin_api_token
+          printf 'placeholder' > deploy/secrets/agent_private_key_b64
+          printf 'placeholder' > deploy/secrets/issuer_private_key_b64
+          printf 'placeholder' > deploy/secrets/web3_private_key
+          docker compose --env-file .env.production -f docker-compose.production.yml config --quiet
+      - run: docker compose -f docker-compose.multi-resolver.yml config --quiet
+
+  production-image:
+    runs-on: ubuntu-latest
+    needs: [python, solidity, compose]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - run: docker build --pull --file docker/Dockerfile.production --tag resolver-identity:ci .
+      - name: Verify production image policy
+        run: |
+          test "$(docker image inspect resolver-identity:ci --format '{{.Config.User}}')" = resolver
+          docker run --rm --entrypoint python resolver-identity:ci -c "import cryptography, resolver_identity, web3"
+          docker run --rm --entrypoint python resolver-identity:ci -c "import importlib.metadata as m; assert not ({'pip', 'setuptools'} & {d.metadata['Name'].lower() for d in m.distributions()})"
+          docker run --rm --entrypoint python resolver-identity:ci tools/db_admin.py --help
+          docker run --rm --entrypoint python resolver-identity:ci -c "from pathlib import Path; assert not Path('tools/run_security_experiments.py').exists()"

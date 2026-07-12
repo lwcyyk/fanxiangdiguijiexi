@@ -1,0 +1,10 @@
+{
+  "keys": [
+    {
+      "issuer": "resolver-trust-authority-01",
+      "key_id": "issuer-key-01",
+      "algorithm": "ed25519",
+      "public_key": "m+Sorhq7o3do5Gvsl0vaI+BzW6ntIREoPWyxDgIYIcg="
+    }
+  ]
+}

@@ -1,0 +1,190 @@
+services:
+  indexer:
+    image: resolver-identity-prototype:0.1.0-production
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.production
+    command: ["tools/run_indexer.py", "--host", "0.0.0.0", "--port", "8001"]
+    restart: unless-stopped
+    environment: &common-env
+      RESOLVER_IDENTITY_ENVIRONMENT: production
+      RESOLVER_IDENTITY_DB: /var/lib/resolver-identity/resolver_identity.db
+      RESOLVER_IDENTITY_REGISTRY_MODE: web3
+      RESOLVER_IDENTITY_WEB3_RPC_URL: ${RESOLVER_IDENTITY_WEB3_RPC_URL:?required}
+      RESOLVER_IDENTITY_WEB3_CONTRACT_ADDRESS: ${RESOLVER_IDENTITY_WEB3_CONTRACT_ADDRESS:?required}
+      RESOLVER_IDENTITY_WEB3_CHAIN_ID: ${RESOLVER_IDENTITY_WEB3_CHAIN_ID:?required}
+      RESOLVER_IDENTITY_WEB3_CONTRACT_CODE_HASH: ${RESOLVER_IDENTITY_WEB3_CONTRACT_CODE_HASH:?required}
+      RESOLVER_IDENTITY_WEB3_REQUEST_TIMEOUT_SECONDS: ${RESOLVER_IDENTITY_WEB3_REQUEST_TIMEOUT_SECONDS:-5}
+      RESOLVER_IDENTITY_WEB3_TRANSACTION_TIMEOUT_SECONDS: ${RESOLVER_IDENTITY_WEB3_TRANSACTION_TIMEOUT_SECONDS:-120}
+      RESOLVER_IDENTITY_WEB3_ABI_PATH: /app/contracts/out/ResolverIdentityRegistryV1.sol/ResolverIdentityRegistryV1.json
+      RESOLVER_IDENTITY_ISSUER_KEYS_FILE: /run/config/issuer-keys.json
+      RESOLVER_IDENTITY_ALLOW_HMAC_OBJECT_SIGNATURES: "false"
+      RESOLVER_IDENTITY_AGENT_PLAINTEXT_HOSTS: ${RESOLVER_IDENTITY_AGENT_PLAINTEXT_HOSTS:-agent-r1}
+      RESOLVER_IDENTITY_AGENT_TLS_CA_FILE: ${RESOLVER_IDENTITY_AGENT_TLS_CA_FILE:-}
+      RESOLVER_IDENTITY_AGENT_TLS_CLIENT_CERT_FILE: ${RESOLVER_IDENTITY_AGENT_TLS_CLIENT_CERT_FILE:-}
+      RESOLVER_IDENTITY_AGENT_TLS_CLIENT_KEY_FILE: ${RESOLVER_IDENTITY_AGENT_TLS_CLIENT_KEY_FILE:-}
+      RESOLVER_IDENTITY_PERSIST_QUERY_AUDIT: "false"
+    volumes:
+      - resolver-data:/var/lib/resolver-identity
+      - ./deploy/issuer-keys.json:/run/config/issuer-keys.json:ro
+    networks: [control]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/readyz', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  agent-r1:
+    image: resolver-identity-prototype:0.1.0-production
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.production
+    command: ["tools/run_agent.py", "--host", "0.0.0.0", "--port", "8010"]
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      RESOLVER_IDENTITY_AGENT_RESOLVER_ID: ${RESOLVER_IDENTITY_AGENT_RESOLVER_ID:?required}
+      RESOLVER_IDENTITY_AGENT_ENDPOINT_IP: ${RESOLVER_IDENTITY_AGENT_ENDPOINT_IP:?required}
+      RESOLVER_IDENTITY_AGENT_ENDPOINT_PORT: ${RESOLVER_IDENTITY_AGENT_ENDPOINT_PORT:-53}
+      RESOLVER_IDENTITY_AGENT_ENDPOINT_TRANSPORT: ${RESOLVER_IDENTITY_AGENT_ENDPOINT_TRANSPORT:-udp}
+      RESOLVER_IDENTITY_AGENT_CONFIG_VERSION: ${RESOLVER_IDENTITY_AGENT_CONFIG_VERSION:?required}
+      RESOLVER_IDENTITY_AGENT_KEY_ID: ${RESOLVER_IDENTITY_AGENT_KEY_ID:-agent-key-01}
+      RESOLVER_IDENTITY_AGENT_PRIVATE_KEY_B64_FILE: /run/secrets/agent_private_key_b64
+      RESOLVER_IDENTITY_UPSTREAM_IP: ${AGENT_UPSTREAM_IP:?required}
+      RESOLVER_IDENTITY_UPSTREAM_PORT: ${AGENT_UPSTREAM_PORT:-53}
+      RESOLVER_IDENTITY_UPSTREAM_TRANSPORT: ${AGENT_UPSTREAM_TRANSPORT:-udp}
+      RESOLVER_IDENTITY_AGENT_TERMINAL_UPSTREAMS: ${RESOLVER_IDENTITY_AGENT_TERMINAL_UPSTREAMS:-}
+      RESOLVER_IDENTITY_AGENT_UPSTREAM_AGENT_BASE_URLS: ${RESOLVER_IDENTITY_AGENT_UPSTREAM_AGENT_BASE_URLS:-}
+    secrets: [agent_private_key_b64]
+    volumes:
+      - resolver-data:/var/lib/resolver-identity
+      - ./deploy/issuer-keys.json:/run/config/issuer-keys.json:ro
+      - ./deploy/tls:/run/tls:ro
+    networks: [control, egress]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    depends_on:
+      indexer: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/readyz', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  event-watcher:
+    image: resolver-identity-prototype:0.1.0-production
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.production
+    command: ["tools/run_event_watcher.py", "--db", "/var/lib/resolver-identity/resolver_identity.db", "--interval", "2"]
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      RESOLVER_IDENTITY_WATCHER_CONFIRMATIONS: ${RESOLVER_IDENTITY_WATCHER_CONFIRMATIONS:-2}
+    volumes:
+      - resolver-data:/var/lib/resolver-identity
+      - ./deploy/issuer-keys.json:/run/config/issuer-keys.json:ro
+    networks: [control, egress]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    depends_on:
+      indexer: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "tools/db_admin.py", "--db", "/var/lib/resolver-identity/resolver_identity.db", "check-watcher", "--max-age", "15"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+
+  local-wrapper:
+    image: resolver-identity-prototype:0.1.0-production
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.production
+    command: ["tools/run_wrapper.py", "--bind-host", "0.0.0.0", "--udp-port", "1053", "--tcp-port", "1053", "--metrics-host", "0.0.0.0", "--metrics-port", "9108"]
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      RESOLVER_IDENTITY_REQUIRE_DISTRIBUTED_VERIFICATION: "true"
+      RESOLVER_IDENTITY_UPSTREAM_IP: ${WRAPPER_UPSTREAM_IP:?required}
+      RESOLVER_IDENTITY_UPSTREAM_PORT: ${WRAPPER_UPSTREAM_PORT:-53}
+      RESOLVER_IDENTITY_UPSTREAM_TRANSPORT: ${WRAPPER_UPSTREAM_TRANSPORT:-udp}
+      RESOLVER_IDENTITY_AGENT_BASE_URLS: ${RESOLVER_IDENTITY_AGENT_BASE_URLS:?required}
+    volumes:
+      - resolver-data:/var/lib/resolver-identity
+      - ./deploy/issuer-keys.json:/run/config/issuer-keys.json:ro
+      - ./deploy/tls:/run/tls:ro
+    networks: [control, egress]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    depends_on:
+      agent-r1: {condition: service_healthy}
+      event-watcher: {condition: service_healthy}
+    ports:
+      - "${DNS_BIND_ADDRESS:-0.0.0.0}:${DNS_PORT:-53}:1053/udp"
+      - "${DNS_BIND_ADDRESS:-0.0.0.0}:${DNS_PORT:-53}:1053/tcp"
+      - "${METRICS_BIND_ADDRESS:-127.0.0.1}:${METRICS_PORT:-9108}:9108/tcp"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9108/readyz', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  admin:
+    image: resolver-identity-prototype:0.1.0-production
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.production
+    command: ["tools/run_admin.py", "--host", "0.0.0.0", "--port", "8002"]
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      RESOLVER_IDENTITY_ADMIN_API_TOKEN_FILE: /run/secrets/admin_api_token
+      RESOLVER_IDENTITY_ISSUER_PRIVATE_KEY_B64_FILE: /run/secrets/issuer_private_key_b64
+      RESOLVER_IDENTITY_WEB3_PRIVATE_KEY_FILE: /run/secrets/web3_private_key
+    secrets: [admin_api_token, issuer_private_key_b64, web3_private_key]
+    volumes:
+      - resolver-data:/var/lib/resolver-identity
+      - ./deploy/issuer-keys.json:/run/config/issuer-keys.json:ro
+    networks: [control, egress]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    depends_on:
+      indexer: {condition: service_healthy}
+    ports:
+      - "${ADMIN_BIND_ADDRESS:-127.0.0.1}:${ADMIN_PORT:-8002}:8002/tcp"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/readyz', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+networks:
+  control:
+    internal: true
+  egress:
+
+volumes:
+  resolver-data:
+
+secrets:
+  admin_api_token:
+    file: ./deploy/secrets/admin_api_token
+  agent_private_key_b64:
+    file: ./deploy/secrets/agent_private_key_b64
+  issuer_private_key_b64:
+    file: ./deploy/secrets/issuer_private_key_b64
+  web3_private_key:
+    file: ./deploy/secrets/web3_private_key
