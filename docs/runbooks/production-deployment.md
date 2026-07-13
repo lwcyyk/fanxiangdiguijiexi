@@ -4,6 +4,8 @@
 
 This runbook operates the single-host Docker Compose production profile. Assign named owners for DNS operations, Registry administration, key custody, and on-call response before launch.
 
+For a non-executing walkthrough with expected results, failure states, monitoring, recovery, and capacity scenarios, see [`../production_simulated_execution.md`](../production_simulated_execution.md). A simulated checklist is not production evidence.
+
 ## Prerequisites
 
 - Linux host with Docker Engine and Docker Compose v2.

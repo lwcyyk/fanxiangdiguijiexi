@@ -69,6 +69,7 @@ cd contracts && forge test -vvv
 - `docs/production_architecture.md`
 - `docs/runbooks/production-deployment.md`
 - `docs/production_readiness.md`
+- `docs/production_simulated_execution.md`
 - `docker-compose.production.yml`
 
 准备生产密钥材料：
