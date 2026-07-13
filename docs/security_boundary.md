@@ -2,7 +2,7 @@
 
 ## Trust premise
 
-This prototype verifies recursive/forwarding resolver identity. Its security premise is:
+This system verifies recursive/forwarding resolver identity. Its security premise is:
 
 > If a recursive/forwarding resolver identity is genuine, authorized, unexpired, endpoint-bound, and not revoked, the system assumes that resolver correctly executes DNS protocol behavior and returns the DNS response it intends to return.
 
@@ -10,7 +10,7 @@ The system does not prove that a legitimate resolver returns semantically correc
 
 ## Explicitly out of scope
 
-The prototype does not study or defend against:
+The system does not study or defend against:
 
 - compromise of a legitimately registered resolver;
 - resolver misconfiguration;
@@ -75,4 +75,4 @@ The model reduces the wrapper's observational burden while preserving cryptograp
 
 ## Boundary with normal DNS correctness
 
-The DNS wire message is unchanged. The wrapper does not modify the query or the successful response. The prototype only gates response release based on resolver identity evidence. It does not validate DNS record truth, authoritative server behavior, or DNSSEC chains.
+The DNS wire message is unchanged. The wrapper does not modify the query or the successful response. The system only gates response release based on resolver identity evidence. It does not validate DNS record truth, authoritative server behavior, or DNSSEC chains.
