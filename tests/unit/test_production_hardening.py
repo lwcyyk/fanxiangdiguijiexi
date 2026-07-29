@@ -1,4 +1,5 @@
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import os
 import sqlite3
 import time
@@ -103,6 +104,23 @@ def test_empty_verification_query_fails_closed():
 def test_query_audit_can_be_disabled():
     stack = create_prototype_stack(signature_secret="secret", query_audit_enabled=False)
     assert stack.coordinator.audit is None
+
+
+def test_shared_sqlite_connection_is_serialized_across_verifier_threads():
+    stack = create_prototype_stack(signature_secret="secret")
+    obj = resolver_object()
+    stack.publisher.publish(obj)
+    endpoint = ResolverEndpoint(ip="192.0.2.53", port=53, transport="udp")
+
+    assert stack.verifier.verify_endpoint(endpoint).accepted
+    assert stack.indexer._connection_lock is stack.registry_repository._connection_lock
+    assert stack.indexer._connection_lock is stack.trusted_cache_repository._connection_lock
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        results = list(executor.map(stack.verifier.verify_endpoint, [endpoint] * 256))
+
+    assert all(result.accepted for result in results)
+    assert all(row["endpoint"]["ip"] == endpoint.ip for row in stack.trusted_cache_repository.list())
 
 
 def test_agent_http_url_requires_explicit_host_allowlist():

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from functools import wraps
 import json
 import sqlite3
+from threading import Lock, RLock
 from typing import Any
 
 from resolver_identity.crypto.hashes import resolver_id_key
@@ -9,9 +11,42 @@ from resolver_identity.models.authenticity_object import ResolverAuthenticityObj
 from resolver_identity.models.endpoint import ResolverEndpoint
 
 
-class AuditLogRepository:
+_connection_locks: dict[int, RLock] = {}
+_connection_locks_guard = Lock()
+
+
+def _lock_for_connection(conn: sqlite3.Connection) -> RLock:
+    key = id(conn)
+    with _connection_locks_guard:
+        return _connection_locks.setdefault(key, RLock())
+
+
+def _serialized(method):
+    @wraps(method)
+    def wrapped(self, *args, **kwargs):
+        with self._connection_lock:
+            return method(self, *args, **kwargs)
+
+    return wrapped
+
+
+def _serialize_repository(repository_type):
+    for name, method in vars(repository_type).items():
+        if not name.startswith("_") and callable(method):
+            setattr(repository_type, name, _serialized(method))
+    return repository_type
+
+
+class _SQLiteRepository:
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
+        self._connection_lock = _lock_for_connection(conn)
+
+
+@_serialize_repository
+class AuditLogRepository(_SQLiteRepository):
+    def __init__(self, conn: sqlite3.Connection):
+        super().__init__(conn)
 
     def record(self, event_type: str, payload: dict[str, Any]) -> None:
         self.conn.execute(
@@ -44,9 +79,10 @@ class AuditLogRepository:
         return cursor.rowcount
 
 
-class IndexerRepository:
+@_serialize_repository
+class IndexerRepository(_SQLiteRepository):
     def __init__(self, conn: sqlite3.Connection):
-        self.conn = conn
+        super().__init__(conn)
         self.audit = AuditLogRepository(conn)
 
     def upsert_resolver_object(self, obj: ResolverAuthenticityObjectV1, object_hash: str, state_root: str) -> None:
@@ -125,9 +161,10 @@ class IndexerRepository:
         return dict(row) if row else None
 
 
-class TrustedCacheRepository:
+@_serialize_repository
+class TrustedCacheRepository(_SQLiteRepository):
     def __init__(self, conn: sqlite3.Connection):
-        self.conn = conn
+        super().__init__(conn)
         self.audit = AuditLogRepository(conn)
 
     def put(self, cache_key: str, row: dict[str, Any]) -> None:
@@ -226,9 +263,10 @@ class TrustedCacheRepository:
         return out
 
 
-class RegistryRepository:
+@_serialize_repository
+class RegistryRepository(_SQLiteRepository):
     def __init__(self, conn: sqlite3.Connection):
-        self.conn = conn
+        super().__init__(conn)
         self.audit = AuditLogRepository(conn)
 
     def publish_anchor(self, resolver_id_key: str, object_hash: str, state_root: str, object_version: int, valid_until: int, status: str) -> None:
@@ -274,9 +312,10 @@ class RegistryRepository:
         self.audit.record("ResolverRevoked", {"resolver_id_key": resolver_id_key})
 
 
-class RuntimeStateRepository:
+@_serialize_repository
+class RuntimeStateRepository(_SQLiteRepository):
     def __init__(self, conn: sqlite3.Connection):
-        self.conn = conn
+        super().__init__(conn)
 
     def get(self, key: str) -> str | None:
         row = self.conn.execute("SELECT state_value FROM runtime_state WHERE state_key=?", (key,)).fetchone()
