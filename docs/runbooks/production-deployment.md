@@ -1,9 +1,69 @@
-# Rust V2 单链路生产部署 Runbook
+# Rust V2 运行部署手册
+
+## 0. 先确认部署边界
+
+本手册用于域名中心星形架构中的单条 DNS 链路。L01、L02、L03 分别执行一次，
+使用不同的 Compose project name、配置、证书、密钥、Socket 目录和数据卷。
+
+新链路唯一部署入口：
+
+```text
+deploy/link/docker-compose.yml
+docker/Dockerfile.rust
+```
+
+该 Compose 只运行以下 Rust 程序：
+
+| 服务 | 程序 | 是否进入 DNS 查询路径 |
+| --- | --- | --- |
+| `wrapper` | `ri-wrapper` | 是 |
+| `agent` | `ri-agent` | 是 |
+| `trace-adapter` | `ri-trace-adapter` | 是 |
+| `registry-sync` | `ri-registry-sync` | 是 |
+
+链路服务器不安装、不启动 Python。仓库中的 Python 有两个用途：
+
+1. 中心管理机低频执行 `tools/manage_v2_registry.py`，完成身份离线签名、发布计划和
+   分角色合约交易；
+2. 保留 V1 兼容测试，验证迁移前后的 canonical JSON、签名和历史攻击用例。
+
+以下文件均是 V1 兼容或实验入口，不得用于新的生产链路：
+
+```text
+src/resolver_identity/
+docker-compose.legacy-python.yml
+docker-compose.multi-resolver.yml
+docker/Dockerfile.legacy-python
+docker/Dockerfile.python
+tools/prepare_legacy_python.py
+```
+
+如果要求整个仓库完全没有 Python，必须先把 `manage_v2_registry.py` 的签名、计划、
+角色发布和撤销能力重写为 Rust CLI。现在直接删除 Python 会破坏管理面和迁移回归，
+但不会提高当前 Rust 查询数据面的性能。
 
 ## 1. 准备
 
 要求 Linux、Docker Compose v2、外部 HTTPS EVM RPC、已部署 Registry、现场 CA、
 受控 Resolver Trace 插件和加密异机备份位置。
+
+链路服务器至少安装 Docker Engine、Docker Compose v2、`curl`、`dig`、`openssl`
+和可靠的时间同步服务。`git` 只用于取得和核对版本，不是运行依赖；也可以由中心
+管理机下发带 SHA-256 签名的发布包和容器镜像。
+
+```bash
+docker version
+docker compose version
+timedatectl status
+df -h
+
+export PROJECT=ri-l01-r1
+export ENV_FILE=deploy/link/.env
+export COMPOSE_FILE=deploy/link/docker-compose.yml
+```
+
+L02/R2 等实例必须修改 `PROJECT`，不能共用 project name。现场变更记录必须包含
+Git commit、镜像 digest、配置版本和变更单号。
 
 ```bash
 cp deploy/link/.env.example deploy/link/.env
@@ -18,6 +78,22 @@ install -d -m 700 deploy/link/secrets deploy/link/tls
 为 `0400`，公共证书/CA 可为 `0444`；启动前用 `namei -l` 或等价工具确认目录路径
 允许该 UID 读取。不要把 publisher/revoker/issuer 私钥复制到链路目录。
 Compose 只向各容器挂载其自身证书和信任 CA，不得恢复为整个 `tls/` 目录共享挂载。
+
+试运行环境可在 `umask 077` 下生成 Agent 私钥和三个独立 token；正式环境应由密钥
+管理系统生成并审计：
+
+```bash
+umask 077
+openssl rand -base64 32 | tr -d '\n' > deploy/link/secrets/agent_private_key
+openssl rand -base64 48 | tr -d '\n' > deploy/link/secrets/trace_ingest_token
+openssl rand -base64 48 | tr -d '\n' > deploy/link/secrets/agent_wrapper_token
+openssl rand -base64 48 | tr -d '\n' > deploy/link/secrets/agent_peer_token
+sudo chown 10002:10002 deploy/link/secrets/*
+sudo chmod 0400 deploy/link/secrets/*
+```
+
+不要使用示例 identity 直接启动。`identities-v2.example.json` 中没有生产身份，
+必须替换为中心签名、已经发布到 Registry 且覆盖本链路实际节点的 identity 集合。
 
 Trace Socket 使用主机 bind mount。启动 Compose 前必须由 root 创建 `.env` 中的
 `RI_TRACE_SOCKET_HOST_DIR`，并把 group 设置为 Resolver Trace 生产者的实际 GID：
@@ -37,6 +113,39 @@ Resolver 进程使用 `.env` 中的 `RI_TRACE_PRODUCER_UID` 连接该 Socket；�
 的管理网名称。
 
 ## 2. 生成和发布身份
+
+本节只在中心管理机执行。链路服务器跳过 Python 环境安装。中心管理机使用独立
+virtualenv，并从锁定依赖安装管理工具：
+
+```bash
+python3 -m venv .venv-management
+. .venv-management/bin/activate
+python -m pip install --upgrade pip
+python -m pip install --require-hashes -r requirements-production.lock
+PYTHONPATH=src python tools/manage_v2_registry.py --help
+```
+
+首次部署 Registry 前，在隔离构建环境编译并测试合约：
+
+```bash
+cd contracts
+forge build
+forge test -vvv
+
+export RPC_URL=https://rpc-gateway.example
+export GOVERNANCE_MULTISIG=0x...
+
+forge create src/ResolverIdentityRegistryV1.sol:ResolverIdentityRegistryV1 \
+  --constructor-args "$GOVERNANCE_MULTISIG" \
+  --rpc-url "$RPC_URL" \
+  --keystore /secure/deployer-keystore \
+  --broadcast
+cd ..
+```
+
+部署账户仅用于首次部署，不得复制到链路服务器。正式环境应使用加密 keystore、
+硬件签名器或受控远程签名器，命令历史中不得出现真实私钥或 keystore 密码。保存
+输出中的交易哈希和合约地址，并由第二名操作人员从独立 RPC 核验部署结果。
 
 Registry 首次部署时，constructor 的 `initialAdmin` 必须直接填写治理多签地址，不能
 填写链路主机、发布者或临时个人账户。部署后、发布任何 Root 之前，在同一变更窗口：
@@ -146,34 +255,84 @@ token、issuer 私钥。
 project `ri-l01-r1` 为例：
 
 ```bash
+set -a
+. "$ENV_FILE"
+set +a
+
+if grep -Eq 'example\.invalid|0x0{40}|0x0{64}' "$ENV_FILE"; then
+  echo "配置仍包含占位值" >&2
+  exit 1
+fi
+test -s deploy/link/identities-v2.json
+test -s deploy/issuer-keys.json
+
 docker compose \
-  --project-name ri-l01-r1 \
-  --env-file deploy/link/.env \
-  -f deploy/link/docker-compose.yml \
+  --project-name "$PROJECT" \
+  --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" \
   config --quiet
-
-docker compose \
-  --project-name ri-l01-r1 \
-  --env-file deploy/link/.env \
-  -f deploy/link/docker-compose.yml \
-  build --pull
-
-docker compose \
-  --project-name ri-l01-r1 \
-  --env-file deploy/link/.env \
-  -f deploy/link/docker-compose.yml \
-  up -d registry-sync agent trace-adapter
 ```
 
-确认 Registry Sync 日志中所有 identity 已在 finalized block 对齐，Agent `/readyz`
-通过后再启动 Wrapper：
+小规模现场试运行可以从已经审核的源码构建：
 
 ```bash
 docker compose \
-  --project-name ri-l01-r1 \
-  --env-file deploy/link/.env \
-  -f deploy/link/docker-compose.yml \
-  up -d wrapper
+  --project-name "$PROJECT" \
+  --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" \
+  build --pull
+```
+
+正式环境推荐在中心 CI 构建、扫描并推送镜像，然后把 `.env` 中的 `RI_IMAGE` 固定为
+私有仓库 digest，例如 `registry.example/ri@sha256:...`。链路主机只执行：
+
+```bash
+docker compose \
+  --project-name "$PROJECT" \
+  --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" \
+  pull
+```
+
+先只启动 Registry Sync：
+
+```bash
+docker compose \
+  --project-name "$PROJECT" \
+  --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" \
+  up -d --no-build registry-sync
+
+until curl --fail --silent \
+  "http://127.0.0.1:${REGISTRY_METRICS_PORT:-9109}/readyz"; do
+  sleep 2
+done
+```
+
+确认日志中的 chain ID、合约地址、runtime code hash、finalized block 和全部
+identity 均匹配，再启动 Agent 和 Trace Adapter：
+
+```bash
+docker compose \
+  --project-name "$PROJECT" \
+  --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" \
+  up -d --no-build agent trace-adapter
+
+test -S "${RI_TRACE_SOCKET_HOST_DIR}/events.sock"
+```
+
+此时必须让 Resolver Trace 插件连接 `events.sock` 并实际产生事件。没有可靠内部
+`trace_id`、`correlation_id` 和 `target_correlation_id` 时，不得启动切流。
+
+Agent `/readyz` 和 Trace Adapter `/readyz` 通过后，最后启动 Wrapper：
+
+```bash
+docker compose \
+  --project-name "$PROJECT" \
+  --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" \
+  up -d --no-build wrapper
 ```
 
 ## 5. 验收
@@ -241,3 +400,95 @@ PYTHONPATH=src python3 tools/manage_v2_registry.py revoke-resolver \
 ```
 
 永久撤销对象不能复活；轮换需使用新的 server identity 或按合约规则发布更高版本。
+
+## 9. 日常运行命令
+
+查看状态和最近日志：
+
+```bash
+docker compose --project-name "$PROJECT" --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" ps
+docker compose --project-name "$PROJECT" --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" logs --since 15m registry-sync agent trace-adapter wrapper
+```
+
+仅重启某个组件：
+
+```bash
+docker compose --project-name "$PROJECT" --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" restart trace-adapter
+```
+
+停止接收 DNS 流量：
+
+```bash
+docker compose --project-name "$PROJECT" --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" stop wrapper
+```
+
+停止整套服务但保留数据卷：
+
+```bash
+docker compose --project-name "$PROJECT" --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" down
+```
+
+禁止在生产主机执行 `down -v`，该命令会删除 evidence 和 Trace spool 数据卷。
+
+## 10. 升级与回退
+
+1. 先备份两个 SQLite 卷并记录当前 `RI_IMAGE` digest；
+2. 在 shadow 链路验证新镜像；
+3. 把 DNS VIP 切到备用入口，停止 Wrapper；
+4. 修改 `.env` 中的 `RI_IMAGE` 为新 digest；
+5. 依次启动 Registry Sync、Agent/Trace Adapter、Wrapper 并执行第 5 节验收；
+6. 指标或负向测试异常时，停止 Wrapper，将 `RI_IMAGE` 改回旧 digest 后重新启动。
+
+镜像回退不能回退或复活已经撤销的 identity，也不能降低 object/root/config 版本。
+
+## 11. 冷备份与恢复
+
+小规模试运行可在 DNS VIP 已切走后进行一致性冷备份：
+
+```bash
+docker compose --project-name "$PROJECT" --env-file "$ENV_FILE" \
+  -f "$COMPOSE_FILE" stop wrapper trace-adapter agent registry-sync
+
+EVIDENCE_VOLUME=$(docker volume ls -q \
+  --filter "label=com.docker.compose.project=$PROJECT" \
+  --filter "label=com.docker.compose.volume=evidence")
+SPOOL_VOLUME=$(docker volume ls -q \
+  --filter "label=com.docker.compose.project=$PROJECT" \
+  --filter "label=com.docker.compose.volume=trace-spool")
+
+sudo tar -C "$(docker volume inspect -f '{{.Mountpoint}}' "$EVIDENCE_VOLUME")" \
+  -czf "evidence-${PROJECT}.tgz" .
+sudo tar -C "$(docker volume inspect -f '{{.Mountpoint}}' "$SPOOL_VOLUME")" \
+  -czf "trace-spool-${PROJECT}.tgz" .
+sha256sum "evidence-${PROJECT}.tgz" "trace-spool-${PROJECT}.tgz" \
+  > "backup-${PROJECT}.sha256"
+```
+
+备份加密后复制到另一故障域。恢复时必须保持服务停止，将归档恢复到新建空卷，核对
+SHA-256 和 SQLite `PRAGMA integrity_check`，再按 Registry Sync 到 Wrapper 的顺序
+启动。冷备份完成后服务仍处于停止状态；未执行第 4 节的分阶段启动和第 5 节验收前，
+不得把 DNS VIP 切回。正式连续运行环境应接入 SQLite online backup 或存储快照，
+不应依赖停机备份。
+
+## 12. 常见故障
+
+| 现象 | 优先检查 | 处理原则 |
+| --- | --- | --- |
+| Registry `/readyz` 503 | RPC、chain ID、合约地址/code hash、finality | 修正固定值，不允许跳过核验 |
+| Agent `/readyz` 失败 | Registry 新鲜度、identity、mTLS、三个 token | 保持失败关闭 |
+| `events.sock` 不存在 | Adapter 日志、主机目录 owner/GID/mode | 修复目录和 producer UID/GID |
+| Trace spool 持续增长 | Agent 可达性、证书、token、dead-letter | 先停止切流，禁止删除未传事件 |
+| DNS 全部 `SERVFAIL` | Trace 是否真实产生、身份/端点/Root 状态 | 不得通过关闭验证恢复流量 |
+| UDP 正常、TCP 失败 | TCP 53 防火墙、连接上限、超时 | 修复网络或容量配置 |
+| 某链路故障影响其他链路 | project/volume/端口或防火墙是否复用 | 立即隔离，恢复每链路独立部署 |
+
+## 13. 上线完成标准
+
+只有 [生产就绪门禁](../production_readiness.md) 的全部 P0 项都有现场证据后才能切换
+正式 DNS VIP。代码测试通过、Compose 启动成功或模拟 Trace 成功，都不能代替真实
+Resolver 插件、真实 Registry、mTLS、防火墙、监控、备份恢复和峰值容量验收。

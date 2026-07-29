@@ -67,14 +67,14 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - run: |
-          cp .env.production.example .env.production
+          cp .env.legacy-python.example .env.legacy-python
           cp deploy/issuer-keys.example.json deploy/issuer-keys.json
           mkdir -p deploy/secrets
           printf 'placeholder' > deploy/secrets/admin_api_token
           printf 'placeholder' > deploy/secrets/agent_private_key_b64
           printf 'placeholder' > deploy/secrets/issuer_private_key_b64
           printf 'placeholder' > deploy/secrets/web3_private_key
-          docker compose --env-file .env.production -f docker-compose.production.yml config --quiet
+          docker compose --env-file .env.legacy-python -f docker-compose.legacy-python.yml config --quiet
       - run: |
           mkdir -p docker/state
           touch docker/state/agent-r1.env docker/state/agent-r2.env docker/state/web3.env
@@ -94,7 +94,7 @@ jobs:
     needs: [python, solidity, compose]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - run: docker build --pull --file docker/Dockerfile.production --tag resolver-identity-legacy:ci .
+      - run: docker build --pull --file docker/Dockerfile.legacy-python --tag resolver-identity-legacy:ci .
       - name: Verify legacy image policy
         run: |
           test "$(docker image inspect resolver-identity-legacy:ci --format '{{.Config.User}}')" = resolver

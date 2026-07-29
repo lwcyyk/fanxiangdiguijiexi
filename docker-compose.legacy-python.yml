@@ -2,10 +2,10 @@
 # deploy/link/docker-compose.yml and docker/Dockerfile.rust.
 services:
   indexer:
-    image: resolver-identity-prototype:0.1.0-production
+    image: resolver-identity-prototype:0.1.0-legacy
     build:
       context: .
-      dockerfile: docker/Dockerfile.production
+      dockerfile: docker/Dockerfile.legacy-python
     command: ["tools/run_indexer.py", "--host", "0.0.0.0", "--port", "8001"]
     restart: unless-stopped
     environment: &common-env
@@ -41,10 +41,10 @@ services:
       retries: 3
 
   agent-r1:
-    image: resolver-identity-prototype:0.1.0-production
+    image: resolver-identity-prototype:0.1.0-legacy
     build:
       context: .
-      dockerfile: docker/Dockerfile.production
+      dockerfile: docker/Dockerfile.legacy-python
     command: ["tools/run_agent.py", "--host", "0.0.0.0", "--port", "8010"]
     restart: unless-stopped
     environment:
@@ -80,10 +80,10 @@ services:
       retries: 3
 
   event-watcher:
-    image: resolver-identity-prototype:0.1.0-production
+    image: resolver-identity-prototype:0.1.0-legacy
     build:
       context: .
-      dockerfile: docker/Dockerfile.production
+      dockerfile: docker/Dockerfile.legacy-python
     command: ["tools/run_event_watcher.py", "--db", "/var/lib/resolver-identity/resolver_identity.db", "--interval", "2"]
     restart: unless-stopped
     environment:
@@ -107,10 +107,10 @@ services:
       start_period: 20s
 
   local-wrapper:
-    image: resolver-identity-prototype:0.1.0-production
+    image: resolver-identity-prototype:0.1.0-legacy
     build:
       context: .
-      dockerfile: docker/Dockerfile.production
+      dockerfile: docker/Dockerfile.legacy-python
     command: ["tools/run_wrapper.py", "--bind-host", "0.0.0.0", "--udp-port", "1053", "--tcp-port", "1053", "--metrics-host", "0.0.0.0", "--metrics-port", "9108"]
     restart: unless-stopped
     environment:
@@ -143,10 +143,10 @@ services:
       retries: 3
 
   admin:
-    image: resolver-identity-prototype:0.1.0-production
+    image: resolver-identity-prototype:0.1.0-legacy
     build:
       context: .
-      dockerfile: docker/Dockerfile.production
+      dockerfile: docker/Dockerfile.legacy-python
     command: ["tools/run_admin.py", "--host", "0.0.0.0", "--port", "8002"]
     restart: unless-stopped
     environment:

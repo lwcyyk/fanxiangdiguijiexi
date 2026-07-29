@@ -1,5 +1,6 @@
 .env
 .env.production
+.env.legacy-python
 .venv/
 __pycache__/
 *.py[cod]

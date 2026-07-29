@@ -11,7 +11,7 @@ from resolver_identity.crypto.signatures import generate_ed25519_keypair
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate local production secrets and trust bundle")
+    parser = argparse.ArgumentParser(description="Generate local Python V1 compatibility secrets and trust bundle")
     parser.add_argument("--deploy-dir", default="deploy")
     parser.add_argument("--issuer", default="resolver-trust-authority-01")
     parser.add_argument("--issuer-key-id", default="issuer-key-01")
@@ -20,7 +20,7 @@ def main() -> None:
 
     deploy_dir = Path(args.deploy_dir).resolve()
     secrets_dir = deploy_dir / "secrets"
-    env_target = deploy_dir.parent / ".env.production"
+    env_target = deploy_dir.parent / ".env.legacy-python"
     issuer_bundle = deploy_dir / "issuer-keys.json"
     targets = [
         secrets_dir / "admin_api_token",
@@ -31,7 +31,7 @@ def main() -> None:
     ]
     existing = [path for path in targets if path.exists()]
     if existing and not args.force:
-        raise SystemExit("refusing to overwrite existing production material: " + ", ".join(str(path) for path in existing))
+        raise SystemExit("refusing to overwrite existing compatibility material: " + ", ".join(str(path) for path in existing))
 
     agent_private, agent_public = generate_ed25519_keypair()
     issuer_private, issuer_public = generate_ed25519_keypair()
@@ -59,7 +59,7 @@ def main() -> None:
     }]}, indent=2) + "\n", encoding="utf-8")
     os.chmod(issuer_bundle, 0o644)
 
-    template = deploy_dir.parent / ".env.production.example"
+    template = deploy_dir.parent / ".env.legacy-python.example"
     if template.exists() and not env_target.exists():
         shutil.copyfile(template, env_target)
         os.chmod(env_target, 0o600)
@@ -70,7 +70,7 @@ def main() -> None:
         "issuer_public_key": issuer_public,
         "agent_public_key": agent_public,
         "web3_publisher_address": web3_address,
-        "next_step": "grant the Web3 publisher only the required registry roles, then edit .env.production",
+        "next_step": "legacy only: edit .env.legacy-python; Rust V2 uses deploy/link/.env",
     }, indent=2))
 
 

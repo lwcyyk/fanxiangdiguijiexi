@@ -25,6 +25,13 @@ client -> Rust Wrapper -> Recursive R1
 Python V1 代码仍保留用于管理面、合约发布、历史实验和迁移回归，不再作为 V2 DNS
 查询热路径。Solidity Registry 继续提供身份锚、Root、端点绑定、撤销和角色隔离。
 
+> **部署入口：** 新部署只能使用 `deploy/link/docker-compose.yml` 和
+> `docker/Dockerfile.rust`。`docker-compose.legacy-python.yml`、
+> `docker-compose.multi-resolver.yml`、`docker/Dockerfile.legacy-python`、
+> `docker/Dockerfile.python` 及 `src/resolver_identity/` 都属于 V1
+> 兼容/测试范围，不得部署到新的 DNS 生产链路。链路服务器不需要安装 Python；
+> Python 只在中心管理机低频执行身份签名和分角色 Registry 发布。
+
 ## 验证模式
 
 `controlled-strict` 用于完全受控环境。Recursive、Root、TLD、Authority 均部署
@@ -98,7 +105,7 @@ PYTHONPATH=src python3 tools/manage_v2_registry.py --help
 - [生产架构](docs/production_architecture.md)
 - [Rust V2 实施状态](docs/rust_v2_implementation_plan.md)
 - [星形域名中心部署](docs/star_topology_field_deployment.md)
-- [生产 Runbook](docs/runbooks/production-deployment.md)
+- [运行部署手册](docs/runbooks/production-deployment.md)
 - [生产就绪门禁](docs/production_readiness.md)
 - [安全边界](docs/security_boundary.md)
 - [V2 API](docs/api.md)
