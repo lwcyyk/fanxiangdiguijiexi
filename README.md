@@ -94,6 +94,7 @@ PYTHONPATH=src python3 tools/manage_v2_registry.py --help
 
 ## 文档
 
+- [中文技术介绍](docs/项目技术介绍.md)
 - [生产架构](docs/production_architecture.md)
 - [Rust V2 实施状态](docs/rust_v2_implementation_plan.md)
 - [星形域名中心部署](docs/star_topology_field_deployment.md)
