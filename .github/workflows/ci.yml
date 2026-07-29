@@ -42,10 +42,11 @@ jobs:
         run: pip-audit -r requirements-production.lock --require-hashes
       - if: matrix.python-version == '3.13'
         run: pip-audit -r requirements-production.lock --require-hashes --format cyclonedx-json --output resolver-identity-sbom.cdx.json
-      - run: python -m piptools compile pyproject.toml --extra web3 --strip-extras --generate-hashes --output-file /tmp/requirements-production.lock --quiet
-        if: matrix.python-version == '3.13'
-      - run: diff -u requirements-production.lock /tmp/requirements-production.lock
-        if: matrix.python-version == '3.13'
+      - if: matrix.python-version == '3.13'
+        run: |
+          cp requirements-production.lock /tmp/requirements-production.hashed.lock
+          python -m piptools compile pyproject.toml --extra web3 --strip-extras --generate-hashes --no-upgrade --output-file /tmp/requirements-production.hashed.lock --quiet
+          diff -u requirements-production.lock /tmp/requirements-production.hashed.lock
       - if: matrix.python-version == '3.13'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
