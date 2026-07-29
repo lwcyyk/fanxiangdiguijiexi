@@ -105,6 +105,7 @@ PYTHONPATH=src python3 tools/manage_v2_registry.py --help
 - [生产架构](docs/production_architecture.md)
 - [Rust V2 实施状态](docs/rust_v2_implementation_plan.md)
 - [星形域名中心部署](docs/star_topology_field_deployment.md)
+- [真实服务器部署手册](docs/runbooks/real-server-deployment.md)
 - [运行部署手册](docs/runbooks/production-deployment.md)
 - [生产就绪门禁](docs/production_readiness.md)
 - [安全边界](docs/security_boundary.md)
