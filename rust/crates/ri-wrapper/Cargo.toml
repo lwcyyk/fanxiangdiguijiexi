@@ -1,0 +1,27 @@
+[package]
+name = "ri-wrapper"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+axum.workspace = true
+futures-util.workspace = true
+hex.workspace = true
+rand.workspace = true
+reqwest.workspace = true
+ri-core = { path = "../ri-core" }
+ri-store = { path = "../ri-store" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+base64.workspace = true
+
+[lints]
+workspace = true

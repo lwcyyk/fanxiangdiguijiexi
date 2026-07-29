@@ -1,3 +1,5 @@
+# Legacy Python V1 compatibility image. The Rust V2 production image is
+# built from docker/Dockerfile.rust.
 FROM python:3.13.11-slim AS builder
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \

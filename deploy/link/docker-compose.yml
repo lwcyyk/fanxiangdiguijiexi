@@ -1,0 +1,187 @@
+x-runtime: &runtime
+  image: resolver-identity-rust:0.2.0
+  build:
+    context: ../..
+    dockerfile: docker/Dockerfile.rust
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 256
+  mem_limit: 512m
+  cpus: 2.0
+
+x-common-env: &common-env
+  RI_ENVIRONMENT: production
+  RI_VERIFICATION_MODE: ${RI_VERIFICATION_MODE:?controlled-strict or public-hybrid}
+  RI_ISSUER_KEYS_FILE: /run/config/issuer-keys.json
+
+services:
+  registry-sync:
+    <<: *runtime
+    command: ["/usr/local/bin/ri-registry-sync"]
+    environment:
+      <<: *common-env
+      RI_DATABASE: /var/lib/resolver-identity/evidence-v2.db
+      RI_IDENTITIES_FILE: /run/config/identities-v2.json
+      RI_WEB3_RPC_URL: ${RI_WEB3_RPC_URL:?required}
+      RI_WEB3_CHAIN_ID: ${RI_WEB3_CHAIN_ID:?required}
+      RI_REGISTRY_CONTRACT_ADDRESS: ${RI_REGISTRY_CONTRACT_ADDRESS:?required}
+      RI_REGISTRY_CODE_HASH: ${RI_REGISTRY_CODE_HASH:?required}
+      RI_REGISTRY_POLL_INTERVAL_MS: ${RI_REGISTRY_POLL_INTERVAL_MS:-2000}
+      RI_REGISTRY_FALLBACK_CONFIRMATIONS: ${RI_REGISTRY_FALLBACK_CONFIRMATIONS:-12}
+      RI_RPC_MAX_RESPONSE_BYTES: ${RI_RPC_MAX_RESPONSE_BYTES:-4194304}
+      RI_REGISTRY_MONITORING_BIND: 0.0.0.0:9109
+    volumes:
+      - evidence:/var/lib/resolver-identity
+      - ../issuer-keys.json:/run/config/issuer-keys.json:ro
+      - ./identities-v2.json:/run/config/identities-v2.json:ro
+    networks: [registry-egress]
+    ports:
+      - "${REGISTRY_METRICS_BIND_ADDRESS:-127.0.0.1}:${REGISTRY_METRICS_PORT:-9109}:9109/tcp"
+
+  agent:
+    <<: *runtime
+    command: ["/usr/local/bin/ri-agent"]
+    environment:
+      <<: *common-env
+      RI_AGENT_BIND: 0.0.0.0:8443
+      RI_AGENT_SERVER_ID: ${RI_AGENT_SERVER_ID:?required}
+      RI_AGENT_KEY_ID: ${RI_AGENT_KEY_ID:?required}
+      RI_AGENT_PRIVATE_KEY_FILE: /run/secrets/agent_private_key
+      RI_TRACE_INGEST_TOKEN_FILE: /run/secrets/trace_ingest_token
+      RI_AGENT_WRAPPER_TOKEN_FILE: /run/secrets/agent_wrapper_token
+      RI_AGENT_PEER_TOKEN_FILE: /run/secrets/agent_peer_token
+      RI_DATABASE: /var/lib/resolver-identity/evidence-v2.db
+      RI_AGENT_MAX_AGE_SECONDS: ${RI_AGENT_MAX_AGE_SECONDS:-30}
+      RI_TRACE_LOOKBACK_SECONDS: ${RI_TRACE_LOOKBACK_SECONDS:-5}
+      RI_TRACE_WAIT_MILLIS: ${RI_TRACE_WAIT_MILLIS:-250}
+      RI_TRACE_RETENTION_SECONDS: ${RI_TRACE_RETENTION_SECONDS:-3600}
+      RI_MAX_CACHE_TTL_SECONDS: ${RI_MAX_CACHE_TTL_SECONDS:-3600}
+      RI_REGISTRY_MAX_STALENESS_SECONDS: ${RI_REGISTRY_MAX_STALENESS_SECONDS:-15}
+      RI_AGENT_HTTP_TIMEOUT_MS: ${RI_AGENT_HTTP_TIMEOUT_MS:-750}
+      RI_AGENT_MAX_CONCURRENT_REQUESTS: ${RI_AGENT_MAX_CONCURRENT_REQUESTS:-512}
+      RI_AGENT_MAX_REQUEST_BODY_BYTES: ${RI_AGENT_MAX_REQUEST_BODY_BYTES:-4194304}
+      RI_AGENT_TLS_CERT_FILE: /run/tls/agent.crt
+      RI_AGENT_TLS_KEY_FILE: /run/tls/agent.key
+      RI_AGENT_TLS_CLIENT_CA_FILE: /run/tls/client-ca.crt
+      RI_AGENT_TLS_CLIENT_CERT_FILE: /run/tls/agent-client.crt
+      RI_AGENT_TLS_CLIENT_KEY_FILE: /run/tls/agent-client.key
+      RI_AGENT_TLS_CA_FILE: /run/tls/agent-ca.crt
+    secrets:
+      - agent_private_key
+      - trace_ingest_token
+      - agent_wrapper_token
+      - agent_peer_token
+    volumes:
+      - evidence:/var/lib/resolver-identity
+      - ../issuer-keys.json:/run/config/issuer-keys.json:ro
+      - ./tls/agent.crt:/run/tls/agent.crt:ro
+      - ./tls/agent.key:/run/tls/agent.key:ro
+      - ./tls/client-ca.crt:/run/tls/client-ca.crt:ro
+      - ./tls/agent-client.crt:/run/tls/agent-client.crt:ro
+      - ./tls/agent-client.key:/run/tls/agent-client.key:ro
+      - ./tls/agent-ca.crt:/run/tls/agent-ca.crt:ro
+    networks: [link-control, agent-egress]
+    ports:
+      - "${AGENT_BIND_ADDRESS:-127.0.0.1}:${AGENT_PORT:-8443}:8443/tcp"
+    depends_on:
+      registry-sync:
+        condition: service_started
+
+  trace-adapter:
+    <<: *runtime
+    command: ["/usr/local/bin/ri-trace-adapter"]
+    environment:
+      RI_ENVIRONMENT: production
+      RI_TRACE_SOCKET: /run/resolver-identity/trace/events.sock
+      RI_TRACE_SOCKET_MODE: "660"
+      RI_TRACE_PRODUCER_UID: ${RI_TRACE_PRODUCER_UID:?required}
+      RI_TRACE_SPOOL_DATABASE: /var/lib/resolver-identity/trace-spool.db
+      RI_TRACE_AGENT_URL: https://agent:8443
+      RI_TRACE_INGEST_TOKEN_FILE: /run/secrets/trace_ingest_token
+      RI_TRACE_BATCH_SIZE: ${RI_TRACE_BATCH_SIZE:-64}
+      RI_TRACE_QUEUE_CAPACITY: ${RI_TRACE_QUEUE_CAPACITY:-8192}
+      RI_TRACE_FLUSH_INTERVAL_MS: ${RI_TRACE_FLUSH_INTERVAL_MS:-5}
+      RI_TRACE_HTTP_TIMEOUT_MS: ${RI_TRACE_HTTP_TIMEOUT_MS:-500}
+      RI_TRACE_SPOOL_MAX_EVENTS: ${RI_TRACE_SPOOL_MAX_EVENTS:-1000000}
+      RI_TRACE_MONITORING_BIND: 0.0.0.0:9110
+      RI_TRACE_TLS_CLIENT_CERT_FILE: /run/tls/trace-client.crt
+      RI_TRACE_TLS_CLIENT_KEY_FILE: /run/tls/trace-client.key
+      RI_TRACE_TLS_CA_FILE: /run/tls/agent-ca.crt
+    secrets: [trace_ingest_token]
+    group_add:
+      - "${RI_TRACE_PRODUCER_GID:?required}"
+    volumes:
+      - ${RI_TRACE_SOCKET_HOST_DIR:?required}:/run/resolver-identity/trace
+      - trace-spool:/var/lib/resolver-identity
+      - ./tls/trace-client.crt:/run/tls/trace-client.crt:ro
+      - ./tls/trace-client.key:/run/tls/trace-client.key:ro
+      - ./tls/agent-ca.crt:/run/tls/agent-ca.crt:ro
+    networks: [link-control]
+    ports:
+      - "${TRACE_METRICS_BIND_ADDRESS:-127.0.0.1}:${TRACE_METRICS_PORT:-9110}:9110/tcp"
+    depends_on:
+      agent:
+        condition: service_started
+
+  wrapper:
+    <<: *runtime
+    command: ["/usr/local/bin/ri-wrapper"]
+    environment:
+      <<: *common-env
+      RI_WRAPPER_UDP_BIND: 0.0.0.0:1053
+      RI_WRAPPER_TCP_BIND: 0.0.0.0:1053
+      RI_WRAPPER_MONITORING_BIND: 0.0.0.0:9108
+      RI_WRAPPER_AGENT_URL: https://agent:8443
+      RI_WRAPPER_AGENT_TOKEN_FILE: /run/secrets/agent_wrapper_token
+      RI_DATABASE: /var/lib/resolver-identity/evidence-v2.db
+      RI_REGISTRY_MAX_STALENESS_SECONDS: ${RI_REGISTRY_MAX_STALENESS_SECONDS:-15}
+      RI_WRAPPER_UPSTREAMS: ${RI_WRAPPER_UPSTREAMS:?e.g. udp://192.0.2.53:53}
+      RI_WRAPPER_UPSTREAM_TIMEOUT_MS: ${RI_WRAPPER_UPSTREAM_TIMEOUT_MS:-2000}
+      RI_WRAPPER_AGENT_TIMEOUT_MS: ${RI_WRAPPER_AGENT_TIMEOUT_MS:-1000}
+      RI_WRAPPER_TRANSACTION_ID_REUSE_DELAY_MS: ${RI_WRAPPER_TRANSACTION_ID_REUSE_DELAY_MS:-15000}
+      RI_WRAPPER_MAX_AGENT_RESPONSE_BYTES: ${RI_WRAPPER_MAX_AGENT_RESPONSE_BYTES:-4194304}
+      RI_WRAPPER_MAX_INFLIGHT: ${RI_WRAPPER_MAX_INFLIGHT:-512}
+      RI_WRAPPER_MAX_TCP_CONNECTIONS: ${RI_WRAPPER_MAX_TCP_CONNECTIONS:-1024}
+      RI_WRAPPER_TCP_IO_TIMEOUT_MS: ${RI_WRAPPER_TCP_IO_TIMEOUT_MS:-5000}
+      RI_WRAPPER_TLS_CLIENT_CERT_FILE: /run/tls/wrapper-client.crt
+      RI_WRAPPER_TLS_CLIENT_KEY_FILE: /run/tls/wrapper-client.key
+      RI_WRAPPER_TLS_CA_FILE: /run/tls/agent-ca.crt
+    volumes:
+      - evidence:/var/lib/resolver-identity
+      - ../issuer-keys.json:/run/config/issuer-keys.json:ro
+      - ./tls/wrapper-client.crt:/run/tls/wrapper-client.crt:ro
+      - ./tls/wrapper-client.key:/run/tls/wrapper-client.key:ro
+      - ./tls/agent-ca.crt:/run/tls/agent-ca.crt:ro
+    secrets: [agent_wrapper_token]
+    networks: [dns-ingress, link-control, resolver-egress]
+    depends_on:
+      agent:
+        condition: service_started
+    ports:
+      - "${DNS_BIND_ADDRESS:?required}:${DNS_PORT:-53}:1053/udp"
+      - "${DNS_BIND_ADDRESS:?required}:${DNS_PORT:-53}:1053/tcp"
+      - "${METRICS_BIND_ADDRESS:-127.0.0.1}:${METRICS_PORT:-9108}:9108/tcp"
+
+networks:
+  dns-ingress:
+  link-control:
+    internal: true
+  resolver-egress:
+  agent-egress:
+  registry-egress:
+
+volumes:
+  evidence:
+  trace-spool:
+
+secrets:
+  agent_private_key:
+    file: ./secrets/agent_private_key
+  trace_ingest_token:
+    file: ./secrets/trace_ingest_token
+  agent_wrapper_token:
+    file: ./secrets/agent_wrapper_token
+  agent_peer_token:
+    file: ./secrets/agent_peer_token

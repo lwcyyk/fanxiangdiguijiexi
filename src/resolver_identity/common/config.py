@@ -102,6 +102,11 @@ class Settings:
         return Path(self.db_path)
 
     def validate_for(self, service: str) -> None:
+        environment = self.environment.strip().lower()
+        if environment not in {"production", "development", "test"}:
+            raise ValueError(
+                "RESOLVER_IDENTITY_ENVIRONMENT must be production, development, or test"
+            )
         if self.soft_ttl_seconds <= 0 or self.hard_ttl_seconds <= 0:
             raise ValueError("cache TTLs must be positive")
         if self.soft_ttl_seconds > self.hard_ttl_seconds:
@@ -118,6 +123,8 @@ class Settings:
             raise ValueError("production requires RESOLVER_IDENTITY_REGISTRY_MODE=web3")
         if not self.web3_rpc_url or not self.web3_contract_address:
             raise ValueError("production requires Web3 RPC URL and contract address")
+        if not self.web3_rpc_url.lower().startswith("https://"):
+            raise ValueError("production Web3 RPC URL must use HTTPS")
         if self.web3_contract_address.lower() == "0x" + "0" * 40:
             raise ValueError("production Registry contract address must not be the zero address")
         if not self.web3_contract_code_hash:
@@ -147,6 +154,18 @@ class Settings:
                 raise ValueError("production Admin API requires an authentication token")
             if not self.issuer_private_key_b64:
                 raise ValueError("production Admin requires an Ed25519 issuer private key")
+        if service == "registry-writer":
+            private_key_sources = sum(
+                bool(value)
+                for value in (
+                    self.web3_private_key_env,
+                    self.web3_private_key_file,
+                )
+            )
+            if private_key_sources != 1:
+                raise ValueError(
+                    "production Registry writer requires exactly one transaction private key source"
+                )
 
     def upstream_specs(self) -> list[tuple[str, int, str]]:
         specs = [(self.upstream_ip, self.upstream_port, self.upstream_transport)]

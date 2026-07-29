@@ -1,182 +1,132 @@
-# API Reference
+# Rust V2 API
 
-本文只描述当前代码中实际存在的 HTTP 路由。生产 DNS 主路径是 Wrapper 的 UDP/TCP 监听器；HTTP Wrapper 主要用于 DoH、诊断和受控运维。
+生产 DNS 入口是 `ri-wrapper` 的 UDP/TCP 监听器。以下 HTTP API 只存在于 Agent
+和 Wrapper 监控面，生产环境均应由网络 ACL 和 mTLS 保护。
 
-## 通用约定
+## Agent
 
-- JSON 路由使用 UTF-8。
-- DNS-over-HTTPS 使用 `application/dns-message`。
-- `/healthz` 只表示进程存活。
-- `/readyz` 会检查数据库；依赖 Registry 的服务还会检查 chain ID、合约代码和最新区块。
-- 生产环境的 Admin 路由要求 `X-Admin-Token`。
-- 未验证、证据不完整、撤销或依赖不可用且无有效缓存时，DNS 主路径返回 `SERVFAIL`，不得释放原始答案。
+### `POST /v2/evidence-graph`
 
-请求体限制：
-
-| 服务 | 上限 |
-|---|---:|
-| Wrapper | 65,535 bytes |
-| Agent | 65,536 bytes |
-| Admin | 1 MiB |
-
-## Wrapper
-
-### DNS-over-HTTPS
-
-`POST /dns-query`
-
-- 请求：DNS wire-format message。
-- 响应：验证成功时返回原始 DNS 响应；失败时返回 `SERVFAIL` wire message。
-- 响应头：`X-Resolver-Identity-Request-Id`。
-
-### 身份验证
-
-`POST /v1/verify/resolver`
+请求：
 
 ```json
 {
-  "endpoint": {
-    "ip": "192.0.2.53",
-    "port": 53,
-    "transport": "udp"
-  }
+  "trace_id": "wrapper-generated-id",
+  "correlation_id": "0x<32-byte-sha256>",
+  "challenge": "at-least-32-random-characters",
+  "query_digest": "0x<32-byte-sha256>",
+  "response_digest": "0x<32-byte-sha256>",
+  "expected_observed_at": null,
+  "visited_server_ids": []
 }
 ```
 
-返回 `accepted`、`status`、`resolver_id`、`reasons` 和结构化 `evidence`。
+该端点只接受本机 Wrapper token，并要求 Wrapper 已在共享 Store 登记一次性查询
+上下文。Wrapper 调用必须令 `expected_observed_at` 为 `null`；Agent 只能占用登记
+时间和登记行边界之后产生的本地 final response。调用方不能提交路径、节点或切换
+匹配模式。响应为已签名 `QueryEvidenceGraphV2`。
 
-`POST /v1/verify/query`
+### `POST /v2/downstream-evidence-graph`
 
-```json
-{
-  "observed_resolvers": [
-    {"ip": "192.0.2.53", "port": 53, "transport": "udp"}
-  ]
-}
-```
+只接受相邻 Agent 的 peer token，用于递归子图获取；请求必须携带父级实际 DNS 事件
+的 `expected_observed_at`，目标 Agent 只匹配该时间边界附近的响应。
+`visited_server_ids` 由 Agent 维护以阻断环路。它与 Wrapper 端点分离，peer token
+不能调用本地 Wrapper 端点。
 
-空列表会返回 `accepted=false` 和 `reason=no_observed_resolvers`。
+### `POST /v2/attest-response`
 
-### 缓存与证据
+该端点只接受相邻 Agent peer token。请求同时携带目标查询的 `correlation_id`。
+受控目标 Agent 只有在本地找到相同
+correlation、query digest、response digest 和 endpoint 的实际响应事件时才返回
+`TargetResponseAttestationV2`。响应中的观察时间来自本地事件，不采用请求方提交的
+时间。
 
-- `GET /v1/cache`
-- `POST /v1/cache/invalidate/resolver/{resolver_id:path}?status=REVOKED`
-- `POST /v1/cache/invalidate/root/{state_root}?status=REVOKED`
-- `POST /v1/cache/refresh`
-- `GET /v1/proofs/{request_id}`
+### `POST /v2/trace-events`
 
-生产撤销应通过 Registry 和 EventWatcher 传播；手工 invalidate 路由只用于受控运维和诊断。
+写入一个 `TraceEventV2`。要求：
 
-### 状态
+- `Authorization: Bearer <link-unique-token>`；
+- observer server ID 必须等于本 Agent；
+- schema、digest、correlation、时间窗口和字段通过校验；
+- outbound query/response 事件必须携带目标请求的 `target_correlation_id`。
+- CacheHit 必须显式携带 TTL 和精确的 source graph digest；
+- `event_id` 不可变；完全相同的重试是幂等操作，内容冲突会被拒绝。
 
-- `GET /healthz`
-- `GET /readyz`
-- `GET /metrics`
+### `POST /v2/trace-events/batch`
 
-指标包括 Wrapper 存活、DNS ALLOW/SERVFAIL 计数、验证计数和 gate latency 总和/次数。
-
-## Indexer
-
-Indexer 是非可信数据提供者；调用方必须将对象、proof 和 endpoint binding 与 Registry 锚点重新核对。
-
-### 查询
-
-- `GET /v1/lookup/ip/{ip}`
-- `GET /v1/lookup/name/{name}`
-- `GET /v1/resolvers/{resolver_id:path}`
-- `GET /v1/resolvers/{resolver_id:path}/proof`
-- `GET /v1/resolvers/{resolver_id:path}/status`
-- `GET /v1/roots/{state_root}`
-- `GET /v1/audit/logs?limit=100`
-
-Audit `limit` 会被限制在 1 至 1,000。
+一次写入 1 至 1024 个事件，全部校验后在一个 SQLite 事务中提交。Trace Adapter
+生产使用该接口。
 
 ### 状态
 
-- `GET /healthz`
-- `GET /readyz`
+- `GET /healthz`：进程存活；
+- `GET /readyz`：本机 identity 存在、issuer 签名有效、Registry 状态有效，并且
+  Agent 私钥与 identity 中绑定的 key ID/public key 相同。
+- `GET /metrics`：证据图请求/失败和 Trace 摄入计数，位于同一 mTLS 监听器。
 
-## Resolver Identity Agent
+Agent 生产服务强制客户端证书认证；Wrapper、peer Agent 和 Trace 摄入还使用三个
+用途隔离的 bearer token。
+`RI_AGENT_MAX_AGE_SECONDS` 必须在 1 至 60 秒之间。
+HTTP 并发数和请求体分别受 `RI_AGENT_MAX_CONCURRENT_REQUESTS` 与
+`RI_AGENT_MAX_REQUEST_BODY_BYTES` 限制；该字节上限也约束 Agent 从相邻 Agent
+读取的响应证明和子图。
 
-### 身份与配置
+## Wrapper 监控面
 
-- `GET /v1/identity`
-- `GET /v1/upstreams`
+- `GET /healthz`：进程存活；
+- `GET /readyz`：最近一次 Agent 深度就绪探测成功，且 Wrapper 本地 Registry
+  快照心跳仍在允许窗口内；
+- `GET /metrics`：Prometheus 文本格式。
 
-响应由 Agent Ed25519 私钥签名，包含 resolver ID、endpoint、upstreams、config version、签发/过期时间、issuer 和 key ID。Agent 响应不能自证可信；其公钥必须来自已经验证的 resolver identity object。
+主要指标：
 
-### 生产验证链
+- `resolver_identity_dns_queries_total`
+- `resolver_identity_dns_accepted_total`
+- `resolver_identity_dns_servfail_total`
+- `resolver_identity_dns_overloaded_total`
+- `resolver_identity_upstream_failures_total`
+- `resolver_identity_verification_failures_total`
+- `resolver_identity_dns_inflight`
+- `resolver_identity_ready`
 
-`POST /v1/verification-chain`
+## DNS 行为
 
-```json
-{
-  "challenge": "wrapper-generated-random-value-at-least-32-characters"
-}
+Wrapper 支持 UDP 和 TCP。请求超过并发上限、上游超时/异常、Agent 超时、证据图
+无效、撤销、DNSSEC 不满足或 Trace 缺失时，均返回与原请求 transaction ID 对应的
+`SERVFAIL`，不会返回暂存的原始答案。
+上游响应还必须与请求的 opcode、question count、规范化 qname、qtype 和 qclass
+逐项一致；畸形或循环 DNS name compression 会被拒绝。
+
+TCP 入口另受 `RI_WRAPPER_MAX_TCP_CONNECTIONS` 和
+`RI_WRAPPER_TCP_IO_TIMEOUT_MS` 约束。连接上限耗尽时直接关闭新连接；DNS 帧读写
+超过空闲时限时关闭该连接，避免慢连接长期占用文件描述符。Agent 返回体受
+`RI_WRAPPER_MAX_AGENT_RESPONSE_BYTES` 限制。
+
+Wrapper 为发往 R1 的每个活动请求分配唯一内部 DNS transaction ID，并按以下公式
+生成关联值：
+
+```text
+correlation_id =
+  SHA-256("dns-correlation-v2:" + transaction_id_hex + ":" + dns_wire_digest)
 ```
 
-约束：
+`dns_wire_digest` 是把 DNS 报文 transaction ID 两字节清零后计算的 SHA-256。
+Resolver Trace 生产者必须对进入本解析上下文的 wire message 使用相同算法，并将
+该 `correlation_id` 写入本上下文的全部事件；转发到下一 DNS 服务时，再对实际
+outbound wire message 计算下一跳关联值并写入 `target_correlation_id`。下游解析器
+以该值作为其解析上下文的 `correlation_id`。Wrapper 只接受关联值、查询摘要和响应
+摘要均精确匹配的证据图，之后恢复客户端原 transaction ID。内部 transaction ID 在
+`RI_WRAPPER_TRANSACTION_ID_REUSE_DELAY_MS` 冷却期内不得复用。不能使用 qname、
+宽松时间窗口或“最新一条相同摘要”替代关联值。
 
-- challenge 长度为 32 至 256 个字符；
-- 每个嵌套 `VerificationChain` 必须包含并签名同一个 challenge；
-- Agent 只验证自己的相邻 upstream；
-- downstream Agent 公钥来自已验证 hop evidence；
-- loop、max depth、过期、config rollback、缺失 downstream chain 或 terminal overlap 都会失败关闭。
+## Registry Sync 与 Trace Adapter 监控面
 
-返回的 chain 包含：
+- Registry Sync：`GET /healthz`、`GET /readyz`、`GET /metrics`，默认映射到主机
+  `127.0.0.1:9109`；JSON-RPC 响应受 `RI_RPC_MAX_RESPONSE_BYTES` 限制。
+- Trace Adapter：`GET /healthz`、`GET /readyz`、`GET /metrics`，默认映射到主机
+  `127.0.0.1:9110`；指标包含 spool 待传数和 dead-letter 数。
 
-- `resolver_id`、`endpoint`、`config_version`；
-- 已签名 `hops`；
-- 已签名 `downstream_chains`；
-- `terminal_upstreams`；
-- `chain_errors` 和 `final_result`；
-- `issued_at`、`expires_at`、`issuer`、`key_id`、`signature`；
-- 当前请求 challenge。
+## Python V1
 
-`GET /v1/verification-chain` 是无 challenge 的兼容/诊断接口，不得用于生产 Wrapper 信任决策。
-
-### 兼容别名
-
-- `GET /v1/agent/identity`
-- `GET /v1/agent/observed-resolvers`
-- `GET /v1/agent/verification-chain`
-
-这些路由仅为早期客户端兼容保留。
-
-### 状态
-
-- `GET /healthz`
-- `GET /readyz`
-
-## Admin
-
-生产请求必须携带：
-
-```http
-X-Admin-Token: <secret>
-```
-
-### 已实现
-
-- `POST /v1/admin/resolvers`：构建、签名并幂等发布 resolver object、root、anchor 和 endpoint binding。
-- `POST /v1/admin/resolvers/{resolver_id:path}/revoke`：链上永久撤销 resolver。
-- `POST /v1/admin/roots/publish`：发布 root；已撤销 root 不能复活。
-- `GET /healthz`
-- `GET /readyz`
-
-发布相同版本和相同内容会恢复未完成的 Indexer 写入；相同版本但内容不同或版本回退会拒绝。
-
-### 明确未实现
-
-- `POST /v1/admin/operators`：返回 HTTP 501。
-- `POST /v1/admin/resolvers/{resolver_id:path}/endpoints`：返回 HTTP 501；端点变更必须发布更高版本 resolver object。
-
-## 暴露策略
-
-生产 Compose 默认只发布：
-
-- DNS UDP/TCP 53；
-- localhost Metrics；
-- localhost Admin。
-
-Indexer 和 Agent 应只存在于内部 control network。跨主机 Agent 链路必须使用 HTTPS；明文 HTTP 只允许精确列入 `RESOLVER_IDENTITY_AGENT_PLAINTEXT_HOSTS` 的内部主机。
+`/v1/*` 路由仍保留在 Python 原型中，用于历史实验和迁移回归，不属于 Rust V2
+生产 Compose 的接口，不应与 V2 Agent 混用。

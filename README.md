@@ -1,196 +1,126 @@
-# 基于区块链带外身份索引的递归解析器身份认证
+# DNS 全路径服务身份认证
 
-本仓库实现一套应用层递归解析器身份认证系统，并提供本地 Web3 多解析器测试环境和单机生产部署基线。
+本项目在不修改客户端 DNS 报文格式的前提下，先验证一次查询实际使用的 DNS
+服务身份，再决定是否向客户端释放原始响应。验证范围包括 Recursive、Forwarder，
+以及可观测的 Root、TLD 和 Authoritative 服务。
 
-目标：在不修改 DNS 协议、DNS 报文格式或操作系统网络栈的前提下，通过应用层本地 DNS 验证封装器、链下 SQLite Indexer、本地可信缓存与链上可信锚，验证递归解析器身份后再释放 DNS 响应。
+## 当前架构
 
-## 当前实现状态
-
-当前主闭环支持本地 Web3/Anvil E2E；生产严格模式使用外部 EVM Registry、Ed25519、逐请求 challenge、Agent TLS/mTLS 和受保护管理面：
+生产数据面已迁移到 Rust：
 
 ```text
-client
-  -> local-wrapper
-  -> resolver-r1
-  -> resolver-r2
-  -> authoritative/external DNS
+client -> Rust Wrapper -> Recursive R1
+             |                 |
+             |                 `-> actual Trace -> Root/TLD/Authority
+             `-> Rust Agent -> signed QueryEvidenceGraphV2
 ```
 
-正常 DNS 查询链路保持不变；带外身份认证链路采用“逐跳分布式认证 + 结果向上汇总”模型：
+- `ri-wrapper`：UDP/TCP DNS、帧/问题核对、资源上限、证据与 Registry 双重复验；
+- `ri-agent`：从实际 Trace 构图、目标响应证明、R1/R2 子图递归合并、mTLS；
+- `ri-trace-adapter`：Unix Socket、producer UID、SQLite 持久队列、批量 mTLS 续传；
+- `ri-registry-sync`：finalized chain/address/runtime hash/identity/root/endpoint 核验；
+- `ri-core`：canonical JSON、SHA-256、Ed25519、V2 模型和安全策略；
+- `ri-store`：SQLite WAL、事务、Registry 代际和缓存来源。
 
-1. wrapper 只直接认证第一跳 R1 的 identity object、Merkle proof、链上 anchor、endpoint binding 和 root status；
-2. wrapper 从已验证 R1 identity object 中读取 R1 Agent Ed25519 public key；
-3. wrapper 调用 R1 Agent 的 `/v1/verification-chain`，验证 R1 对整条链路摘要的签名；
-4. R1 Agent 只负责发现并认证自己的相邻上游 R2：R1 Agent 查询 Indexer/Registry，验证 R2 identity object，并签名 `R1 -> R2` 的 `HopVerificationResult`；
-5. 如果 R2 还有递归上游，R1 Agent 调用 R2 Agent；R2 Agent 同样只认证自己的相邻上游 R3，并返回签名链路结果；
-6. 认证结果按 `R3 -> R2 -> R1 -> wrapper` 方向回传，每一级 Agent 都签名自己的 hop result 和 chain summary；
-7. wrapper 验证 R1 Agent 签名、每一级 downstream chain 签名、每个 hop 的 `VERIFIED` 状态和链路完整性；
-8. 全部 hop 均通过认证才释放原始 DNS 响应，否则返回 SERVFAIL。
+Python V1 代码仍保留用于管理面、合约发布、历史实验和迁移回归，不再作为 V2 DNS
+查询热路径。Solidity Registry 继续提供身份锚、Root、端点绑定、撤销和角色隔离。
 
-系统不会猜测不可观测的隐藏中间解析器，也不会修改 DNS 报文。
+## 验证模式
 
-## 已实现能力
+`controlled-strict` 用于完全受控环境。Recursive、Root、TLD、Authority 均部署
+Agent，每条实际 DNS 边都必须取得目标 Agent 的响应证明，并要求 DNSSEC `SECURE`。
 
-- `ResolverAuthenticityObjectV1` 身份对象模型
-- canonical JSON、object hash、lookup key
-- 开发兼容 HMAC 与生产 Ed25519 签名/验签；生产模式强制禁用 HMAC
-- Agent Ed25519 public key 绑定到 resolver identity object
-- SQLite Indexer：保存完整对象、lookup index、Merkle proof、缓存、审计
-- Solidity `ResolverIdentityRegistryV1`
-- `Web3RegistryBackend`：读取/写入 Anvil 或外部 EVM 合约，并固定 chain ID 和 runtime code hash
-- `AdminPublisher`：发布 root、resolver anchor、endpoint binding
-- `ResolverVerifier`：fail-closed 身份认证
-- trusted cache：cold/hot path、TTL、撤销失效
-- `EventWatcher`：Web3 event polling、reorg rollback、漏事件 reconcile
-- UDP/TCP DNS wrapper 与本地 DoH route
-- Resolver Identity Agent：身份、upstream、challenged verification chain、健康和深度就绪接口
-- 逐跳分布式 Agent 链路认证：每级 Agent 只认证相邻 upstream，并签名 `HopVerificationResult` / `VerificationChain`
-- Docker Compose 多服务 E2E：Anvil、R1、R2、Agent、Indexer、event-watcher、wrapper
-- 生产加固：Web3 超时与合约字节码哈希固定、Agent TLS/mTLS、幂等发布恢复、SQLite 在线备份/版本检查、深度就绪探针、SBOM 与非 root 镜像门禁
+`public-hybrid` 用于公共互联网。Recursive/Forwarder 仍必须有 Agent；公共
+Root/TLD/Authority 使用“Registry 服务身份 + DNSSEC”。Anycast 只能认证服务身份，
+不能声称认证具体物理实例。
 
-## 安装与测试
+两种模式都使用逐请求随机 challenge、DNS wire digest、Ed25519、Registry finalized
+快照、环路/深度/规模限制和失败关闭。调用方不能提交或自报路径。
+
+## Rust 构建与测试
+
+要求 Rust 1.97：
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -e '.[dev,web3]'
+cd rust
+cargo fmt --all --check
+cargo test --workspace --locked
+cargo clippy --workspace --all-targets --locked -- -D warnings
 ```
 
-基础验证：
+Rust 测试覆盖 Python canonical/signature 兼容、严格/混合策略、篡改、撤销、环路、
+请求登记时间与事件一次性绑定、事务 ID 冷却复用、递归缓存 DNSSEC 来源、Trace
+持久续传/无效事件隔离、`R1 -> R2 -> Root` 子图合并和 DNS `SERVFAIL`。
+
+Python 与合约回归：
 
 ```bash
-python3 -m compileall src tests tools
-python3 -m pytest tests -q
+python3 -m pytest -q
 cd contracts && forge test -vvv
 ```
 
-生产部署使用严格模式、外部 EVM Registry、Ed25519 issuer 信任包、请求 challenge、持久化撤销代次和受保护管理面。入口文档：
+## 单链路生产配置
 
-- `docs/api.md`
-- `docs/production_architecture.md`
-- `docs/runbooks/production-deployment.md`
-- `docs/production_readiness.md`
-- `docs/production_simulated_execution.md`
-- `docs/security_boundary.md`
-- `docs/security_attack_experiment_report.md`
-- `docker-compose.production.yml`
+生产镜像和 Compose：
 
-准备生产密钥材料：
+- `docker/Dockerfile.rust`
+- `deploy/link/docker-compose.yml`
+- `deploy/link/.env.example`
+- `deploy/link/tls/README.md`
+- `deploy/link/secrets/README.md`
 
-```bash
-PYTHONPATH=src python3 tools/prepare_production.py
-```
-
-生成后必须编辑 `.env.production` 并完成 readiness checklist；示例值不能用于真实流量。
-
-Docker Compose Web3 多解析器端到端：
+配置检查：
 
 ```bash
-cd /home/lwc/fanxiangdiguijiexi
-python3 tools/run_multi_resolver_e2e.py
+cp deploy/link/.env.example deploy/link/.env
+cp deploy/link/identities-v2.example.json deploy/link/identities-v2.json
+docker compose \
+  --env-file deploy/link/.env \
+  -f deploy/link/docker-compose.yml \
+  config --quiet
 ```
 
-该 E2E 会自动：
-
-- 启动 Anvil、CoreDNS R1/R2、Agent、Indexer、event-watcher、wrapper；
-- 部署 `ResolverIdentityRegistryV1`；
-- 动态写入 Web3 合约地址；
-- 使用 `Web3RegistryBackend` 发布 R1/R2 身份和 endpoint binding；
-- 通过 UDP/TCP 查询 `example.test A`；
-- 验证 R1/R2 均可信时返回 `203.0.113.10`；
-- 验证 R1/R2 未登记、Agent 错误、Agent 不可用、签名错误、链上撤销、root 撤销等场景均返回 SERVFAIL。
-
-## 本地运行组件
-
-发布 demo resolver 身份：
+V2 身份和分角色发布：
 
 ```bash
-PYTHONPATH=src python3 -m resolver_identity.admin.cli publish-demo \
-  --resolver-id operator-a/resolver-01 \
-  --ip 1.1.1.1 \
-  --transport udp
+PYTHONPATH=src python3 tools/manage_v2_registry.py --help
 ```
 
-启动 Indexer API：
+工具按同一 approved plan hash 执行 `publish-root`、`publish-resolvers`、
+`unbind-endpoints`、`bind-endpoints` 和 `revoke-removed`。版本 2 及以上计划必须
+引用前一份已批准计划，才能计算被移除的 endpoint 和 resolver。最后一步以及
+`revoke-resolver`/`revoke-root` 使用独立 Revoker 账户。链路主机不得保存任何写入
+私钥。
 
-```bash
-PYTHONPATH=src python3 tools/run_indexer.py --port 8001
-```
+## 文档
 
-启动 Admin API：
+- [生产架构](docs/production_architecture.md)
+- [Rust V2 实施状态](docs/rust_v2_implementation_plan.md)
+- [星形域名中心部署](docs/star_topology_field_deployment.md)
+- [生产 Runbook](docs/runbooks/production-deployment.md)
+- [生产就绪门禁](docs/production_readiness.md)
+- [安全边界](docs/security_boundary.md)
+- [V2 API](docs/api.md)
 
-```bash
-PYTHONPATH=src python3 tools/run_admin.py --port 8002
-```
+## 真实上线边界
 
-启动 Wrapper HTTP API / 本地 DoH：
+仓库已具备 Rust V2 数据面和单链路集成基线，但真实生产上线仍必须完成现场 P0：
 
-```bash
-PYTHONPATH=src python3 tools/run_wrapper_api.py --port 8000
-```
+1. 为实际 Resolver 接入内部 Trace 生产插件，提供可靠解析上下文 ID；
+2. 部署真实 Registry 并拆分治理/发布/端点/撤销角色；
+3. 独立核验 chain ID、contract address 和 runtime code hash；
+4. 配置现场 TLS/mTLS、防火墙、日志和磁盘告警；
+5. 完成真实备份恢复、撤销、故障和峰值容量演练。
 
-启动 UDP/TCP DNS wrapper：
-
-```bash
-PYTHONPATH=src python3 tools/run_wrapper.py --udp-port 1053 --tcp-port 1053
-```
-
-启动 Resolver Identity Agent：
-
-```bash
-PYTHONPATH=src RESOLVER_IDENTITY_AGENT_PRIVATE_KEY_B64=<base64-raw-ed25519-private-key> \
-python3 tools/run_agent.py --port 8010
-```
-
-## Agent 信任模型
-
-Agent 响应不是自证可信。wrapper 只直接信任“已验证 R1 identity object 绑定的 R1 Agent public key”所能验证的 R1 Agent 输出：
-
-1. R1 endpoint 已通过链上/Indexer 身份认证；
-2. R1 resolver identity object 的 `attestation.agent.public_key` 绑定了 R1 Agent Ed25519 public key；
-3. 生产 Wrapper 通过 `POST /v1/verification-chain` 发送随机 challenge，R1 Agent 响应用对应私钥签名；
-4. R1 Agent 返回的 `VerificationChain` 中，`R1 -> R2` 的 `HopVerificationResult` 也由 R1 Agent 签名；
-5. 每个 downstream chain 必须能由上一级已验证 hop evidence 中携带的 Agent public key 验签；
-6. 每个 Agent 只认证自己的相邻上游 resolver，不由 wrapper 代替所有 resolver 做递归认证；
-7. endpoint、resolver_id、issued_at、expires_at、health/config version 和 chain loop/max-depth 检查均通过。
-
-任一条件失败，链路认证失败，DNS 响应不放行。
-
-## 运行实验
-
-```bash
-PYTHONPATH=src python3 tools/run_experiments.py all
-```
-
-可单独运行：
-
-```bash
-PYTHONPATH=src python3 tools/run_experiments.py functional
-PYTHONPATH=src python3 tools/run_experiments.py malicious
-PYTHONPATH=src python3 tools/run_experiments.py tamper
-PYTHONPATH=src python3 tools/run_experiments.py replay
-PYTHONPATH=src python3 tools/run_experiments.py cache --iterations 100
-PYTHONPATH=src python3 tools/run_experiments.py revoke
-PYTHONPATH=src python3 tools/run_experiments.py root-revoke
-PYTHONPATH=src python3 tools/run_experiments.py multi
-PYTHONPATH=src python3 tools/run_experiments.py oob
-```
-
-## 边界与限制
-
-- 不修改 DNS 协议和 DNS 报文格式。
-- 不修改系统 DNS 配置。
-- 仓库不附带真实 EVM 部署；生产运营方必须部署合约并独立核验 chain ID、地址和 runtime code hash。
-- 不引入 DNSSEC、TPM、TEE 或查询证明。
-- 不证明权威 DNS 的真实性。
-- 不阻止“已合法登记但恶意返回错误答案”的 resolver。
-- 不猜测不可观测或不合作的隐藏中间解析器。
-- 当前生产 profile 是单机 SQLite，不支持多主机共享、水平扩容或高可用。
+普通 pcap、按时间/qname 关联的日志或没有上下文 ID 的 dnstap 不能作为“全路径已经
+认证”的生产证据。上述现场门禁未关闭前，只能进入单链路集成和 shadow 阶段，不能
+仅凭示例 Compose 宣称已完成真实生产上线。
 
 ## 目录
 
-- `contracts/` — Solidity 合约与 Foundry 测试
-- `src/resolver_identity/` — Python 实现
-- `tests/` — 单元/集成/实验测试
-- `tools/` — 本地演示与 E2E 脚本
-- `docs/` — 当前 API、安全边界、生产架构、验收和运维文档
+- `rust/`：Rust V2 数据面和测试
+- `contracts/`：Solidity Registry 和 Foundry 测试
+- `src/resolver_identity/`：Python V1/管理面
+- `tools/`：发布、测试和运维工具
+- `deploy/link/`：单链路 Rust 生产 profile
+- `docs/`：当前 V2 架构、安全、部署和验收文档

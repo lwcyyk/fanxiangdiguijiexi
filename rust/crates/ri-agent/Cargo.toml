@@ -1,0 +1,30 @@
+[package]
+name = "ri-agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+axum.workspace = true
+axum-server.workspace = true
+futures-util.workspace = true
+reqwest.workspace = true
+ri-core = { path = "../ri-core" }
+ri-store = { path = "../ri-store" }
+rustls.workspace = true
+rustls-pki-types.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tower.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+base64.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true

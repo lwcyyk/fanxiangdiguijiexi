@@ -1,3 +1,5 @@
+# Legacy Python V1 compatibility profile. New production deployments use
+# deploy/link/docker-compose.yml and docker/Dockerfile.rust.
 services:
   indexer:
     image: resolver-identity-prototype:0.1.0-production

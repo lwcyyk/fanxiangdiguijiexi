@@ -1,0 +1,35 @@
+{
+  "identities": [
+    {
+      "schema_version": "dns-server-identity-v2",
+      "server_id": "operator/L01/r1",
+      "operator_id": "operator",
+      "role": "RECURSIVE",
+      "endpoints": [
+        {
+          "ip": "192.0.2.53",
+          "port": 53,
+          "transport": "udp"
+        },
+        {
+          "ip": "192.0.2.53",
+          "port": 53,
+          "transport": "tcp"
+        }
+      ],
+      "anycast": false,
+      "agent": {
+        "key_id": "agent-key-L01-r1",
+        "algorithm": "ed25519",
+        "public_key": "REPLACE_WITH_BASE64_ED25519_PUBLIC_KEY",
+        "service_url": "https://agent:8443"
+      },
+      "valid_from": 1785196800,
+      "valid_until": 1816732800,
+      "object_version": 1,
+      "status": "ACTIVE",
+      "issuer": "resolver-trust-authority-01",
+      "key_id": "issuer-key-01"
+    }
+  ]
+}

@@ -7,6 +7,7 @@ from typing import Any
 
 from resolver_identity.chain.backend import (
     ResolverAnchor,
+    RootRecord,
     bytes32_to_bytes,
     decode_anchor,
     decode_status,
@@ -73,6 +74,18 @@ class Web3RegistryBackend:
 
     def get_root_status(self, state_root: str) -> str | None:
         return decode_status(self.contract.functions.getRootStatus(bytes32_to_bytes(state_root)).call())
+
+    def get_root_record(self, state_root: str) -> RootRecord | None:
+        raw = self.contract.functions.getRootRecord(bytes32_to_bytes(state_root)).call()
+        normalized_root = normalize_bytes32(raw[0])
+        if int(normalized_root, 16) == 0:
+            return None
+        return RootRecord(
+            state_root=normalized_root,
+            status=decode_status(raw[1]),
+            published_at=int(raw[2]),
+            version=int(raw[3]),
+        )
 
     def get_endpoint_binding(self, endpoint_key: str) -> str | None:
         value = self.contract.functions.lookupResolverByEndpoint(bytes32_to_bytes(endpoint_key)).call()

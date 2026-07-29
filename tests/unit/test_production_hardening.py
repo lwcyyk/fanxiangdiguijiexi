@@ -34,6 +34,31 @@ def test_production_wrapper_rejects_missing_strict_security_settings(monkeypatch
         Settings().validate_for("wrapper")
 
 
+def test_environment_name_does_not_silently_disable_production_checks():
+    with pytest.raises(ValueError, match="must be production"):
+        Settings(environment="prod").validate_for("wrapper")
+
+
+def test_registry_writer_does_not_require_admin_or_issuer_private_keys():
+    settings = Settings(
+        environment="production",
+        registry_mode="web3",
+        web3_rpc_url="https://rpc.example",
+        web3_contract_address="0x" + "11" * 20,
+        web3_contract_code_hash="0x" + "22" * 32,
+        web3_private_key_file="/secure/root-publisher.key",
+        allow_hmac_object_signatures=False,
+        issuer_keys_file="/secure/issuer-keys.json",
+        admin_api_token="",
+        issuer_private_key_b64="",
+    )
+    settings.validate_for("registry-writer")
+
+    settings.web3_rpc_url = "http://rpc.example"
+    with pytest.raises(ValueError, match="must use HTTPS"):
+        settings.validate_for("registry-writer")
+
+
 def test_endpoint_binding_key_includes_port_and_transport():
     udp53 = ResolverEndpoint(ip="192.0.2.53", port=53, transport="udp")
     tcp53 = ResolverEndpoint(ip="192.0.2.53", port=53, transport="tcp")

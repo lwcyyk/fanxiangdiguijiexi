@@ -1,0 +1,23 @@
+[package]
+name = "ri-registry-sync"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+axum.workspace = true
+futures-util.workspace = true
+hex.workspace = true
+reqwest.workspace = true
+ri-core = { path = "../ri-core" }
+ri-store = { path = "../ri-store" }
+serde.workspace = true
+serde_json.workspace = true
+sha3.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

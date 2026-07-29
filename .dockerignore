@@ -10,8 +10,11 @@ __pycache__
 artifacts
 contracts/cache
 contracts/test
+rust/target
 docker/state
 deploy/secrets
+deploy/link/secrets
+deploy/link/tls
 tests
 docs
 specs

@@ -8,6 +8,20 @@ permissions:
   contents: read
 
 jobs:
+  rust:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - run: rustup toolchain install 1.97.0 --profile minimal --component clippy,rustfmt
+      - run: cargo fmt --all --check
+      - run: cargo test --workspace --locked
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo install cargo-audit --version 0.22.2 --locked
+      - run: cargo audit --deny warnings
+
   python:
     runs-on: ubuntu-latest
     strategy:
@@ -61,17 +75,39 @@ jobs:
           printf 'placeholder' > deploy/secrets/web3_private_key
           docker compose --env-file .env.production -f docker-compose.production.yml config --quiet
       - run: docker compose -f docker-compose.multi-resolver.yml config --quiet
+      - run: |
+          cp deploy/link/identities-v2.example.json deploy/link/identities-v2.json
+          mkdir -p deploy/link/secrets deploy/link/tls
+          printf 'placeholder' > deploy/link/secrets/agent_private_key
+          printf 'placeholder' > deploy/link/secrets/trace_ingest_token
+          printf 'placeholder' > deploy/link/secrets/agent_wrapper_token
+          printf 'placeholder' > deploy/link/secrets/agent_peer_token
+          docker compose --env-file deploy/link/.env.example -f deploy/link/docker-compose.yml config --quiet
 
-  production-image:
+  legacy-python-image:
+    name: legacy Python compatibility image
     runs-on: ubuntu-latest
     needs: [python, solidity, compose]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - run: docker build --pull --file docker/Dockerfile.production --tag resolver-identity:ci .
-      - name: Verify production image policy
+      - run: docker build --pull --file docker/Dockerfile.production --tag resolver-identity-legacy:ci .
+      - name: Verify legacy image policy
         run: |
-          test "$(docker image inspect resolver-identity:ci --format '{{.Config.User}}')" = resolver
-          docker run --rm --entrypoint python resolver-identity:ci -c "import cryptography, resolver_identity, web3"
-          docker run --rm --entrypoint python resolver-identity:ci -c "import importlib.metadata as m; assert not ({'pip', 'setuptools'} & {d.metadata['Name'].lower() for d in m.distributions()})"
-          docker run --rm --entrypoint python resolver-identity:ci tools/db_admin.py --help
-          docker run --rm --entrypoint python resolver-identity:ci -c "from pathlib import Path; assert not Path('tools/run_security_experiments.py').exists()"
+          test "$(docker image inspect resolver-identity-legacy:ci --format '{{.Config.User}}')" = resolver
+          docker run --rm --entrypoint python resolver-identity-legacy:ci -c "import cryptography, resolver_identity, web3"
+          docker run --rm --entrypoint python resolver-identity-legacy:ci -c "import importlib.metadata as m; assert not ({'pip', 'setuptools'} & {d.metadata['Name'].lower() for d in m.distributions()})"
+          docker run --rm --entrypoint python resolver-identity-legacy:ci tools/db_admin.py --help
+          docker run --rm --entrypoint python resolver-identity-legacy:ci -c "from pathlib import Path; assert not Path('tools/run_security_experiments.py').exists()"
+
+  rust-production-image:
+    runs-on: ubuntu-latest
+    needs: [rust, compose]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - run: docker build --pull --file docker/Dockerfile.rust --tag resolver-identity-rust:ci .
+      - name: Verify Rust production image policy
+        run: |
+          test "$(docker image inspect resolver-identity-rust:ci --format '{{.Config.User}}')" = resolver-rust
+          for binary in ri-agent ri-wrapper ri-trace-adapter ri-registry-sync; do
+            docker run --rm --entrypoint /bin/sh resolver-identity-rust:ci -c "test -x /usr/local/bin/$binary"
+          done

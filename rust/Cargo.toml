@@ -1,0 +1,46 @@
+[workspace]
+members = [
+  "crates/ri-core",
+  "crates/ri-store",
+  "crates/ri-agent",
+  "crates/ri-wrapper",
+  "crates/ri-trace-adapter",
+  "crates/ri-registry-sync",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.2.0"
+edition = "2024"
+license = "Apache-2.0"
+rust-version = "1.97"
+
+[workspace.dependencies]
+base64 = "0.22.1"
+axum = "0.8.9"
+axum-server = { version = "0.8.0", features = ["tls-rustls"] }
+ed25519-dalek = "2.2.0"
+futures-util = "0.3.31"
+hex = "0.4.3"
+rand = "0.9.2"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+sha2 = "0.10.9"
+sha3 = "0.10.8"
+thiserror = "2.0.18"
+url = "2.5.8"
+rusqlite = { version = "0.40.1", features = ["bundled"] }
+tempfile = "3.26.0"
+reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls", "stream"] }
+rustls = "0.23.40"
+rustls-pki-types = { version = "1.14.1", features = ["std"] }
+tokio = { version = "1.49.0", features = ["io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tower = { version = "0.5.3", features = ["limit"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "deny"
