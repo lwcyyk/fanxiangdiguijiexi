@@ -75,6 +75,7 @@ rpc_call() {
     '{jsonrpc:"2.0",id:1,method:$method,params:$params}')"
   response="$(curl --fail --silent --show-error \
     --connect-timeout 10 --max-time 45 \
+    --retry 4 --retry-delay 2 --retry-all-errors \
     -H 'content-type: application/json' \
     --data "${payload}" "${rpc_url}")" || die "JSON-RPC request failed for ${method}"
   if [[ "$(jq -r 'has("error")' <<<"${response}")" == "true" ]]; then
