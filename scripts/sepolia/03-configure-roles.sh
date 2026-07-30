@@ -136,8 +136,45 @@ revoke_if_present "${RESOLVER_ROLE}" "${GOVERNANCE_ADDRESS}"
 revoke_if_present "${ENDPOINT_ROLE}" "${GOVERNANCE_ADDRESS}"
 revoke_if_present "${REVOKER_ROLE}" "${GOVERNANCE_ADDRESS}"
 
-wait_for_role "${RI_TESTNET_VERIFY_RPC_URL}" "${REGISTRY_ADDRESS}" \
-  "${DEFAULT_ADMIN_ROLE}" "${GOVERNANCE_ADDRESS}" true
+ROLE_FINALIZED_TARGET="$(jq -r '[.[].block_number] | max // 0' <<<"${TRANSACTIONS}")"
+(( ROLE_FINALIZED_TARGET > 0 )) || die "role transaction journal is empty"
+ROLE_FINALIZED_DEADLINE="$(( $(date +%s) + ${RI_FINALIZED_WAIT_SECONDS:-1800} ))"
+while true; do
+  PRIMARY_FINALIZED="$(rpc_block "${RI_TESTNET_RPC_URL}" finalized)"
+  VERIFY_FINALIZED="$(rpc_block "${RI_TESTNET_VERIFY_RPC_URL}" finalized)"
+  PRIMARY_HEIGHT="$(cast to-dec "$(jq -er '.number' <<<"${PRIMARY_FINALIZED}")")"
+  VERIFY_HEIGHT="$(cast to-dec "$(jq -er '.number' <<<"${VERIFY_FINALIZED}")")"
+  ROLE_FINALIZED_BLOCK="${PRIMARY_HEIGHT}"
+  (( VERIFY_HEIGHT < ROLE_FINALIZED_BLOCK )) && ROLE_FINALIZED_BLOCK="${VERIFY_HEIGHT}"
+  if (( ROLE_FINALIZED_BLOCK >= ROLE_FINALIZED_TARGET )); then
+    break
+  fi
+  (( $(date +%s) < ROLE_FINALIZED_DEADLINE )) ||
+    die "role transactions did not enter finalized state before timeout"
+  log "waiting for role transactions to become finalized (target ${ROLE_FINALIZED_TARGET}, current ${ROLE_FINALIZED_BLOCK})"
+  sleep 12
+done
+
+ROLE_FINALIZED_TAG="$(cast to-hex "${ROLE_FINALIZED_BLOCK}")"
+PRIMARY_ROLE_BLOCK="$(rpc_block "${RI_TESTNET_RPC_URL}" "${ROLE_FINALIZED_TAG}")"
+VERIFY_ROLE_BLOCK="$(rpc_block "${RI_TESTNET_VERIFY_RPC_URL}" "${ROLE_FINALIZED_TAG}")"
+PRIMARY_ROLE_BLOCK_HASH="$(jq -er '.hash' <<<"${PRIMARY_ROLE_BLOCK}")"
+VERIFY_ROLE_BLOCK_HASH="$(jq -er '.hash' <<<"${VERIFY_ROLE_BLOCK}")"
+[[ "${PRIMARY_ROLE_BLOCK_HASH}" == "${VERIFY_ROLE_BLOCK_HASH}" ]] ||
+  die "RPC role-verification block hashes differ"
+
+for rpc_url in "${RI_TESTNET_RPC_URL}" "${RI_TESTNET_VERIFY_RPC_URL}"; do
+  [[ "$(has_role "${rpc_url}" "${REGISTRY_ADDRESS}" \
+    "${DEFAULT_ADMIN_ROLE}" "${GOVERNANCE_ADDRESS}" "${ROLE_FINALIZED_TAG}")" == "true" ]] ||
+    die "Governance is not the finalized default admin"
+  [[ "$(has_role "${rpc_url}" "${REGISTRY_ADDRESS}" \
+    "${DEFAULT_ADMIN_ROLE}" "${DEPLOYER_ADDRESS}" "${ROLE_FINALIZED_TAG}")" == "false" ]] ||
+    die "Deployer unexpectedly holds the finalized default admin role"
+  ADMIN_COUNT="$(cast call "${REGISTRY_ADDRESS}" 'adminCount()(uint256)' \
+    --rpc-url "${rpc_url}" --block "${ROLE_FINALIZED_TAG}")"
+  [[ "${ADMIN_COUNT}" == "1" ]] || die "finalized adminCount is not one"
+done
+
 for pair in \
   "${ROOT_ROLE}:${ROOT_PUBLISHER_ADDRESS}" \
   "${RESOLVER_ROLE}:${RESOLVER_PUBLISHER_ADDRESS}" \
@@ -145,9 +182,14 @@ for pair in \
   "${REVOKER_ROLE}:${REVOKER_ADDRESS}"; do
   role="${pair%%:*}"
   account="${pair#*:}"
-  wait_for_role "${RI_TESTNET_VERIFY_RPC_URL}" "${REGISTRY_ADDRESS}" "${role}" "${account}" true
-  wait_for_role "${RI_TESTNET_VERIFY_RPC_URL}" "${REGISTRY_ADDRESS}" "${role}" "${GOVERNANCE_ADDRESS}" false
-  wait_for_role "${RI_TESTNET_VERIFY_RPC_URL}" "${REGISTRY_ADDRESS}" "${role}" "${DEPLOYER_ADDRESS}" false
+  for rpc_url in "${RI_TESTNET_RPC_URL}" "${RI_TESTNET_VERIFY_RPC_URL}"; do
+    [[ "$(has_role "${rpc_url}" "${REGISTRY_ADDRESS}" "${role}" "${account}" "${ROLE_FINALIZED_TAG}")" == "true" ]] ||
+      die "target account is missing its finalized business role"
+    [[ "$(has_role "${rpc_url}" "${REGISTRY_ADDRESS}" "${role}" "${GOVERNANCE_ADDRESS}" "${ROLE_FINALIZED_TAG}")" == "false" ]] ||
+      die "Governance unexpectedly retains a finalized business role"
+    [[ "$(has_role "${rpc_url}" "${REGISTRY_ADDRESS}" "${role}" "${DEPLOYER_ADDRESS}" "${ROLE_FINALIZED_TAG}")" == "false" ]] ||
+      die "Deployer unexpectedly holds a finalized business role"
+  done
 done
 
 jq -n \
@@ -160,6 +202,10 @@ jq -n \
   --arg endpoint_manager_address "${ENDPOINT_MANAGER_ADDRESS}" \
   --arg revoker_address "${REVOKER_ADDRESS}" \
   --arg configured_at "$(utc_now)" \
+  --argjson finalized_block "${ROLE_FINALIZED_BLOCK}" \
+  --arg finalized_block_hash "${PRIMARY_ROLE_BLOCK_HASH}" \
+  --arg primary_rpc_host "${PRIMARY_RPC_HOST}" \
+  --arg verification_rpc_host "${VERIFY_RPC_HOST}" \
   --argjson transactions "${TRANSACTIONS}" \
   '{
     network_name:$network_name,chain_id:$chain_id,contract_address:$contract_address,
@@ -168,7 +214,21 @@ jq -n \
     resolver_publisher_address:$resolver_publisher_address,
     endpoint_manager_address:$endpoint_manager_address,
     revoker_address:$revoker_address,
-    configured_at:$configured_at,transactions:$transactions
+    configured_at:$configured_at,transactions:$transactions,
+    finalized_verification:{
+      block_number:$finalized_block,
+      block_hash:$finalized_block_hash,
+      primary_rpc_host:$primary_rpc_host,
+      verification_rpc_host:$verification_rpc_host,
+      admin_count:1,
+      checks:{
+        block_hash_match:true,
+        governance_default_admin:true,
+        governance_business_roles_revoked:true,
+        deployer_has_no_roles:true,
+        business_roles_split:true
+      }
+    }
   }' | write_json_atomic "${SEPOLIA_DEPLOYMENTS}/roles.json"
 
-log "role split verified through the independent RPC"
+log "role split verified through both RPCs at finalized block ${ROLE_FINALIZED_BLOCK}"

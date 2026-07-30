@@ -232,8 +232,10 @@ has_role() {
   local registry="$2"
   local role="$3"
   local account="$4"
+  local block_tag="${5:-latest}"
   cast call "${registry}" 'hasRole(bytes32,address)(bool)' "${role}" "${account}" \
-    --rpc-url "${rpc_url}"
+    --rpc-url "${rpc_url}" \
+    --block "${block_tag}"
 }
 
 wait_for_role() {
@@ -242,8 +244,9 @@ wait_for_role() {
   local role="$3"
   local account="$4"
   local expected="$5"
+  local block_tag="${6:-latest}"
   local deadline="$(( $(date +%s) + ${RI_ROLE_VERIFY_TIMEOUT_SECONDS:-180} ))"
-  until [[ "$(has_role "${rpc_url}" "${registry}" "${role}" "${account}")" == "${expected}" ]]; do
+  until [[ "$(has_role "${rpc_url}" "${registry}" "${role}" "${account}" "${block_tag}")" == "${expected}" ]]; do
     (( $(date +%s) < deadline )) ||
       die "role state did not reach the independent RPC before timeout"
     sleep 3
