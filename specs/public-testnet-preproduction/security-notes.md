@@ -46,6 +46,15 @@
 
 ## 当前输入审计
 
-2026-07-30 检查当前进程环境时，用户列出的 RPC、Governance、五个 keystore、
-Issuer 密钥和 Explorer API Key 均未设置。该事实只记录“是否存在”，未读取
-或打印任何秘密内容。真实部署在这些输入具备前保持阻断。
+2026-07-30 已完成以下安全输入和链上操作：
+
+- 用户提供的临时 Sepolia 私钥只用于生成权限为 `0600` 的加密 JSON
+  keystore；私钥和 keystore 密码未打印、未写入命令行、未进入 Git。
+- Deployer、Governance、Root Publisher、Resolver Publisher、Endpoint
+  Manager、Revoker 地址相互独立；五个角色 keystore 均存放在忽略目录。
+- Governance 当前是测试网专用 EOA，不是生产多签，属于明确的预发布差距。
+- 两个公共 HTTPS RPC 已完成 Chain ID 和 finalized 交叉核验；公共 RPC
+  没有可用性 SLA，运行部署应改用有服务保障的独立提供方。
+- Issuer Ed25519 密钥已与 EVM 账户分离生成；私钥只保存在忽略目录。
+- 尚未提供真实 DNS Endpoint、Agent URL 和每个 Agent 的 Ed25519 公钥，
+  因此身份签名、Root/Resolver/Endpoint 发布和 Registry Sync 保持阻断。

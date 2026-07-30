@@ -36,10 +36,11 @@
 
 - [x] 操作者提供两个独立 HTTPS RPC。
 - [x] 操作者提供六类签名能力、余额和相互独立的地址。
-- [ ] 操作者提供 Issuer 密钥和真实 DNS/Agent 身份参数。
-- [ ] 部署 Registry 并等待 finalized。
-- [ ] 使用双 RPC 核验 Chain ID、bytecode、code hash 和 finalized hash。
-- [ ] 拆分角色并撤销 Governance 的四类业务角色。
+- [x] 生成与 EVM 账户分离的 Issuer Ed25519 密钥。
+- [ ] 操作者提供真实 DNS Endpoint、Agent URL 和 Agent 公钥。
+- [x] 部署 Registry 并等待 finalized。
+- [x] 使用双 RPC 核验 Chain ID、bytecode、code hash 和 finalized hash。
+- [x] 拆分角色并撤销 Governance 的四类业务角色。
 - [ ] 签名并复验真实 V2 身份。
 - [ ] 生成且独立复算发布计划哈希。
 - [ ] 执行五阶段发布并归档全部交易。
@@ -55,8 +56,9 @@
 - [ ] 在真实 Trace 插件可用后启动 Agent、Trace Adapter、Wrapper。
 - [ ] 完成 UDP/TCP DNS 正向和失败关闭测试。
 - [ ] 生成最终部署清单和验收证据索引。
-- [ ] 确认 Git 中不存在秘密。
+- [x] 确认 Git 中不存在秘密。
 
-> 当前身份发布阻断：Issuer 密钥已生成，但仍缺少真实 DNS Endpoint、Agent
-> 地址和 Agent 公钥。Registry 部署与角色拆分可通过 `--registry-only` 预检先行；
-> 身份发布、Registry Sync 和 DNS 全路径验收不得虚假勾选。
+> 当前身份发布阻断：Registry `0x519c70babf33771b8e87c22fd3e2e1b1092e1e2a`
+> 已在 Sepolia 完成 finalized 双 RPC 核验和角色拆分，但仍缺少真实 DNS
+> Endpoint、Agent 地址和 Agent 公钥。身份发布、Registry Sync 和 DNS 全路径
+> 验收不得虚假勾选。

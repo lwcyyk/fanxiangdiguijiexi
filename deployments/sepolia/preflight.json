@@ -1,0 +1,27 @@
+{
+  "addresses": {
+    "deployer": "0x8cE88e15ADB76BBeE9e440C2ee31b412500A8617",
+    "endpoint_manager": "0x39D5FEe8762645b7d88a608AE1Db2c9e0aBAf706",
+    "governance": "0xca8b5D8164c6ad43eFe98ceaAe96cFA1D44ee5f7",
+    "resolver_publisher": "0x8959Ff0485436Cc64512B1dC7c569C67Af2e8D01",
+    "revoker": "0x12a5C884b930e3c2B53497aCCc88Dee23E7c08c9",
+    "root_publisher": "0x127c49674026A1a9ae368B7585F342DDB8E65D50"
+  },
+  "balances_wei": {
+    "deployer": "33814602384920017",
+    "endpoint_manager": "6000000000000000",
+    "governance": "10000000000000000",
+    "resolver_publisher": "6000000000000000",
+    "revoker": "6000000000000000",
+    "root_publisher": "6000000000000000"
+  },
+  "chain_id": 11155111,
+  "checked_at": "2026-07-30T04:59:19Z",
+  "git_commit": "1a1ad65520ace8b567fc7566ec8a3d582b1b18c1",
+  "identity_inputs_validated": false,
+  "network_name": "ethereum-sepolia",
+  "primary_rpc_host": "ethereum-sepolia-rpc.publicnode.com",
+  "scope": "registry-only",
+  "source_tree_clean": true,
+  "verification_rpc_host": "sepolia.drpc.org"
+}

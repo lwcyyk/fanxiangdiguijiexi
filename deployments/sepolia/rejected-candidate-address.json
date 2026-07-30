@@ -1,0 +1,18 @@
+{
+  "accepted_as_registry": false,
+  "balance_wei": "0",
+  "candidate_address": "0x381766b18497993d153c76bF55004358E2238AEb",
+  "chain_id": 11155111,
+  "checked_at": "2026-07-30T05:40:54Z",
+  "classification": "externally-owned-account",
+  "code": {
+    "primary_finalized": "0x",
+    "primary_latest": "0x",
+    "verification_finalized": "0x",
+    "verification_latest": "0x"
+  },
+  "nonce": "28",
+  "primary_rpc_host": "ethereum-sepolia-rpc.publicnode.com",
+  "reason": "Both independent Sepolia RPCs returned empty runtime bytecode at latest and finalized.",
+  "verification_rpc_host": "sepolia.drpc.org"
+}

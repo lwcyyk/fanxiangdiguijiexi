@@ -1,0 +1,19 @@
+{
+  "chain_id": 11155111,
+  "compiler_version": "0.8.24+commit.e11b9ed9",
+  "contract_address": "0x519c70babf33771b8e87c22fd3e2e1b1092e1e2a",
+  "deployer_address": "0x8cE88e15ADB76BBeE9e440C2ee31b412500A8617",
+  "deployment_block": 11380297,
+  "deployment_block_hash": "0xbd25174d7c166f9736818de4dfd13b453a59ce232654065581c991a757dfe300",
+  "deployment_time": "2026-07-30T04:59:25Z",
+  "deployment_transaction_hash": "0x1c84f14dc9be0ad4ed1eb36f41142761773a81eb6b0c31c8cba16b5205884918",
+  "gas_used": 2685065,
+  "git_commit": "1a1ad65520ace8b567fc7566ec8a3d582b1b18c1",
+  "governance_address": "0xca8b5D8164c6ad43eFe98ceaAe96cFA1D44ee5f7",
+  "network_name": "ethereum-sepolia",
+  "optimizer_settings": {
+    "enabled": false,
+    "runs": 200
+  },
+  "source_verification": "not-requested"
+}

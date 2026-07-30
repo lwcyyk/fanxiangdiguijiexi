@@ -5,17 +5,17 @@
 
 ## 链与合约
 
-- [ ] Sepolia 真实部署，证据：`deployments/sepolia/deployment.json`
-- [ ] 双 RPC Chain ID 一致且非 Mainnet，证据：`verification.json`
-- [ ] finalized runtime bytecode/hash 一致，证据：`verification.json`
-- [ ] 部署区块、哈希和交易收据完整，证据：`deployment.json`
+- [x] Sepolia 真实部署，证据：`deployments/sepolia/deployment.json`
+- [x] 双 RPC Chain ID 一致且非 Mainnet，证据：`verification.json`
+- [x] finalized runtime bytecode/hash 一致，证据：`verification.json`
+- [x] 部署区块、哈希和交易收据完整，证据：`deployment.json`
 
 ## 权限
 
-- [ ] 五类角色地址相互独立且非零，证据：`roles.json`
-- [ ] Governance 只保留管理员角色，证据：第二 RPC `hasRole`
-- [ ] Deployer 不持有业务角色，证据：第二 RPC `hasRole`
-- [ ] 授权和撤权交易全部成功，证据：`roles.json`
+- [x] 五类角色地址相互独立且非零，证据：`roles.json`
+- [x] Governance 只保留管理员角色，证据：第二 RPC `hasRole`
+- [x] Deployer 不持有任何角色，证据：第二 RPC `hasRole`
+- [x] 授权和撤权交易全部成功，证据：`roles.json`
 
 ## 身份与发布
 
@@ -48,8 +48,8 @@
 
 - [ ] `deployment-manifest.json` 字段完整且不含 RPC Key
 - [ ] 运行配置已按 SHA-256 清单同步
-- [ ] Git 历史和工作区扫描未发现秘密
-- [ ] 已知差距已写入清单和运行手册
+- [x] Git 跟踪文件和待提交内容扫描未发现所提供的私钥及密码
+- [x] 已知差距已写入验收清单、安全说明和部署证据 README
 
 ## 当前结果
 
@@ -58,9 +58,13 @@
 | 官方 Sepolia 维护状态 | PASS | 2026-07-30 检查 Ethereum 官方网络文档 |
 | 临时双 RPC Chain ID/finalized | PASS | `deployments/sepolia/network-precheck.json` |
 | Rust workspace | PASS | 41 项通过、1 项手工容量基线按设计忽略 |
-| Python | PASS | 135 项通过 |
+| Python | PASS | 146 项通过 |
 | Solidity | PASS | 14 项通过 |
 | Rust release 镜像 | PASS | `resolver-identity-rust:sepolia-preprod` 构建成功 |
 | Compose 配置 | PASS | Docker Compose v2 展开验证成功 |
-| 真实部署输入 | BLOCKED | 当前环境未提供 RPC、keystore、Issuer 和身份变量 |
-| 合约部署及后续验收 | NOT RUN | 等待输入，严禁用占位值替代 |
+| 真实部署输入 | BLOCKED | RPC、隔离 keystore、余额和 Issuer 已具备；真实 DNS/Agent 身份参数缺失 |
+| Registry 合约部署 | PASS | `0x519c70babf33771b8e87c22fd3e2e1b1092e1e2a` |
+| finalized 双 RPC 核验 | PASS | 高度 `11380319`，code hash `0x3ff1c0bc964b2751a4006fa9bc54f8a1e1bb04872f62fabaf3eef52132e0a2d3` |
+| 五类角色拆分 | PASS | 8 笔授权/撤权交易成功，`adminCount=1` |
+| 身份与五阶段发布 | BLOCKED | 缺少真实 DNS Endpoint、Agent URL 和 Agent 公钥 |
+| Registry Sync 与 DNS 验收 | BLOCKED | 必须等待真实身份发布和现场 Resolver Trace |

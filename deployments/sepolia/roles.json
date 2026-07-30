@@ -1,0 +1,115 @@
+{
+  "chain_id": 11155111,
+  "configured_at": "2026-07-30T05:37:54Z",
+  "contract_address": "0x519c70babf33771b8e87c22fd3e2e1b1092e1e2a",
+  "endpoint_manager_address": "0x39D5FEe8762645b7d88a608AE1Db2c9e0aBAf706",
+  "finalized_verification": {
+    "admin_count": 1,
+    "block_hash": "0x3f287f980763684a0cb36e4df8dedbbff21100b679908fbdc5d59caf66067a4a",
+    "block_number": 11380411,
+    "checks": {
+      "block_hash_match": true,
+      "business_roles_split": true,
+      "deployer_has_no_roles": true,
+      "governance_business_roles_revoked": true,
+      "governance_default_admin": true
+    },
+    "primary_rpc_host": "ethereum-sepolia-rpc.publicnode.com",
+    "verification_rpc_host": "sepolia.drpc.org"
+  },
+  "governance_address": "0xca8b5D8164c6ad43eFe98ceaAe96cFA1D44ee5f7",
+  "network_name": "ethereum-sepolia",
+  "resolver_publisher_address": "0x8959Ff0485436Cc64512B1dC7c569C67Af2e8D01",
+  "revoker_address": "0x12a5C884b930e3c2B53497aCCc88Dee23E7c08c9",
+  "root_publisher_address": "0x127c49674026A1a9ae368B7585F342DDB8E65D50",
+  "transactions": [
+    {
+      "block_hash": "0x05b6c10abaeb1a74c6375312bce0122c275291786cb8b6653bdc0f2b34f8bf4d",
+      "block_number": 11380385,
+      "gas_used": 49712,
+      "operation": "grant-role",
+      "role": "0xac0e13db5ca15634c325fabc1c2d49a386099c446c1fcef0b7039dd3900b2772",
+      "sender": "0xca8b5d8164c6ad43efe98ceaae96cfa1d44ee5f7",
+      "status": 1,
+      "target_object": "0x127c49674026A1a9ae368B7585F342DDB8E65D50",
+      "transaction_hash": "0x1a6f7b640b5ba60fa56a53c7fee0853df7a0808ec2f3246098083c8b4ba086de"
+    },
+    {
+      "block_hash": "0xb73a4ebc5a23dd647eccc3a378d67d137e23751f93947df56553e97dda3a5145",
+      "block_number": 11380388,
+      "gas_used": 49712,
+      "operation": "grant-role",
+      "role": "0xeaca467f9349ef73092d3b577163e98080ffa07b7d6618c536772485dc3aacbc",
+      "sender": "0xca8b5d8164c6ad43efe98ceaae96cfa1d44ee5f7",
+      "status": 1,
+      "target_object": "0x39D5FEe8762645b7d88a608AE1Db2c9e0aBAf706",
+      "transaction_hash": "0x53090efc897ca49fdf310a2cad6b0b3da249173e6efa22d81a0f60052d8f6cad"
+    },
+    {
+      "block_hash": "0x588a44ac235bd3961dc9126e5aa8b1d2718e4a746be6e8a0df44a11f686e9eef",
+      "block_number": 11380393,
+      "gas_used": 27675,
+      "operation": "revoke-role",
+      "role": "0xce3f34913921da558f105cefb578d87278debbbd073a8d552b5de0d168deee30",
+      "sender": "0xca8b5d8164c6ad43efe98ceaae96cfa1d44ee5f7",
+      "status": 1,
+      "target_object": "0xca8b5D8164c6ad43eFe98ceaAe96cFA1D44ee5f7",
+      "transaction_hash": "0x6c7487e6bc6addc6c0ca733d819abfb81ad46e700c351fdd0e2e354908e61aab"
+    },
+    {
+      "block_hash": "0x37c599a8b348f3339c816ae1fa0a5f6d5c94f48802df58722b3929019abe20f8",
+      "block_number": 11380392,
+      "gas_used": 27675,
+      "operation": "revoke-role",
+      "role": "0xeaca467f9349ef73092d3b577163e98080ffa07b7d6618c536772485dc3aacbc",
+      "sender": "0xca8b5d8164c6ad43efe98ceaae96cfa1d44ee5f7",
+      "status": 1,
+      "target_object": "0xca8b5D8164c6ad43eFe98ceaAe96cFA1D44ee5f7",
+      "transaction_hash": "0xb4fa67f35de9ddd52b507d59cd2bdbdee5d0c6e6a8d13123d8bce36143a40bc6"
+    },
+    {
+      "block_hash": "0x6fd56f64a3a512730cadd4f6fc57eed501003da6a60c57a6e725c440908a8f3e",
+      "block_number": 11380390,
+      "gas_used": 27675,
+      "operation": "revoke-role",
+      "role": "0xac0e13db5ca15634c325fabc1c2d49a386099c446c1fcef0b7039dd3900b2772",
+      "sender": "0xca8b5d8164c6ad43efe98ceaae96cfa1d44ee5f7",
+      "status": 1,
+      "target_object": "0xca8b5D8164c6ad43eFe98ceaAe96cFA1D44ee5f7",
+      "transaction_hash": "0xb541b6a92cd029ff7015b700232ef7eac515a09c8ddc578fd73820befd95bb26"
+    },
+    {
+      "block_hash": "0x734fc2428bba197deac4b8c452cfddc03d71c1b64206fa6d52c8508d31245f8b",
+      "block_number": 11380387,
+      "gas_used": 49712,
+      "operation": "grant-role",
+      "role": "0x3f51a0465855722ea7a4f3a87acee187180657a2a2bb94663d88af721f1397e9",
+      "sender": "0xca8b5d8164c6ad43efe98ceaae96cfa1d44ee5f7",
+      "status": 1,
+      "target_object": "0x8959Ff0485436Cc64512B1dC7c569C67Af2e8D01",
+      "transaction_hash": "0xb69480e70a6b321773f0470ff019c49cf05bbe0fa6d0a39373110866ab20cc25"
+    },
+    {
+      "block_hash": "0x46edc037e3dd434d676c377523003e2bffd1787224937f15dd1c71fe8dab4a17",
+      "block_number": 11380389,
+      "gas_used": 49712,
+      "operation": "grant-role",
+      "role": "0xce3f34913921da558f105cefb578d87278debbbd073a8d552b5de0d168deee30",
+      "sender": "0xca8b5d8164c6ad43efe98ceaae96cfa1d44ee5f7",
+      "status": 1,
+      "target_object": "0x12a5C884b930e3c2B53497aCCc88Dee23E7c08c9",
+      "transaction_hash": "0xb7426199be461180c234bdb7ee83c2e1bf166fc8a9a233bc6cac3d633fb97dd3"
+    },
+    {
+      "block_hash": "0xd3c8fa73692edcf125c6822cc9471fa8cbf0a4d9834b7f0353c4b3cebcf4292c",
+      "block_number": 11380391,
+      "gas_used": 27675,
+      "operation": "revoke-role",
+      "role": "0x3f51a0465855722ea7a4f3a87acee187180657a2a2bb94663d88af721f1397e9",
+      "sender": "0xca8b5d8164c6ad43efe98ceaae96cfa1d44ee5f7",
+      "status": 1,
+      "target_object": "0xca8b5D8164c6ad43eFe98ceaAe96cFA1D44ee5f7",
+      "transaction_hash": "0xff5cc8b605da6fd68efb04a04e44bfdc8c8d776bd877b61767bce12baab65888"
+    }
+  ]
+}
