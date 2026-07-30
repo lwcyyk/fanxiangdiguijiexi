@@ -227,15 +227,43 @@ role_hash() {
   cast keccak "$1"
 }
 
+contract_call_raw() {
+  local rpc_url="$1"
+  local registry="$2"
+  local block_tag="$3"
+  local signature="$4"
+  shift 4
+  local calldata result
+  calldata="$(cast calldata "${signature}" "$@")"
+  result="$(rpc_call "${rpc_url}" eth_call \
+    "$(jq -cn \
+      --arg to "${registry}" \
+      --arg data "${calldata}" \
+      --arg block "${block_tag}" \
+      '[{to:$to,data:$data},$block]')")"
+  jq -r '.' <<<"${result}"
+}
+
 has_role() {
   local rpc_url="$1"
   local registry="$2"
   local role="$3"
   local account="$4"
   local block_tag="${5:-latest}"
-  cast call "${registry}" 'hasRole(bytes32,address)(bool)' "${role}" "${account}" \
-    --rpc-url "${rpc_url}" \
-    --block "${block_tag}"
+  local result
+  result="$(contract_call_raw "${rpc_url}" "${registry}" "${block_tag}" \
+    'hasRole(bytes32,address)' "${role}" "${account}")"
+  case "${result,,}" in
+    0x0000000000000000000000000000000000000000000000000000000000000000)
+      printf 'false\n'
+      ;;
+    0x0000000000000000000000000000000000000000000000000000000000000001)
+      printf 'true\n'
+      ;;
+    *)
+      die "hasRole returned invalid ABI data"
+      ;;
+  esac
 }
 
 wait_for_role() {

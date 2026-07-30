@@ -170,8 +170,9 @@ for rpc_url in "${RI_TESTNET_RPC_URL}" "${RI_TESTNET_VERIFY_RPC_URL}"; do
   [[ "$(has_role "${rpc_url}" "${REGISTRY_ADDRESS}" \
     "${DEFAULT_ADMIN_ROLE}" "${DEPLOYER_ADDRESS}" "${ROLE_FINALIZED_TAG}")" == "false" ]] ||
     die "Deployer unexpectedly holds the finalized default admin role"
-  ADMIN_COUNT="$(cast call "${REGISTRY_ADDRESS}" 'adminCount()(uint256)' \
-    --rpc-url "${rpc_url}" --block "${ROLE_FINALIZED_TAG}")"
+  ADMIN_COUNT_RAW="$(contract_call_raw "${rpc_url}" "${REGISTRY_ADDRESS}" \
+    "${ROLE_FINALIZED_TAG}" 'adminCount()')"
+  ADMIN_COUNT="$(cast to-dec "${ADMIN_COUNT_RAW}")"
   [[ "${ADMIN_COUNT}" == "1" ]] || die "finalized adminCount is not one"
 done
 
