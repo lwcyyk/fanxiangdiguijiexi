@@ -38,38 +38,46 @@ if [[ -f "${SEPOLIA_DEPLOYMENTS}/deployment.json" ]]; then
 fi
 
 BROADCAST_FILE="${REPO_ROOT}/contracts/broadcast/DeployResolverIdentityRegistry.s.sol/${CHAIN_ID}/run-latest.json"
+CONTRACT_ADDRESS=""
+DEPLOY_TX=""
 if [[ -f "${BROADCAST_FILE}" ]]; then
   PRIOR_ADDRESS="$(jq -r '.transactions[]? | select(.contractName == "ResolverIdentityRegistryV1") | .contractAddress' "${BROADCAST_FILE}" | tail -n 1)"
   PRIOR_TX="$(jq -r '.transactions[]? | select(.contractName == "ResolverIdentityRegistryV1") | .hash' "${BROADCAST_FILE}" | tail -n 1)"
   if [[ -n "${PRIOR_ADDRESS}" && "${PRIOR_ADDRESS}" != "null" && -n "${PRIOR_TX}" && "${PRIOR_TX}" != "null" ]]; then
-    PRIOR_STATUS="$(cast receipt "${PRIOR_TX}" status --rpc-url "${RI_TESTNET_RPC_URL}" 2>/dev/null || true)"
+    PRIOR_RECEIPT="$(cast receipt "${PRIOR_TX}" --rpc-url "${RI_TESTNET_RPC_URL}" --json 2>/dev/null || true)"
+    PRIOR_STATUS="$(jq -r '.status // empty' <<<"${PRIOR_RECEIPT}" 2>/dev/null || true)"
     PRIOR_CODE="$(rpc_code "${RI_TESTNET_RPC_URL}" "${PRIOR_ADDRESS}" latest 2>/dev/null || true)"
-    if [[ "${PRIOR_STATUS}" == "1" || "${PRIOR_STATUS}" == "0x1" ]] && [[ "${PRIOR_CODE}" != "0x" ]]; then
-      die "a successful unarchived deployment broadcast exists; recover its manifest instead of redeploying"
+    if [[ "${PRIOR_STATUS}" == "1" || "${PRIOR_STATUS}" == "0x1" || "${PRIOR_STATUS}" == "true" ]] &&
+      [[ "${PRIOR_CODE}" != "0x" ]]; then
+      CONTRACT_ADDRESS="${PRIOR_ADDRESS}"
+      DEPLOY_TX="${PRIOR_TX}"
+      log "recovering deployment manifest from successful broadcast ${PRIOR_TX}"
     fi
   fi
 fi
 
-log "broadcasting Registry deployment as ${DEPLOYER_ADDRESS} on Sepolia ${CHAIN_ID}; Governance=${GOVERNANCE_ADDRESS}"
-mkdir -p "${SEPOLIA_DEPLOYMENTS}/private"
-DEPLOY_LOG="${SEPOLIA_DEPLOYMENTS}/private/forge-deploy.log"
-(
-  cd "${REPO_ROOT}/contracts"
-  GOVERNANCE_ADDRESS="${GOVERNANCE_ADDRESS}" forge script \
-    script/DeployResolverIdentityRegistry.s.sol:DeployResolverIdentityRegistry \
-    --rpc-url "${RI_TESTNET_RPC_URL}" \
-    --broadcast \
-    --slow \
-    --non-interactive \
-    --sender "${DEPLOYER_ADDRESS}" \
-    --keystore "${DEPLOYER_KEYSTORE_FILE}" \
-    --password-file "${DEPLOYER_KEYSTORE_PASSWORD_FILE}" \
-    >"${DEPLOY_LOG}" 2>&1
-)
+if [[ -z "${CONTRACT_ADDRESS}" || -z "${DEPLOY_TX}" ]]; then
+  log "broadcasting Registry deployment as ${DEPLOYER_ADDRESS} on Sepolia ${CHAIN_ID}; Governance=${GOVERNANCE_ADDRESS}"
+  mkdir -p "${SEPOLIA_DEPLOYMENTS}/private"
+  DEPLOY_LOG="${SEPOLIA_DEPLOYMENTS}/private/forge-deploy.log"
+  (
+    cd "${REPO_ROOT}/contracts"
+    GOVERNANCE_ADDRESS="${GOVERNANCE_ADDRESS}" forge script \
+      script/DeployResolverIdentityRegistry.s.sol:DeployResolverIdentityRegistry \
+      --rpc-url "${RI_TESTNET_RPC_URL}" \
+      --broadcast \
+      --slow \
+      --non-interactive \
+      --sender "${DEPLOYER_ADDRESS}" \
+      --keystore "${DEPLOYER_KEYSTORE_FILE}" \
+      --password-file "${DEPLOYER_KEYSTORE_PASSWORD_FILE}" \
+      >"${DEPLOY_LOG}" 2>&1
+  )
 
-[[ -f "${BROADCAST_FILE}" ]] || die "Foundry broadcast receipt file is absent"
-CONTRACT_ADDRESS="$(jq -er '.transactions[] | select(.contractName == "ResolverIdentityRegistryV1") | .contractAddress' "${BROADCAST_FILE}" | tail -n 1)"
-DEPLOY_TX="$(jq -er '.transactions[] | select(.contractName == "ResolverIdentityRegistryV1") | .hash' "${BROADCAST_FILE}" | tail -n 1)"
+  [[ -f "${BROADCAST_FILE}" ]] || die "Foundry broadcast receipt file is absent"
+  CONTRACT_ADDRESS="$(jq -er '.transactions[] | select(.contractName == "ResolverIdentityRegistryV1") | .contractAddress' "${BROADCAST_FILE}" | tail -n 1)"
+  DEPLOY_TX="$(jq -er '.transactions[] | select(.contractName == "ResolverIdentityRegistryV1") | .hash' "${BROADCAST_FILE}" | tail -n 1)"
+fi
 validate_address "${CONTRACT_ADDRESS}" "deployed Registry address"
 validate_bytes32 "${DEPLOY_TX}" "deployment transaction hash"
 
@@ -91,9 +99,9 @@ else
 fi
 
 ARTIFACT="${REPO_ROOT}/contracts/out/ResolverIdentityRegistryV1.sol/ResolverIdentityRegistryV1.json"
-COMPILER_VERSION="$(jq -r '.metadata | fromjson | .compiler.version' "${ARTIFACT}")"
-OPTIMIZER_ENABLED="$(jq -r '.metadata | fromjson | .settings.optimizer.enabled // false' "${ARTIFACT}")"
-OPTIMIZER_RUNS="$(jq -r '.metadata | fromjson | .settings.optimizer.runs // 200' "${ARTIFACT}")"
+COMPILER_VERSION="$(jq -r '(.metadata | if type == "string" then fromjson else . end).compiler.version' "${ARTIFACT}")"
+OPTIMIZER_ENABLED="$(jq -r '(.metadata | if type == "string" then fromjson else . end).settings.optimizer.enabled // false' "${ARTIFACT}")"
+OPTIMIZER_RUNS="$(jq -r '(.metadata | if type == "string" then fromjson else . end).settings.optimizer.runs // 200' "${ARTIFACT}")"
 SOURCE_VERIFICATION="not-requested"
 
 jq -n \

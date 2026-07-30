@@ -13,6 +13,7 @@ coverage.xml
 htmlcov/
 artifacts/
 contracts/cache/
+contracts/broadcast/
 contracts/out/*
 !contracts/out/ResolverIdentityRegistryV1.sol/
 contracts/out/ResolverIdentityRegistryV1.sol/*
