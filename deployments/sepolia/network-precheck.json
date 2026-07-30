@@ -1,0 +1,23 @@
+{
+  "purpose": "Sepolia maintenance and Chain ID precheck only",
+  "not_deployment_evidence": true,
+  "checked_at": "2026-07-30T02:55:12Z",
+  "official_network_documentation": "https://ethereum.org/developers/docs/networks/",
+  "network_name": "ethereum-sepolia",
+  "primary_rpc_host": "ethereum-sepolia-rpc.publicnode.com",
+  "verification_rpc_host": "sepolia.gateway.tenderly.co",
+  "chain_id": 11155111,
+  "chain_id_hex": "0xaa36a7",
+  "common_finalized_block": 11379637,
+  "common_finalized_block_hash": "0xdb036e2891d7d0938c8e5eaca6f3a2cbd293d0cc4e0b58c502d5545da6d03574",
+  "checks": {
+    "chain_id_match": true,
+    "finalized_block_hash_match": true,
+    "mainnet_rejected": true
+  },
+  "limitations": [
+    "These public RPC endpoints were not supplied as formal deployment inputs.",
+    "No contract was deployed and no transaction was signed during this precheck.",
+    "Formal deployment must repeat the checks with operator-controlled independent RPC providers."
+  ]
+}

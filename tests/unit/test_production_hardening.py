@@ -60,6 +60,23 @@ def test_registry_writer_does_not_require_admin_or_issuer_private_keys():
         settings.validate_for("registry-writer")
 
 
+def test_registry_writer_keystore_requires_password_file():
+    settings = Settings(
+        environment="production",
+        registry_mode="web3",
+        web3_rpc_url="https://rpc.example",
+        web3_contract_address="0x" + "11" * 20,
+        web3_contract_code_hash="0x" + "22" * 32,
+        web3_keystore_file="/secure/root-publisher.json",
+        allow_hmac_object_signatures=False,
+        issuer_keys_file="/secure/issuer-keys.json",
+    )
+    with pytest.raises(ValueError, match="keystore requires a password file"):
+        settings.validate_for("registry-writer")
+    settings.web3_keystore_password_file = "/secure/root-publisher.password"
+    settings.validate_for("registry-writer")
+
+
 def test_endpoint_binding_key_includes_port_and_transport():
     udp53 = ResolverEndpoint(ip="192.0.2.53", port=53, transport="udp")
     tcp53 = ResolverEndpoint(ip="192.0.2.53", port=53, transport="tcp")

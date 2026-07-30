@@ -3,6 +3,7 @@ use std::env;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::RwLock;
 use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -33,6 +34,12 @@ async fn main() -> Result<(), AnyError> {
         )
         .init();
     let settings = Settings::from_env()?;
+    tracing::info!(
+        chain_id = settings.chain_id,
+        contract_address = %settings.contract_address,
+        contract_code_hash = %settings.contract_code_hash,
+        "Registry Sync target pinned"
+    );
     let client = RpcClient::new(
         settings.rpc_url.clone(),
         settings.request_timeout,
@@ -41,7 +48,11 @@ async fn main() -> Result<(), AnyError> {
     )?;
     let store = EvidenceStore::open(&settings.database)?;
     let issuer_keys = load_issuer_keys(&settings.issuer_keys_file)?;
-    let metrics = Arc::new(SyncMetrics::default());
+    let metrics = Arc::new(SyncMetrics::new(
+        settings.chain_id,
+        settings.contract_address.clone(),
+        settings.contract_code_hash.clone(),
+    ));
     let monitoring_listener = tokio::net::TcpListener::bind(settings.monitoring_bind).await?;
     let _monitoring = tokio::spawn(serve_monitoring(
         monitoring_listener,
@@ -69,6 +80,9 @@ async fn main() -> Result<(), AnyError> {
                     metrics
                         .finalized_block
                         .store(checkpoint.finalized_block, Ordering::Relaxed);
+                    if let Ok(mut block_hash) = metrics.finalized_block_hash.write() {
+                        *block_hash = checkpoint.finalized_block_hash;
+                    }
                 }
                 tracing::info!(count, "finalized Registry snapshot reconciled");
             }
@@ -84,12 +98,30 @@ async fn main() -> Result<(), AnyError> {
     }
 }
 
-#[derive(Default)]
 struct SyncMetrics {
     last_success_epoch: AtomicI64,
     finalized_block: AtomicU64,
+    finalized_block_hash: RwLock<String>,
     failures: AtomicU64,
     records: AtomicU64,
+    chain_id: u64,
+    contract_address: String,
+    contract_code_hash: String,
+}
+
+impl SyncMetrics {
+    fn new(chain_id: u64, contract_address: String, contract_code_hash: String) -> Self {
+        Self {
+            last_success_epoch: AtomicI64::new(0),
+            finalized_block: AtomicU64::new(0),
+            finalized_block_hash: RwLock::new(String::new()),
+            failures: AtomicU64::new(0),
+            records: AtomicU64::new(0),
+            chain_id,
+            contract_address,
+            contract_code_hash,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -128,6 +160,12 @@ async fn sync_readiness(State(state): State<MonitoringState>) -> StatusCode {
 }
 
 async fn sync_metrics(State(state): State<MonitoringState>) -> impl IntoResponse {
+    let finalized_block_hash = state
+        .metrics
+        .finalized_block_hash
+        .read()
+        .map(|value| value.clone())
+        .unwrap_or_default();
     (
         StatusCode::OK,
         [(header::CONTENT_TYPE, "text/plain; version=0.0.4")],
@@ -140,12 +178,20 @@ async fn sync_metrics(State(state): State<MonitoringState>) -> impl IntoResponse
                 "# TYPE resolver_identity_registry_failures_total counter\n",
                 "resolver_identity_registry_failures_total {}\n",
                 "# TYPE resolver_identity_registry_records gauge\n",
-                "resolver_identity_registry_records {}\n"
+                "resolver_identity_registry_records {}\n",
+                "# TYPE resolver_identity_registry_target_info gauge\n",
+                "resolver_identity_registry_target_info{{chain_id=\"{}\",contract_address=\"{}\",contract_code_hash=\"{}\"}} 1\n",
+                "# TYPE resolver_identity_registry_finalized_info gauge\n",
+                "resolver_identity_registry_finalized_info{{block_hash=\"{}\"}} 1\n"
             ),
             state.metrics.last_success_epoch.load(Ordering::Relaxed),
             state.metrics.finalized_block.load(Ordering::Relaxed),
             state.metrics.failures.load(Ordering::Relaxed),
-            state.metrics.records.load(Ordering::Relaxed)
+            state.metrics.records.load(Ordering::Relaxed),
+            state.metrics.chain_id,
+            state.metrics.contract_address,
+            state.metrics.contract_code_hash,
+            finalized_block_hash
         ),
     )
 }

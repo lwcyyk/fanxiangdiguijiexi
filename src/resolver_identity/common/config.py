@@ -68,6 +68,8 @@ class Settings:
     web3_sender_address: str = field(default_factory=lambda: _env("RESOLVER_IDENTITY_WEB3_SENDER_ADDRESS", ""))
     web3_private_key_env: str = field(default_factory=lambda: _env("RESOLVER_IDENTITY_WEB3_PRIVATE_KEY_ENV", ""))
     web3_private_key_file: str = field(default_factory=lambda: _env("RESOLVER_IDENTITY_WEB3_PRIVATE_KEY_FILE", ""))
+    web3_keystore_file: str = field(default_factory=lambda: _env("RESOLVER_IDENTITY_WEB3_KEYSTORE_FILE", ""))
+    web3_keystore_password_file: str = field(default_factory=lambda: _env("RESOLVER_IDENTITY_WEB3_KEYSTORE_PASSWORD_FILE", ""))
     web3_contract_code_hash: str = field(default_factory=lambda: _env("RESOLVER_IDENTITY_WEB3_CONTRACT_CODE_HASH", ""))
     web3_request_timeout_seconds: float = field(default_factory=lambda: _env_float("RESOLVER_IDENTITY_WEB3_REQUEST_TIMEOUT_SECONDS", 5.0))
     web3_transaction_timeout_seconds: float = field(default_factory=lambda: _env_float("RESOLVER_IDENTITY_WEB3_TRANSACTION_TIMEOUT_SECONDS", 120.0))
@@ -160,11 +162,16 @@ class Settings:
                 for value in (
                     self.web3_private_key_env,
                     self.web3_private_key_file,
+                    self.web3_keystore_file,
                 )
             )
             if private_key_sources != 1:
                 raise ValueError(
-                    "production Registry writer requires exactly one transaction private key source"
+                    "production Registry writer requires exactly one transaction signer source"
+                )
+            if self.web3_keystore_file and not self.web3_keystore_password_file:
+                raise ValueError(
+                    "production Registry writer keystore requires a password file"
                 )
 
     def upstream_specs(self) -> list[tuple[str, int, str]]:

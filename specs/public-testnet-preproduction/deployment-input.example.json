@@ -1,0 +1,68 @@
+{
+  "schema_version": "sepolia-preproduction-input-v1",
+  "network": {
+    "name": "ethereum-sepolia",
+    "primary_rpc_env": "RI_TESTNET_RPC_URL",
+    "verification_rpc_env": "RI_TESTNET_VERIFY_RPC_URL"
+  },
+  "governance_address": "${GOVERNANCE_ADDRESS}",
+  "issuer": {
+    "issuer_id": "${ISSUER_ID}",
+    "key_id": "${ISSUER_KEY_ID}",
+    "algorithm": "ed25519",
+    "public_key_file": "${ISSUER_PUBLIC_KEY_FILE}"
+  },
+  "identities": [
+    {
+      "schema_version": "dns-server-identity-v2",
+      "server_id": "${REAL_SERVER_ID}",
+      "operator_id": "${REAL_OPERATOR_ID}",
+      "role": "RECURSIVE",
+      "object_version": 1,
+      "status": "ACTIVE",
+      "valid_from": 0,
+      "valid_until": 0,
+      "issuer": "${ISSUER_ID}",
+      "key_id": "${ISSUER_KEY_ID}",
+      "endpoints": [
+        {
+          "ip": "${REAL_PREPRODUCTION_DNS_IP}",
+          "port": 53,
+          "transport": "udp"
+        },
+        {
+          "ip": "${REAL_PREPRODUCTION_DNS_IP}",
+          "port": 53,
+          "transport": "tcp"
+        }
+      ],
+      "agent": {
+        "key_id": "${UNIQUE_AGENT_KEY_ID}",
+        "algorithm": "ed25519",
+        "public_key": "${BASE64_32_BYTE_AGENT_PUBLIC_KEY}",
+        "service_url": "https://${REAL_AGENT_FQDN}:8443"
+      },
+      "anycast": false,
+      "anycast_service_id": null
+    }
+  ],
+  "runtime": {
+    "verification_mode": "public-hybrid",
+    "wrapper_upstreams": [
+      "udp://${REAL_PREPRODUCTION_DNS_IP}:53",
+      "tcp://${REAL_PREPRODUCTION_DNS_IP}:53"
+    ],
+    "trace_socket_host_dir": "${REAL_TRACE_SOCKET_HOST_DIR}",
+    "trace_producer_uid": 0,
+    "trace_producer_gid": 0
+  },
+  "signing_files": {
+    "deployer_keystore": "${DEPLOYER_KEYSTORE_FILE}",
+    "governance_keystore": "${GOVERNANCE_KEYSTORE_FILE_OR_EXTERNAL_SIGNER}",
+    "root_publisher_keystore": "${ROOT_PUBLISHER_KEYSTORE_FILE}",
+    "resolver_publisher_keystore": "${RESOLVER_PUBLISHER_KEYSTORE_FILE}",
+    "endpoint_manager_keystore": "${ENDPOINT_MANAGER_KEYSTORE_FILE}",
+    "revoker_keystore": "${REVOKER_KEYSTORE_FILE}",
+    "issuer_private_key": "${ISSUER_PRIVATE_KEY_FILE}"
+  }
+}

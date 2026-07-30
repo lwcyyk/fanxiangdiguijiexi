@@ -1,7 +1,18 @@
+import json
 import os
+from types import SimpleNamespace
+
+import pytest
+from eth_account import Account
+from web3 import Web3
 
 from resolver_identity.chain.backend import decode_anchor, decode_status, encode_status, normalize_bytes32
-from resolver_identity.chain.web3_backend import Web3RegistryBackend, Web3RegistryConfig, Web3RegistryError
+from resolver_identity.chain.web3_backend import (
+    Web3RegistryBackend,
+    Web3RegistryConfig,
+    Web3RegistryError,
+    normalize_receipt,
+)
 
 
 def test_bytes32_and_status_conversion():
@@ -49,6 +60,73 @@ def test_web3_receipt_status_failure_raises():
             raise AssertionError("expected Web3RegistryError")
     finally:
         os.environ.pop("TEST_WEB3_PK", None)
+
+
+def test_keystore_signer_is_decrypted_from_private_files(tmp_path):
+    private_key = bytes.fromhex("01" * 32)
+    account = Account.from_key(private_key)
+    keystore = tmp_path / "signer.json"
+    password = tmp_path / "password"
+    keystore.write_text(
+        json.dumps(Account.encrypt(private_key, "test-password")),
+        encoding="utf-8",
+    )
+    password.write_text("test-password\n", encoding="utf-8")
+    keystore.chmod(0o600)
+    password.chmod(0o600)
+
+    backend = Web3RegistryBackend.__new__(Web3RegistryBackend)
+    backend.config = Web3RegistryConfig(
+        "https://rpc.example",
+        "0x" + "11" * 20,
+        11155111,
+        [],
+        keystore_file=str(keystore),
+        keystore_password_file=str(password),
+        sender_address=account.address,
+    )
+    backend.web3 = SimpleNamespace(
+        eth=SimpleNamespace(account=Account),
+        to_checksum_address=Web3.to_checksum_address,
+    )
+
+    assert backend._account().address == account.address
+
+
+def test_keystore_password_permissions_are_enforced(tmp_path):
+    keystore = tmp_path / "signer.json"
+    password = tmp_path / "password"
+    keystore.write_text("{}", encoding="utf-8")
+    password.write_text("password", encoding="utf-8")
+    keystore.chmod(0o600)
+    password.chmod(0o644)
+    backend = Web3RegistryBackend.__new__(Web3RegistryBackend)
+    backend.config = Web3RegistryConfig(
+        "https://rpc.example",
+        "0x" + "11" * 20,
+        11155111,
+        [],
+        keystore_file=str(keystore),
+        keystore_password_file=str(password),
+    )
+    backend.web3 = SimpleNamespace(eth=SimpleNamespace(account=Account))
+
+    with pytest.raises(Web3RegistryError, match="must not be accessible"):
+        backend._account()
+
+
+def test_receipt_normalization_is_json_safe():
+    assert normalize_receipt(
+        {
+            "transactionHash": bytes.fromhex("11" * 32),
+            "blockNumber": 7,
+            "status": 1,
+        }
+    ) == {
+        "transactionHash": "0x" + "11" * 32,
+        "blockNumber": 7,
+        "status": 1,
+    }
 
 
 class FakeFunction:

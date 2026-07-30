@@ -22,6 +22,8 @@ def create_registry_backend(settings: Settings, registry_repository: RegistryRep
                 abi=abi,
                 private_key_env=settings.web3_private_key_env or None,
                 private_key_file=settings.web3_private_key_file or None,
+                keystore_file=settings.web3_keystore_file or None,
+                keystore_password_file=settings.web3_keystore_password_file or None,
                 sender_address=settings.web3_sender_address or None,
                 expected_code_hash=settings.web3_contract_code_hash or None,
                 request_timeout_seconds=settings.web3_request_timeout_seconds,

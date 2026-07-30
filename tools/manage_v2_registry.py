@@ -4,7 +4,9 @@ import argparse
 import base64
 import binascii
 import json
+import os
 from pathlib import Path
+from typing import Callable
 
 from resolver_identity.admin.publisher import endpoint_lookup_key
 from resolver_identity.chain.contract_loader import load_contract_abi
@@ -29,6 +31,10 @@ def main() -> None:
     sign.add_argument("--private-key-file", required=True)
     sign.add_argument("--output", required=True)
 
+    verify_identities = subparsers.add_parser("verify-identities")
+    verify_identities.add_argument("--identities", required=True)
+    verify_identities.add_argument("--issuer-keys", required=True)
+
     prepare = subparsers.add_parser("prepare")
     prepare.add_argument("--identities", required=True)
     prepare.add_argument("--issuer-keys", required=True)
@@ -49,15 +55,25 @@ def main() -> None:
         apply = subparsers.add_parser(command)
         apply.add_argument("--plan", required=True)
         apply.add_argument("--expected-plan-hash", required=True)
+        apply.add_argument("--receipt-output")
 
     revoke_resolver = subparsers.add_parser("revoke-resolver")
     revoke_resolver.add_argument("--server-id", required=True)
+    revoke_resolver.add_argument("--receipt-output")
     revoke_root = subparsers.add_parser("revoke-root")
     revoke_root.add_argument("--state-root", required=True)
+    revoke_root.add_argument("--receipt-output")
 
     args = parser.parse_args()
     if args.command == "sign":
         sign_identities(Path(args.input), Path(args.private_key_file), Path(args.output))
+        return
+    if args.command == "verify-identities":
+        identities = load_identities(
+            Path(args.identities),
+            Path(args.issuer_keys),
+        )
+        print(json.dumps({"verified_identity_count": len(identities)}))
         return
     if args.command == "prepare":
         previous_plan = (
@@ -71,35 +87,87 @@ def main() -> None:
             args.contract_code_hash,
             previous_plan=previous_plan,
         )
-        Path(args.output).write_text(
-            json.dumps(plan, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
+        write_json_atomic(Path(args.output), plan)
+        print(
+            json.dumps(
+                {
+                    "plan_hash": plan["plan_hash"],
+                    "state_root": plan["state_root"],
+                    "root_version": plan["root_version"],
+                    "identity_count": len(plan["entries"]),
+                    "endpoint_count": sum(
+                        len(entry["endpoint_keys"]) for entry in plan["entries"]
+                    ),
+                    "endpoint_unbind_count": len(plan["endpoint_unbinds"]),
+                    "resolver_revocation_count": len(plan["resolver_revocations"]),
+                }
+            )
         )
-        print(json.dumps({"plan_hash": plan["plan_hash"], "state_root": plan["state_root"]}))
         return
 
     if args.command == "revoke-resolver":
         backend = registry_backend()
-        backend.revoke_resolver(resolver_id_key(args.server_id))
+        receipt = backend.revoke_resolver(resolver_id_key(args.server_id))
+        write_receipts_if_requested(
+            args.receipt_output,
+            args.command,
+            [
+                transaction_evidence(
+                    receipt,
+                    "REVOKER_ROLE",
+                    "revoke-resolver",
+                    args.server_id,
+                )
+            ],
+        )
         return
     if args.command == "revoke-root":
         backend = registry_backend()
-        backend.revoke_root(args.state_root)
+        receipt = backend.revoke_root(args.state_root)
+        write_receipts_if_requested(
+            args.receipt_output,
+            args.command,
+            [
+                transaction_evidence(
+                    receipt,
+                    "REVOKER_ROLE",
+                    "revoke-root",
+                    args.state_root,
+                )
+            ],
+        )
         return
 
     plan = load_plan(Path(args.plan), args.expected_plan_hash)
     backend = registry_backend()
     verify_plan_target(backend, plan)
+    journal = (
+        ReceiptJournal(
+            Path(args.receipt_output),
+            args.command,
+            args.expected_plan_hash,
+        )
+        if args.receipt_output
+        else None
+    )
+    on_receipt = journal.append if journal else None
     if args.command == "publish-root":
-        publish_root(backend, plan)
+        receipts = publish_root(backend, plan, on_receipt)
     elif args.command == "publish-resolvers":
-        publish_resolvers(backend, plan)
+        receipts = publish_resolvers(backend, plan, on_receipt)
     elif args.command == "bind-endpoints":
-        bind_endpoints(backend, plan)
+        receipts = bind_endpoints(backend, plan, on_receipt)
     elif args.command == "unbind-endpoints":
-        unbind_endpoints(backend, plan)
+        receipts = unbind_endpoints(backend, plan, on_receipt)
     elif args.command == "revoke-removed":
-        revoke_removed_resolvers(backend, plan)
+        receipts = revoke_removed_resolvers(backend, plan, on_receipt)
+    all_receipts = journal.transactions if journal else receipts
+    write_receipts_if_requested(
+        args.receipt_output,
+        args.command,
+        all_receipts,
+        args.expected_plan_hash,
+    )
 
 
 def sign_identities(input_path: Path, private_key_path: Path, output_path: Path) -> None:
@@ -118,10 +186,7 @@ def sign_identities(input_path: Path, private_key_path: Path, output_path: Path)
             identity["agent"]["algorithm"] = str(identity["agent"]["algorithm"]).lower()
         validate_identity_structure(identity)
         identity["signature"] = sign_object_ed25519(identity, private_key)
-    output_path.write_text(
-        json.dumps({"identities": identities}, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    write_json_atomic(output_path, {"identities": identities})
 
 
 def load_identities(identity_path: Path, issuer_path: Path) -> list[dict]:
@@ -382,6 +447,9 @@ def registry_backend() -> Web3RegistryBackend:
             abi=load_contract_abi(Path(settings.web3_abi_path)),
             private_key_env=settings.web3_private_key_env or None,
             private_key_file=settings.web3_private_key_file or None,
+            keystore_file=settings.web3_keystore_file or None,
+            keystore_password_file=settings.web3_keystore_password_file or None,
+            sender_address=settings.web3_sender_address or None,
             expected_code_hash=settings.web3_contract_code_hash,
             request_timeout_seconds=settings.web3_request_timeout_seconds,
             transaction_timeout_seconds=settings.web3_transaction_timeout_seconds,
@@ -389,19 +457,44 @@ def registry_backend() -> Web3RegistryBackend:
     )
 
 
-def publish_root(backend: Web3RegistryBackend, plan: dict) -> None:
+def publish_root(
+    backend: Web3RegistryBackend,
+    plan: dict,
+    on_receipt: Callable[[dict], None] | None = None,
+) -> list[dict]:
+    receipts = []
     record = backend.get_root_record(plan["state_root"])
     if record is not None and record.status == "REVOKED":
         raise ValueError("publication plan root has been permanently revoked")
     if record is not None and record.status == "ACTIVE":
         if record.version != int(plan["root_version"]):
             raise ValueError("active Root version conflicts with the approved plan")
-        return
+        return receipts
     if record is None or record.status != "ACTIVE":
-        backend.publish_root(plan["state_root"], version=int(plan["root_version"]))
+        receipt = backend.publish_root(
+            plan["state_root"],
+            version=int(plan["root_version"]),
+        )
+        if receipt is not None:
+            record_receipt(
+                receipts,
+                transaction_evidence(
+                    receipt,
+                    "ROOT_PUBLISHER_ROLE",
+                    "publish-root",
+                    plan["state_root"],
+                ),
+                on_receipt,
+            )
+    return receipts
 
 
-def publish_resolvers(backend: Web3RegistryBackend, plan: dict) -> None:
+def publish_resolvers(
+    backend: Web3RegistryBackend,
+    plan: dict,
+    on_receipt: Callable[[dict], None] | None = None,
+) -> list[dict]:
+    receipts = []
     if backend.get_root_status(plan["state_root"]) != "ACTIVE":
         raise ValueError("Root Publisher must activate the approved root first")
     for entry in plan["entries"]:
@@ -415,9 +508,11 @@ def publish_resolvers(backend: Web3RegistryBackend, plan: dict) -> None:
             entry["status"],
         )
         if current is None:
-            backend.publish_resolver(*arguments)
+            receipt = backend.publish_resolver(*arguments)
+            operation = "publish-resolver"
         elif current.object_version < int(entry["object_version"]):
-            backend.update_resolver(*arguments)
+            receipt = backend.update_resolver(*arguments)
+            operation = "update-resolver"
         elif (
             current.object_version != int(entry["object_version"])
             or current.object_hash != entry["object_hash"]
@@ -426,9 +521,29 @@ def publish_resolvers(backend: Web3RegistryBackend, plan: dict) -> None:
             or current.status != entry["status"]
         ):
             raise ValueError(f"on-chain resolver conflicts with plan: {entry['server_id']}")
+        else:
+            receipt = None
+            operation = ""
+        if receipt is not None:
+            record_receipt(
+                receipts,
+                transaction_evidence(
+                    receipt,
+                    "RESOLVER_PUBLISHER_ROLE",
+                    operation,
+                    entry["server_id"],
+                ),
+                on_receipt,
+            )
+    return receipts
 
 
-def bind_endpoints(backend: Web3RegistryBackend, plan: dict) -> None:
+def bind_endpoints(
+    backend: Web3RegistryBackend,
+    plan: dict,
+    on_receipt: Callable[[dict], None] | None = None,
+) -> list[dict]:
+    receipts = []
     for entry in plan["entries"]:
         current = backend.get_resolver_anchor(entry["resolver_id_key"])
         if (
@@ -443,10 +558,27 @@ def bind_endpoints(backend: Web3RegistryBackend, plan: dict) -> None:
             if existing not in (None, entry["resolver_id_key"]):
                 raise ValueError(f"endpoint conflict: {endpoint_key}")
             if existing is None:
-                backend.bind_endpoint(endpoint_key, entry["resolver_id_key"])
+                receipt = backend.bind_endpoint(endpoint_key, entry["resolver_id_key"])
+                if receipt is not None:
+                    record_receipt(
+                        receipts,
+                        transaction_evidence(
+                            receipt,
+                            "ENDPOINT_MANAGER_ROLE",
+                            "bind-endpoint",
+                            endpoint_key,
+                        ),
+                        on_receipt,
+                    )
+    return receipts
 
 
-def unbind_endpoints(backend: Web3RegistryBackend, plan: dict) -> None:
+def unbind_endpoints(
+    backend: Web3RegistryBackend,
+    plan: dict,
+    on_receipt: Callable[[dict], None] | None = None,
+) -> list[dict]:
+    receipts = []
     for removal in plan["endpoint_unbinds"]:
         existing = backend.get_endpoint_binding(removal["endpoint_key"])
         if existing is None:
@@ -455,16 +587,146 @@ def unbind_endpoints(backend: Web3RegistryBackend, plan: dict) -> None:
             raise ValueError(
                 f"endpoint removal owner conflict: {removal['endpoint_key']}"
             )
-        backend.unbind_endpoint(removal["endpoint_key"])
+        receipt = backend.unbind_endpoint(removal["endpoint_key"])
+        if receipt is not None:
+            record_receipt(
+                receipts,
+                transaction_evidence(
+                    receipt,
+                    "ENDPOINT_MANAGER_ROLE",
+                    "unbind-endpoint",
+                    removal["endpoint_key"],
+                ),
+                on_receipt,
+            )
+    return receipts
 
 
-def revoke_removed_resolvers(backend: Web3RegistryBackend, plan: dict) -> None:
+def revoke_removed_resolvers(
+    backend: Web3RegistryBackend,
+    plan: dict,
+    on_receipt: Callable[[dict], None] | None = None,
+) -> list[dict]:
+    receipts = []
     for removal in plan["resolver_revocations"]:
         current = backend.get_resolver_anchor(removal["resolver_id_key"])
         if current is None:
             raise ValueError(f"removed resolver is absent on chain: {removal['server_id']}")
         if current.status != "REVOKED":
-            backend.revoke_resolver(removal["resolver_id_key"])
+            receipt = backend.revoke_resolver(removal["resolver_id_key"])
+            if receipt is not None:
+                record_receipt(
+                    receipts,
+                    transaction_evidence(
+                        receipt,
+                        "REVOKER_ROLE",
+                        "revoke-resolver",
+                        removal["server_id"],
+                    ),
+                    on_receipt,
+                )
+    return receipts
+
+
+def transaction_evidence(
+    receipt: dict,
+    role: str,
+    operation: str,
+    target_object: str,
+) -> dict:
+    required = ("transactionHash", "blockNumber", "blockHash", "status", "gasUsed")
+    missing = [field for field in required if field not in receipt]
+    if missing:
+        raise ValueError(f"transaction receipt is missing fields: {', '.join(missing)}")
+    return {
+        "transaction_hash": receipt["transactionHash"],
+        "sender": receipt.get("from", ""),
+        "role": role,
+        "block_number": int(receipt["blockNumber"]),
+        "block_hash": receipt["blockHash"],
+        "status": int(receipt["status"]),
+        "gas_used": int(receipt["gasUsed"]),
+        "operation": operation,
+        "target_object": target_object,
+    }
+
+
+def record_receipt(
+    receipts: list[dict],
+    evidence: dict,
+    on_receipt: Callable[[dict], None] | None,
+) -> None:
+    receipts.append(evidence)
+    if on_receipt:
+        on_receipt(evidence)
+
+
+class ReceiptJournal:
+    def __init__(self, path: Path, phase: str, context_hash: str):
+        self.path = path
+        self.phase = phase
+        self.context_hash = context_hash.lower()
+        self.transactions: list[dict] = []
+        if path.exists():
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if (
+                payload.get("schema_version")
+                != "registry-publication-receipts-v1"
+                or payload.get("phase") != phase
+                or str(payload.get("context_hash", "")).lower() != self.context_hash
+                or not isinstance(payload.get("transactions"), list)
+            ):
+                raise ValueError("receipt journal does not match the requested phase and plan")
+            self.transactions = payload["transactions"]
+
+    def append(self, evidence: dict) -> None:
+        tx_hash = evidence["transaction_hash"].lower()
+        if all(
+            item.get("transaction_hash", "").lower() != tx_hash
+            for item in self.transactions
+        ):
+            self.transactions.append(evidence)
+        self.write()
+
+    def write(self) -> None:
+        write_json_atomic(
+            self.path,
+            {
+                "schema_version": "registry-publication-receipts-v1",
+                "phase": self.phase,
+                "context_hash": self.context_hash,
+                "transactions": self.transactions,
+            },
+        )
+
+
+def write_receipts_if_requested(
+    output: str | None,
+    phase: str,
+    transactions: list[dict],
+    context_hash: str | None = None,
+) -> None:
+    if output:
+        write_json_atomic(
+            Path(output),
+            {
+                "schema_version": "registry-publication-receipts-v1",
+                "phase": phase,
+                "context_hash": context_hash,
+                "transactions": transactions,
+            },
+        )
+    print(json.dumps({"phase": phase, "transaction_count": len(transactions)}))
+
+
+def write_json_atomic(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.tmp")
+    temporary.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    os.replace(temporary, path)
 
 
 if __name__ == "__main__":

@@ -107,6 +107,8 @@ PYTHONPATH=src python3 tools/manage_v2_registry.py --help
 - [星形域名中心部署](docs/star_topology_field_deployment.md)
 - [真实服务器部署手册](docs/runbooks/real-server-deployment.md)
 - [运行部署手册](docs/runbooks/production-deployment.md)
+- [Sepolia 预发布部署](docs/runbooks/sepolia-preproduction-deployment.md)
+- [Sepolia 部署规格](specs/public-testnet-preproduction/requirements.md)
 - [生产就绪门禁](docs/production_readiness.md)
 - [安全边界](docs/security_boundary.md)
 - [V2 API](docs/api.md)

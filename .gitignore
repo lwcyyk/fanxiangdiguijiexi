@@ -23,6 +23,7 @@ deploy/secrets/
 deploy/tls/*
 !deploy/tls/README.md
 deploy/link/.env
+deploy/link/.env.sepolia
 deploy/link/identities-v2.json
 deploy/link/secrets/*
 !deploy/link/secrets/README.md
@@ -30,3 +31,6 @@ deploy/link/tls/*
 !deploy/link/tls/README.md
 registry-plan-v2.json
 rust/target/
+.env.sepolia.local
+secrets/sepolia/
+deployments/sepolia/private/

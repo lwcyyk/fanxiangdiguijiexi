@@ -175,3 +175,45 @@ def test_active_root_must_match_approved_version():
     )
     with pytest.raises(ValueError, match="Root version"):
         manage.publish_root(backend, plan)
+
+
+def test_transaction_evidence_requires_complete_receipt():
+    receipt = {
+        "transactionHash": "0x" + "11" * 32,
+        "from": "0x" + "22" * 20,
+        "blockNumber": 10,
+        "blockHash": "0x" + "33" * 32,
+        "status": 1,
+        "gasUsed": 12345,
+    }
+    assert manage.transaction_evidence(
+        receipt,
+        "ROOT_PUBLISHER_ROLE",
+        "publish-root",
+        "0x" + "44" * 32,
+    ) == {
+        "transaction_hash": "0x" + "11" * 32,
+        "sender": "0x" + "22" * 20,
+        "role": "ROOT_PUBLISHER_ROLE",
+        "block_number": 10,
+        "block_hash": "0x" + "33" * 32,
+        "status": 1,
+        "gas_used": 12345,
+        "operation": "publish-root",
+        "target_object": "0x" + "44" * 32,
+    }
+    with pytest.raises(ValueError, match="missing fields"):
+        manage.transaction_evidence({}, "role", "operation", "target")
+
+
+def test_receipt_journal_is_incremental_and_plan_bound(tmp_path):
+    path = tmp_path / "receipts.json"
+    first = manage.ReceiptJournal(path, "publish-root", "0x" + "11" * 32)
+    first.append({"transaction_hash": "0x" + "22" * 32})
+    first.append({"transaction_hash": "0x" + "22" * 32})
+    assert len(json.loads(path.read_text())["transactions"]) == 1
+
+    resumed = manage.ReceiptJournal(path, "publish-root", "0x" + "11" * 32)
+    assert len(resumed.transactions) == 1
+    with pytest.raises(ValueError, match="phase and plan"):
+        manage.ReceiptJournal(path, "publish-root", "0x" + "33" * 32)
