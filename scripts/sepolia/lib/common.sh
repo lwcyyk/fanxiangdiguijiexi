@@ -5,8 +5,10 @@ readonly SEPOLIA_EXPECTED_CHAIN_ID=11155111
 readonly MAINNET_CHAIN_ID=1
 readonly ZERO_ADDRESS=0x0000000000000000000000000000000000000000
 readonly ZERO_BYTES32=0x0000000000000000000000000000000000000000000000000000000000000000
-readonly COMMON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly REPO_ROOT="$(cd "${COMMON_DIR}/../../.." && pwd)"
+COMMON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly COMMON_DIR
+REPO_ROOT="$(cd "${COMMON_DIR}/../../.." && pwd)"
+readonly REPO_ROOT
 readonly SEPOLIA_DEPLOYMENTS="${REPO_ROOT}/deployments/sepolia"
 readonly SEPOLIA_ENV_FILE="${RI_SEPOLIA_ENV_FILE:-${REPO_ROOT}/.env.sepolia.local}"
 

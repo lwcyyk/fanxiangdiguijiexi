@@ -105,6 +105,8 @@ PYTHONPATH=src python3 tools/manage_v2_registry.py --help
 - [生产架构](docs/production_architecture.md)
 - [Rust V2 实施状态](docs/rust_v2_implementation_plan.md)
 - [星形域名中心部署](docs/star_topology_field_deployment.md)
+- [星型多服务器完整现场手册](docs/runbooks/domain-center-star-multiserver-deployment.md)
+- [星型多服务器部署规格](specs/domain-center-star-deployment/requirements.md)
 - [真实服务器部署手册](docs/runbooks/real-server-deployment.md)
 - [运行部署手册](docs/runbooks/production-deployment.md)
 - [Sepolia 预发布部署](docs/runbooks/sepolia-preproduction-deployment.md)
@@ -134,4 +136,6 @@ PYTHONPATH=src python3 tools/manage_v2_registry.py --help
 - `src/resolver_identity/`：Python V1/管理面
 - `tools/`：发布、测试和运维工具
 - `deploy/link/`：单链路 Rust 生产 profile
+- `deploy/field/`：星型多服务器监控和日志模板
+- `scripts/field/`：现场预检、运行包、启动、验收、备份和容量脚本
 - `docs/`：当前 V2 架构、安全、部署和验收文档

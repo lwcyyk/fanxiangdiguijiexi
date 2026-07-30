@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "site_id": "<SITE_ID>",
+  "change_ticket": "<CHANGE_TICKET>",
+  "release": {
+    "git_commit": "<40_HEX_GIT_COMMIT>",
+    "image": "registry.dns-center.local/resolver-identity-rust@sha256:<64_HEX_DIGEST>"
+  },
+  "registry": {
+    "network_name": "sepolia",
+    "rpc_url": "https://<READ_ONLY_RPC>",
+    "chain_id": 11155111,
+    "contract_address": "0x<40_HEX_ADDRESS>",
+    "runtime_code_hash": "0x<64_HEX_RUNTIME_CODE_HASH>",
+    "fallback_confirmations": 12,
+    "max_staleness_seconds": 15
+  },
+  "artifacts": {
+    "identities_file": "/secure/field/identities-v2.json",
+    "issuer_keys_file": "/secure/field/issuer-keys.json"
+  },
+  "hub": {
+    "management_host": "ri-hub-mgmt-01",
+    "operations_host": "ri-hub-ops-01",
+    "test_client_host": "ri-test-client-01",
+    "prometheus_ip": "<PROMETHEUS_IP>",
+    "log_collector_ip": "<LOG_COLLECTOR_IP>",
+    "bastion_ip": "<BASTION_IP>",
+    "backup_target": "<ENCRYPTED_BACKUP_TARGET>"
+  },
+  "units": [
+    {
+      "link_id": "L01",
+      "unit_id": "L01-r1-a",
+      "role": "entry",
+      "hostname": "ri-l01-r1-01",
+      "management_ip": "<L01_MANAGEMENT_IP>",
+      "compose_project": "ri-l01-r1",
+      "verification_mode": "public-hybrid",
+      "agent_server_id": "operator/L01/r1",
+      "agent_key_id": "agent-key-L01-r1",
+      "trace_producer_uid": 10002,
+      "trace_producer_gid": 10002,
+      "trace_socket_host_dir": "/run/resolver-identity/L01-r1",
+      "wrapper_ip": "<L01_WRAPPER_IP>",
+      "dns_port": 1053,
+      "resolver_upstreams": [
+        "udp://<L01_R1_IP>:53",
+        "tcp://<L01_R1_IP>:53"
+      ],
+      "agent_bind_address": "127.0.0.1",
+      "agent_port": 8443,
+      "metrics_bind_address": "<L01_MANAGEMENT_IP>",
+      "metrics_ports": {
+        "wrapper": 9108,
+        "registry": 9109,
+        "trace": 9110
+      },
+      "remote_release_root": "/opt/resolver-identity",
+      "private_material_dir": "/secure/field/L01-r1-a",
+      "shadow_test_name": "<APPROVED_TEST_FQDN>",
+      "rollback_target": "<L01_ORIGINAL_DNS_ENTRY>"
+    }
+  ]
+}

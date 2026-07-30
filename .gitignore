@@ -34,3 +34,6 @@ rust/target/
 .env.sepolia.local
 secrets/sepolia/
 deployments/sepolia/private/
+deployments/field/private/
+deploy/field/private/
+artifacts/field-deployment/private/

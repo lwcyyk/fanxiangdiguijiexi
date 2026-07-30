@@ -1,0 +1,51 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    site: <SITE_ID>
+
+rule_files:
+  - /etc/prometheus/rules/resolver-identity-alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["<ALERTMANAGER_MANAGEMENT_IP>:9093"]
+
+scrape_configs:
+  - job_name: resolver-identity-wrapper
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["<L01_MANAGEMENT_IP>:9108"]
+        labels: {link: L01, unit: L01-r1-a, component: wrapper}
+
+  - job_name: resolver-identity-registry-sync
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["<L01_MANAGEMENT_IP>:9109"]
+        labels: {link: L01, unit: L01-r1-a, component: registry-sync}
+
+  - job_name: resolver-identity-trace-adapter
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["<L01_MANAGEMENT_IP>:9110"]
+        labels: {link: L01, unit: L01-r1-a, component: trace-adapter}
+
+  # Create one Agent job per link. Do not reuse its client key across links.
+  - job_name: resolver-identity-agent-l01
+    scheme: https
+    metrics_path: /metrics
+    tls_config:
+      ca_file: /etc/prometheus/tls/L01/agent-ca.crt
+      cert_file: /etc/prometheus/tls/L01/prometheus-client.crt
+      key_file: /etc/prometheus/tls/L01/prometheus-client.key
+      server_name: <L01_AGENT_CERTIFICATE_SAN>
+      min_version: TLS13
+    static_configs:
+      - targets: ["<L01_AGENT_MANAGEMENT_NAME>:8443"]
+        labels: {link: L01, unit: L01-r1-a, component: agent}
+
+  - job_name: node
+    static_configs:
+      - targets: ["<L01_MANAGEMENT_IP>:9100"]
+        labels: {link: L01, unit: L01-r1-a}

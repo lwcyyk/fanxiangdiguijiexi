@@ -1,0 +1,114 @@
+groups:
+  - name: resolver-identity-availability
+    rules:
+      - alert: ResolverIdentityTargetDown
+        expr: up{job=~"resolver-identity-.+"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Resolver Identity target is unavailable"
+          description: "{{ $labels.link }}/{{ $labels.unit }} {{ $labels.component }} has been down for one minute."
+
+      - alert: ResolverIdentityWrapperNotReady
+        expr: resolver_identity_ready != 1
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Wrapper is not ready"
+          description: "{{ $labels.link }}/{{ $labels.unit }} must be removed from DNS traffic."
+
+      - alert: ResolverIdentityRegistryStale
+        expr: time() - resolver_identity_registry_last_success_epoch > 15
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Registry snapshot is stale"
+          description: "{{ $labels.link }}/{{ $labels.unit }} has exceeded the default 15 second staleness limit."
+
+      - alert: ResolverIdentityRegistrySyncFailures
+        expr: increase(resolver_identity_registry_failures_total[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Registry Sync failures detected"
+          description: "{{ $labels.link }}/{{ $labels.unit }} failed one or more synchronization attempts."
+
+      - alert: ResolverIdentityTraceDeadLetter
+        expr: resolver_identity_trace_dead_letter_total > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "Trace dead-letter events are present"
+          description: "{{ $labels.link }}/{{ $labels.unit }} must not receive additional production traffic."
+
+      - alert: ResolverIdentityTraceSpoolGrowing
+        expr: deriv(resolver_identity_trace_spool_pending[10m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Trace spool is continuously growing"
+          description: "{{ $labels.link }}/{{ $labels.unit }} is not draining Trace events."
+
+      - alert: ResolverIdentityAgentGraphFailures
+        expr: increase(resolver_identity_agent_graph_failures_total[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent evidence graph failures detected"
+          description: "{{ $labels.link }}/{{ $labels.unit }} rejected one or more graph requests."
+
+      - alert: ResolverIdentityServfailRatioHigh
+        expr: |
+          rate(resolver_identity_dns_servfail_total[5m])
+            /
+          clamp_min(rate(resolver_identity_dns_queries_total[5m]), 1)
+            > 0.01
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Unexpected DNS SERVFAIL ratio"
+          description: "{{ $labels.link }}/{{ $labels.unit }} exceeded the example 1% threshold; replace it with the approved site SLO."
+
+  - name: resolver-identity-host-capacity
+    rules:
+      - alert: ResolverIdentityFilesystemLow
+        expr: |
+          (
+            node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"}
+              /
+            node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}
+          ) < 0.15
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Resolver Identity host filesystem is low"
+          description: "{{ $labels.instance }} has less than 15% free space on {{ $labels.mountpoint }}."
+
+      - alert: ResolverIdentityInodesLow
+        expr: |
+          (
+            node_filesystem_files_free{fstype!~"tmpfs|overlay"}
+              /
+            node_filesystem_files{fstype!~"tmpfs|overlay"}
+          ) < 0.15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Resolver Identity host inodes are low"
+          description: "{{ $labels.instance }} has less than 15% free inodes on {{ $labels.mountpoint }}."
+
+      - alert: ResolverIdentityClockUnsynchronised
+        expr: node_timex_sync_status == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Resolver Identity host clock is not synchronized"
+          description: "{{ $labels.instance }} cannot safely produce or validate time-bound evidence."

@@ -1,5 +1,8 @@
 # 星形域名中心实地部署方案（Rust V2）
 
+完整的多服务器现场实施、自动化命令和验收步骤见
+`docs/runbooks/domain-center-star-multiserver-deployment.md`。本文保留架构摘要。
+
 ## 1. 拓扑原则
 
 中心 Hub 负责身份治理、分角色发布、制品分发、只读 RPC、监控、日志和备份。

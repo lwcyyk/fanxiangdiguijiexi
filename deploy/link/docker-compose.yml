@@ -10,6 +10,12 @@ x-runtime: &runtime
   pids_limit: 256
   mem_limit: 512m
   cpus: 2.0
+  stop_grace_period: 30s
+  logging:
+    driver: json-file
+    options:
+      max-size: ${RI_DOCKER_LOG_MAX_SIZE:-50m}
+      max-file: ${RI_DOCKER_LOG_MAX_FILES:-5}
 
 x-common-env: &common-env
   RI_ENVIRONMENT: production
