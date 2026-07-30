@@ -111,6 +111,16 @@ keystore 地址、角色分离和余额。默认最低余额是：
 这是预检下限，不是费用承诺。余额不足时先从正规 Sepolia faucet 获取测试
 ETH，不购买或出售测试币。
 
+真实 DNS/Agent 身份参数尚未就绪、但需要先完成 Registry 和角色拆分时，使用：
+
+```bash
+scripts/sepolia/00-preflight.sh --registry-only
+```
+
+该模式只放行合约部署与角色配置，并在 `preflight.json` 中记录
+`identity_inputs_validated=false`。身份签名、发布计划和五阶段发布仍必须在真实
+身份文件到位后重新执行完整 `00-preflight.sh`，不能使用空文件或示例身份绕过。
+
 ## 6. 部署与 finalized 核验
 
 ```bash

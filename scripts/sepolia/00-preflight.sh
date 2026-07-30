@@ -9,6 +9,18 @@ require_commands bash curl jq cast forge git python3 stat
 load_sepolia_env
 assert_sepolia_network
 
+PREFLIGHT_SCOPE="full"
+case "${1:-}" in
+  "")
+    ;;
+  --registry-only)
+    PREFLIGHT_SCOPE="registry-only"
+    ;;
+  *)
+    die "usage: $0 [--registry-only]"
+    ;;
+esac
+
 require_var GOVERNANCE_ADDRESS
 validate_address "${GOVERNANCE_ADDRESS}" GOVERNANCE_ADDRESS
 
@@ -40,17 +52,23 @@ RESOLVER_BALANCE="$(require_balance "${RESOLVER_PUBLISHER_ADDRESS}" "Resolver Pu
 ENDPOINT_BALANCE="$(require_balance "${ENDPOINT_MANAGER_ADDRESS}" "Endpoint Manager" 5000000000000000)"
 REVOKER_BALANCE="$(require_balance "${REVOKER_ADDRESS}" Revoker 5000000000000000)"
 
-require_var ISSUER_PRIVATE_KEY_FILE
-require_var ISSUER_PUBLIC_KEY_FILE
-require_private_file "${ISSUER_PRIVATE_KEY_FILE}" "Issuer private key"
-[[ -f "${ISSUER_PUBLIC_KEY_FILE}" ]] || die "Issuer public key file does not exist"
-require_var RI_UNSIGNED_IDENTITIES_SOURCE
-[[ -f "${RI_UNSIGNED_IDENTITIES_SOURCE}" ]] || die "real unsigned identity source is absent"
+IDENTITY_INPUTS_VALIDATED=false
+if [[ "${PREFLIGHT_SCOPE}" == "full" ]]; then
+  require_var ISSUER_PRIVATE_KEY_FILE
+  require_var ISSUER_PUBLIC_KEY_FILE
+  require_private_file "${ISSUER_PRIVATE_KEY_FILE}" "Issuer private key"
+  [[ -f "${ISSUER_PUBLIC_KEY_FILE}" ]] || die "Issuer public key file does not exist"
+  require_var RI_UNSIGNED_IDENTITIES_SOURCE
+  [[ -f "${RI_UNSIGNED_IDENTITIES_SOURCE}" ]] || die "real unsigned identity source is absent"
+  IDENTITY_INPUTS_VALIDATED=true
+fi
 
 jq -n \
   --arg checked_at "$(utc_now)" \
   --arg git_commit "$(git -C "${REPO_ROOT}" rev-parse HEAD)" \
   --argjson source_tree_clean "$(source_tree_clean && printf true || printf false)" \
+  --arg scope "${PREFLIGHT_SCOPE}" \
+  --argjson identity_inputs_validated "${IDENTITY_INPUTS_VALIDATED}" \
   --argjson chain_id "${CHAIN_ID}" \
   --arg primary_rpc_host "${PRIMARY_RPC_HOST}" \
   --arg verification_rpc_host "${VERIFY_RPC_HOST}" \
@@ -68,6 +86,7 @@ jq -n \
   --arg revoker_balance_wei "${REVOKER_BALANCE}" \
   '{
     checked_at:$checked_at,git_commit:$git_commit,source_tree_clean:$source_tree_clean,
+    scope:$scope,identity_inputs_validated:$identity_inputs_validated,
     network_name:"ethereum-sepolia",
     chain_id:$chain_id,
     primary_rpc_host:$primary_rpc_host,
@@ -90,4 +109,4 @@ jq -n \
     }
   }' | write_json_atomic "${SEPOLIA_DEPLOYMENTS}/preflight.json"
 
-log "preflight passed for chain ${CHAIN_ID}; no secret value was written to the manifest"
+log "${PREFLIGHT_SCOPE} preflight passed for chain ${CHAIN_ID}; no secret value was written to the manifest"

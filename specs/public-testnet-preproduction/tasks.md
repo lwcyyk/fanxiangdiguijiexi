@@ -34,8 +34,8 @@
 
 ## 真实 Sepolia 部署
 
-- [ ] 操作者提供两个独立 HTTPS RPC。
-- [ ] 操作者提供六类签名能力、余额和相互独立的地址。
+- [x] 操作者提供两个独立 HTTPS RPC。
+- [x] 操作者提供六类签名能力、余额和相互独立的地址。
 - [ ] 操作者提供 Issuer 密钥和真实 DNS/Agent 身份参数。
 - [ ] 部署 Registry 并等待 finalized。
 - [ ] 使用双 RPC 核验 Chain ID、bytecode、code hash 和 finalized hash。
@@ -57,5 +57,6 @@
 - [ ] 生成最终部署清单和验收证据索引。
 - [ ] 确认 Git 中不存在秘密。
 
-> 当前真实写链阻断：所有要求的环境变量均未提供，且没有真实 DNS/Agent
-> 身份输入。工程准备和测试继续执行；上述部署项不得虚假勾选。
+> 当前身份发布阻断：Issuer 密钥已生成，但仍缺少真实 DNS Endpoint、Agent
+> 地址和 Agent 公钥。Registry 部署与角色拆分可通过 `--registry-only` 预检先行；
+> 身份发布、Registry Sync 和 DNS 全路径验收不得虚假勾选。

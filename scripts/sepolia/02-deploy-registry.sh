@@ -17,6 +17,9 @@ source_tree_clean || die "tracked source or untracked implementation files are n
   die "preflight evidence targets another Git commit"
 [[ "$(jq -r '.source_tree_clean' "${SEPOLIA_DEPLOYMENTS}/preflight.json")" == "true" ]] ||
   die "preflight was not executed from a clean source tree"
+PREFLIGHT_SCOPE="$(jq -er '.scope' "${SEPOLIA_DEPLOYMENTS}/preflight.json")"
+[[ "${PREFLIGHT_SCOPE}" == "full" || "${PREFLIGHT_SCOPE}" == "registry-only" ]] ||
+  die "preflight scope does not authorize Registry deployment"
 require_var GOVERNANCE_ADDRESS
 validate_address "${GOVERNANCE_ADDRESS}" GOVERNANCE_ADDRESS
 DEPLOYER_ADDRESS="$(signer_address_for DEPLOYER)"
