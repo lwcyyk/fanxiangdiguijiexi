@@ -31,8 +31,10 @@ if [[ -f "${PUBLICATION_FILE}" ]]; then
   [[ "$(jq -er '.plan_hash' "${PUBLICATION_FILE}")" == "${PLAN_HASH}" ]] ||
     die "existing transaction evidence belongs to another plan"
   ALL_TRANSACTIONS="$(jq -c '.transactions' "${PUBLICATION_FILE}")"
+  COMPLETED_PHASES="$(jq -c '.completed_phases // []' "${PUBLICATION_FILE}")"
 else
   ALL_TRANSACTIONS='[]'
+  COMPLETED_PHASES='[]'
 fi
 
 run_phase() {
@@ -59,6 +61,10 @@ run_phase() {
     --argjson existing "${ALL_TRANSACTIONS}" \
     --argjson added "${stage_transactions}" \
     '$existing + $added | unique_by(.transaction_hash)')"
+  COMPLETED_PHASES="$(jq -cn \
+    --argjson existing "${COMPLETED_PHASES}" \
+    --arg phase "${phase}" \
+    '$existing + [$phase] | unique | sort')"
   jq -n \
     --arg schema_version registry-publication-transactions-v1 \
     --arg network_name ethereum-sepolia \
@@ -67,10 +73,11 @@ run_phase() {
     --arg plan_hash "${PLAN_HASH}" \
     --arg updated_at "$(utc_now)" \
     --argjson transactions "${ALL_TRANSACTIONS}" \
+    --argjson completed_phases "${COMPLETED_PHASES}" \
     '{
       schema_version:$schema_version,network_name:$network_name,chain_id:$chain_id,
       contract_address:$contract_address,plan_hash:$plan_hash,updated_at:$updated_at,
-      transactions:$transactions
+      completed_phases:$completed_phases,transactions:$transactions
     }' | write_json_atomic "${PUBLICATION_FILE}"
 }
 
@@ -80,4 +87,7 @@ run_phase unbind-endpoints ENDPOINT_MANAGER "${ENDPOINT_MANAGER_ADDRESS}" "${END
 run_phase bind-endpoints ENDPOINT_MANAGER "${ENDPOINT_MANAGER_ADDRESS}" "${ENDPOINT_ROLE}"
 run_phase revoke-removed REVOKER "${REVOKER_ADDRESS}" "${REVOKER_ROLE}"
 
+[[ "$(jq -c '.completed_phases | sort' "${PUBLICATION_FILE}")" ==
+  '["bind-endpoints","publish-resolvers","publish-root","revoke-removed","unbind-endpoints"]' ]] ||
+  die "publication evidence does not contain all five completed phases"
 log "all publication phases match the approved plan; receipts are archived"

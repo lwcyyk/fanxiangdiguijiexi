@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import ipaddress
 import json
@@ -15,6 +16,9 @@ import sys
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 COMPOSE_SOURCE = REPO_ROOT / "deploy/link/docker-compose.yml"
@@ -52,6 +56,41 @@ TLS_PRIVATE_FILES = (
     "trace-client.key",
     "agent-client.key",
 )
+REGISTRY_EVIDENCE_FILES = (
+    "registry_verification_file",
+    "roles_file",
+    "registry_plan_file",
+    "publication_transactions_file",
+)
+REGISTRY_EVIDENCE_TARGETS = {
+    "registry_verification_file": "verification.json",
+    "roles_file": "roles.json",
+    "registry_plan_file": "registry-plan-v2.json",
+    "publication_transactions_file": "publication-transactions.json",
+}
+REQUIRED_VERIFICATION_CHECKS = {
+    "chain_id_match",
+    "compiled_runtime_match",
+    "contract_address_match",
+    "deployment_block_hash_match",
+    "finalized_block_hash_match",
+    "runtime_bytecode_match",
+    "runtime_code_hash_match",
+}
+REQUIRED_ROLE_CHECKS = {
+    "block_hash_match",
+    "business_roles_split",
+    "deployer_has_no_roles",
+    "governance_business_roles_revoked",
+    "governance_default_admin",
+}
+REQUIRED_PUBLICATION_PHASES = {
+    "publish-root",
+    "publish-resolvers",
+    "unbind-endpoints",
+    "bind-endpoints",
+    "revoke-removed",
+}
 DOCUMENTATION_NETWORKS = tuple(
     ipaddress.ip_network(network)
     for network in (
@@ -61,9 +100,7 @@ DOCUMENTATION_NETWORKS = tuple(
         "2001:db8::/32",
     )
 )
-PLACEHOLDER_PATTERN = re.compile(
-    r"(?:<[^>]+>|example\.invalid|replace[_ -]?with|todo|changeme)", re.IGNORECASE
-)
+PLACEHOLDER_PATTERN = re.compile(r"(?:<[^>]+>|example\.invalid|replace[_ -]?with|todo|changeme)", re.IGNORECASE)
 IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$")
 PROJECT_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{1,62}$")
 GIT_COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
@@ -222,6 +259,24 @@ def _validate_material_file(path: Path, label: str) -> bytes:
     return content
 
 
+def _agent_public_key_from_private(content: bytes, label: str) -> str:
+    try:
+        private_raw = base64.b64decode(content, validate=True)
+        if len(private_raw) != 32:
+            raise ValueError("private key is not 32 bytes")
+        public_raw = (
+            Ed25519PrivateKey.from_private_bytes(private_raw)
+            .public_key()
+            .public_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PublicFormat.Raw,
+            )
+        )
+    except (ValueError, TypeError) as error:
+        raise InventoryError(f"{label} must be a base64-encoded raw 32-byte Ed25519 private key") from error
+    return base64.b64encode(public_raw).decode("ascii")
+
+
 def _parse_upstream(value: Any, label: str) -> tuple[str, str, int]:
     text = _strict_string(value, label)
     parsed = urlsplit(text)
@@ -243,7 +298,13 @@ def _template_shape(data: dict[str, Any]) -> None:
     _string(_required(release, "git_commit", "release"), "release.git_commit")
     _string(_required(release, "image", "release"), "release.image")
     registry = _mapping(_required(data, "registry", "inventory"), "registry")
-    for key in ("network_name", "rpc_url", "contract_address", "runtime_code_hash"):
+    for key in (
+        "network_name",
+        "rpc_url",
+        "verification_rpc_url",
+        "contract_address",
+        "runtime_code_hash",
+    ):
         _string(_required(registry, key, "registry"), f"registry.{key}")
     _integer(_required(registry, "chain_id", "registry"), "registry.chain_id", 1, 2**63 - 1)
     _integer(
@@ -259,7 +320,7 @@ def _template_shape(data: dict[str, Any]) -> None:
         86_400,
     )
     artifacts = _mapping(_required(data, "artifacts", "inventory"), "artifacts")
-    for key in ("identities_file", "issuer_keys_file"):
+    for key in ("identities_file", "issuer_keys_file", *REGISTRY_EVIDENCE_FILES):
         _string(_required(artifacts, key, "artifacts"), f"artifacts.{key}")
     hub = _mapping(_required(data, "hub", "inventory"), "hub")
     for key in (
@@ -338,6 +399,138 @@ def _template_shape(data: dict[str, Any]) -> None:
             _integer(_required(metrics, key, "metrics_ports"), f"metrics_ports.{key}", 1, 65535)
 
 
+def _all_checks_pass(value: Any, label: str, required_checks: set[str]) -> None:
+    checks = _mapping(value, label)
+    missing = required_checks - set(checks)
+    if missing:
+        raise InventoryError(f"{label} is missing: {', '.join(sorted(missing))}")
+    if any(checks[name] is not True for name in required_checks):
+        raise InventoryError(f"{label} contains an incomplete or failed check")
+
+
+def _successful_receipt(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and value.get("status") == 1
+        and HASH_PATTERN.fullmatch(str(value.get("transaction_hash", ""))) is not None
+        and HASH_PATTERN.fullmatch(str(value.get("block_hash", ""))) is not None
+        and isinstance(value.get("block_number"), int)
+        and value["block_number"] > 0
+    )
+
+
+def _validate_registry_evidence(
+    inventory: dict[str, Any],
+    identities: list[dict[str, Any]],
+    evidence_paths: dict[str, Path],
+) -> None:
+    from resolver_identity.crypto.hashes import object_hash
+    from tools.manage_v2_registry import load_plan
+
+    registry = inventory["registry"]
+    expected_chain = registry["chain_id"]
+    expected_address = registry["contract_address"].lower()
+    expected_code_hash = registry["runtime_code_hash"].lower()
+
+    verification = _mapping(
+        load_json(evidence_paths["registry_verification_file"]),
+        "registry verification evidence",
+    )
+    if (
+        verification.get("chain_id") != expected_chain
+        or str(verification.get("contract_address", "")).lower() != expected_address
+        or str(verification.get("runtime_code_hash", "")).lower() != expected_code_hash
+    ):
+        raise InventoryError("Registry verification evidence targets another deployment")
+    _all_checks_pass(
+        verification.get("checks"),
+        "registry verification checks",
+        REQUIRED_VERIFICATION_CHECKS,
+    )
+    if (
+        not isinstance(verification.get("finalized_block"), int)
+        or verification["finalized_block"] <= 0
+        or not HASH_PATTERN.fullmatch(str(verification.get("finalized_block_hash", "")))
+        or verification.get("primary_rpc_host") == verification.get("verification_rpc_host")
+    ):
+        raise InventoryError("Registry finalized verification evidence is incomplete")
+
+    roles = _mapping(load_json(evidence_paths["roles_file"]), "Registry role evidence")
+    if roles.get("chain_id") != expected_chain or str(roles.get("contract_address", "")).lower() != expected_address:
+        raise InventoryError("Registry role evidence targets another deployment")
+    role_addresses = [
+        _validate_nonzero_hex(roles.get(key), f"roles.{key}", ADDRESS_PATTERN)
+        for key in (
+            "governance_address",
+            "root_publisher_address",
+            "resolver_publisher_address",
+            "endpoint_manager_address",
+            "revoker_address",
+        )
+    ]
+    if len(set(role_addresses)) != len(role_addresses):
+        raise InventoryError("Registry role evidence reuses a role address")
+    role_transactions = _list(roles.get("transactions"), "roles.transactions")
+    if len(role_transactions) < 8 or any(not _successful_receipt(item) for item in role_transactions):
+        raise InventoryError("Registry role transaction evidence is incomplete")
+    finalized_roles = _mapping(roles.get("finalized_verification"), "roles.finalized_verification")
+    if (
+        finalized_roles.get("admin_count") != 1
+        or not isinstance(finalized_roles.get("block_number"), int)
+        or finalized_roles["block_number"] <= 0
+        or not HASH_PATTERN.fullmatch(str(finalized_roles.get("block_hash", "")))
+        or finalized_roles.get("primary_rpc_host") == finalized_roles.get("verification_rpc_host")
+    ):
+        raise InventoryError("finalized Registry role evidence is incomplete")
+    _all_checks_pass(
+        finalized_roles.get("checks"),
+        "finalized role checks",
+        REQUIRED_ROLE_CHECKS,
+    )
+
+    plan_payload = _mapping(load_json(evidence_paths["registry_plan_file"]), "Registry publication plan")
+    plan_hash = _validate_nonzero_hex(plan_payload.get("plan_hash"), "plan.plan_hash", HASH_PATTERN)
+    try:
+        plan = load_plan(evidence_paths["registry_plan_file"], plan_hash)
+    except (OSError, TypeError, ValueError) as error:
+        raise InventoryError(f"Registry publication plan is invalid: {error}") from error
+    target = _mapping(plan.get("target"), "plan.target")
+    if (
+        target.get("chain_id") != expected_chain
+        or str(target.get("contract_address", "")).lower() != expected_address
+        or str(target.get("contract_code_hash", "")).lower() != expected_code_hash
+    ):
+        raise InventoryError("Registry publication plan targets another deployment")
+    _validate_nonzero_hex(plan.get("state_root"), "plan.state_root", HASH_PATTERN)
+
+    entries = _list(plan.get("entries"), "plan.entries")
+    entries_by_server = {_string(entry.get("server_id"), "plan entry server_id"): entry for entry in entries if isinstance(entry, dict)}
+    identities_by_server = {identity["server_id"]: identity for identity in identities}
+    if len(entries_by_server) != len(entries) or set(entries_by_server) != set(identities_by_server):
+        raise InventoryError("publication plan identity set differs from signed identities")
+    for server_id, identity in identities_by_server.items():
+        if entries_by_server[server_id].get("object_hash") != object_hash(identity):
+            raise InventoryError(f"publication plan object hash differs for identity {server_id}")
+
+    publication = _mapping(
+        load_json(evidence_paths["publication_transactions_file"]),
+        "Registry publication transactions",
+    )
+    if (
+        publication.get("schema_version") != "registry-publication-transactions-v1"
+        or publication.get("chain_id") != expected_chain
+        or str(publication.get("contract_address", "")).lower() != expected_address
+        or str(publication.get("plan_hash", "")).lower() != plan_hash
+    ):
+        raise InventoryError("Registry publication transaction evidence is inconsistent")
+    completed_phase_list = _list(publication.get("completed_phases"), "publication.completed_phases")
+    if len(completed_phase_list) != len(REQUIRED_PUBLICATION_PHASES) or set(completed_phase_list) != REQUIRED_PUBLICATION_PHASES:
+        raise InventoryError("Registry publication phases are incomplete")
+    publication_transactions = _list(publication.get("transactions"), "publication.transactions")
+    if not publication_transactions or any(not _successful_receipt(item) for item in publication_transactions):
+        raise InventoryError("Registry publication transaction receipts are incomplete")
+
+
 def validate_inventory(data: Any, *, template: bool = False, check_materials: bool = True) -> dict[str, Any]:
     inventory = _mapping(data, "inventory")
     _template_shape(inventory)
@@ -359,17 +552,19 @@ def validate_inventory(data: Any, *, template: bool = False, check_materials: bo
     chain_id = _integer(registry["chain_id"], "registry.chain_id", 1, 2**63 - 1)
     if chain_id == 1 or network_name.lower() in {"mainnet", "ethereum-mainnet"}:
         raise InventoryError("Ethereum Mainnet is forbidden")
-    _validate_https_url(registry["rpc_url"], "registry.rpc_url")
+    primary_rpc_url = _validate_https_url(registry["rpc_url"], "registry.rpc_url")
+    verification_rpc_url = _validate_https_url(registry["verification_rpc_url"], "registry.verification_rpc_url")
+    primary_rpc_host = urlsplit(primary_rpc_url).hostname
+    verification_rpc_host = urlsplit(verification_rpc_url).hostname
+    if primary_rpc_host == verification_rpc_host:
+        raise InventoryError("Registry RPC hosts must be independent")
     _validate_nonzero_hex(registry["contract_address"], "registry.contract_address", ADDRESS_PATTERN)
     _validate_nonzero_hex(registry["runtime_code_hash"], "registry.runtime_code_hash", HASH_PATTERN)
 
     artifacts = _mapping(inventory["artifacts"], "artifacts")
-    identities_path = _validate_path(
-        artifacts["identities_file"], "artifacts.identities_file", must_exist=check_materials
-    )
-    issuer_keys_path = _validate_path(
-        artifacts["issuer_keys_file"], "artifacts.issuer_keys_file", must_exist=check_materials
-    )
+    identities_path = _validate_path(artifacts["identities_file"], "artifacts.identities_file", must_exist=check_materials)
+    issuer_keys_path = _validate_path(artifacts["issuer_keys_file"], "artifacts.issuer_keys_file", must_exist=check_materials)
+    evidence_paths = {key: _validate_path(artifacts[key], f"artifacts.{key}", must_exist=check_materials) for key in REGISTRY_EVIDENCE_FILES}
 
     hub = _mapping(inventory["hub"], "hub")
     for key in ("management_host", "operations_host", "test_client_host", "backup_target"):
@@ -379,14 +574,17 @@ def validate_inventory(data: Any, *, template: bool = False, check_materials: bo
 
     identity_by_server: dict[str, dict[str, Any]] = {}
     if check_materials:
-        for index, raw_identity in enumerate(
-            _load_verified_identities(identities_path, issuer_keys_path)
-        ):
+        for index, raw_identity in enumerate(_load_verified_identities(identities_path, issuer_keys_path)):
             identity = _mapping(raw_identity, f"verified identities[{index}]")
             server_id = _string(identity.get("server_id"), f"identities[{index}].server_id")
             if server_id in identity_by_server:
                 raise InventoryError(f"duplicate identity server_id: {server_id}")
             identity_by_server[server_id] = identity
+        _validate_registry_evidence(
+            inventory,
+            list(identity_by_server.values()),
+            evidence_paths,
+        )
 
     seen_values: dict[str, set[str]] = {
         "unit_id": set(),
@@ -409,9 +607,7 @@ def validate_inventory(data: Any, *, template: bool = False, check_materials: bo
         if role not in {"entry", "upstream"}:
             raise InventoryError(f"{prefix}.role must be entry or upstream")
         hostname = _validate_identifier(unit["hostname"], f"{prefix}.hostname", IDENTIFIER_PATTERN)
-        project = _validate_identifier(
-            unit["compose_project"], f"{prefix}.compose_project", PROJECT_PATTERN
-        )
+        project = _validate_identifier(unit["compose_project"], f"{prefix}.compose_project", PROJECT_PATTERN)
         mode = _strict_string(unit["verification_mode"], f"{prefix}.verification_mode")
         if mode not in {"public-hybrid", "controlled-strict"}:
             raise InventoryError(f"{prefix}.verification_mode is unsupported")
@@ -419,25 +615,15 @@ def validate_inventory(data: Any, *, template: bool = False, check_materials: bo
         key_id = _strict_string(unit["agent_key_id"], f"{prefix}.agent_key_id")
         management_ip = _validate_ip(unit["management_ip"], f"{prefix}.management_ip")
         wrapper_ip = _validate_ip(unit["wrapper_ip"], f"{prefix}.wrapper_ip")
-        agent_bind = _validate_ip(
-            unit["agent_bind_address"], f"{prefix}.agent_bind_address", allow_loopback=True
-        )
-        metrics_bind = _validate_ip(
-            unit["metrics_bind_address"], f"{prefix}.metrics_bind_address", allow_loopback=True
-        )
+        agent_bind = _validate_ip(unit["agent_bind_address"], f"{prefix}.agent_bind_address", allow_loopback=True)
+        metrics_bind = _validate_ip(unit["metrics_bind_address"], f"{prefix}.metrics_bind_address", allow_loopback=True)
         trace_socket = _strict_string(unit["trace_socket_host_dir"], f"{prefix}.trace_socket_host_dir")
-        if not Path(trace_socket).is_absolute() or not trace_socket.startswith(
-            "/run/resolver-identity/"
-        ):
-            raise InventoryError(
-                f"{prefix}.trace_socket_host_dir must be under /run/resolver-identity"
-            )
+        if not Path(trace_socket).is_absolute() or not trace_socket.startswith("/run/resolver-identity/"):
+            raise InventoryError(f"{prefix}.trace_socket_host_dir must be under /run/resolver-identity")
         remote_root = _strict_string(unit["remote_release_root"], f"{prefix}.remote_release_root")
         if not Path(remote_root).is_absolute():
             raise InventoryError(f"{prefix}.remote_release_root must be absolute")
-        shadow_test_name = _strict_string(
-            unit["shadow_test_name"], f"{prefix}.shadow_test_name"
-        )
+        shadow_test_name = _strict_string(unit["shadow_test_name"], f"{prefix}.shadow_test_name")
         if not re.fullmatch(
             r"(?=.{1,253}\.?$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}\.?",
             shadow_test_name,
@@ -493,9 +679,7 @@ def validate_inventory(data: Any, *, template: bool = False, check_materials: bo
         upstreams = _list(unit["resolver_upstreams"], f"{prefix}.resolver_upstreams")
         transports: set[str] = set()
         for upstream_index, upstream_value in enumerate(upstreams):
-            upstream, upstream_host, _ = _parse_upstream(
-                upstream_value, f"{prefix}.resolver_upstreams[{upstream_index}]"
-            )
+            upstream, upstream_host, _ = _parse_upstream(upstream_value, f"{prefix}.resolver_upstreams[{upstream_index}]")
             transports.add(urlsplit(upstream).scheme)
             if upstream_host == wrapper_ip:
                 raise InventoryError(f"{prefix} resolver upstream points back to the Wrapper")
@@ -518,9 +702,7 @@ def validate_inventory(data: Any, *, template: bool = False, check_materials: bo
                 f"identity {server_id}.agent.service_url",
             )
 
-            material_dir = Path(
-                _strict_string(unit["private_material_dir"], f"{prefix}.private_material_dir")
-            ).expanduser()
+            material_dir = Path(_strict_string(unit["private_material_dir"], f"{prefix}.private_material_dir")).expanduser()
             if not material_dir.is_absolute():
                 raise InventoryError(f"{prefix}.private_material_dir must be absolute")
             if material_dir.is_symlink():
@@ -531,19 +713,17 @@ def validate_inventory(data: Any, *, template: bool = False, check_materials: bo
                     material_dir / "secrets" / secret_name,
                     f"{prefix} {secret_name}",
                 )
+                if secret_name == "agent_private_key":
+                    actual_public_key = _agent_public_key_from_private(content, f"{prefix} agent_private_key")
+                    if actual_public_key != agent.get("public_key"):
+                        raise InventoryError(f"{prefix} agent_private_key does not match its signed identity")
                 digest = hashlib.sha256(content).hexdigest()
                 unit_secret_digests[secret_name] = digest
                 previous = secret_digests.get(digest)
                 if previous:
                     previous_link, previous_name, previous_label = previous
-                    if (
-                        secret_name != "agent_peer_token"
-                        or previous_name != "agent_peer_token"
-                        or previous_link != link_id
-                    ):
-                        raise InventoryError(
-                            f"{prefix} reuses secret material from {previous_label}"
-                        )
+                    if secret_name != "agent_peer_token" or previous_name != "agent_peer_token" or previous_link != link_id:
+                        raise InventoryError(f"{prefix} reuses secret material from {previous_label}")
                 else:
                     secret_digests[digest] = (
                         link_id,
@@ -559,9 +739,7 @@ def validate_inventory(data: Any, *, template: bool = False, check_materials: bo
                 )
                 digest = hashlib.sha256(content).hexdigest()
                 if digest in tls_key_digests:
-                    raise InventoryError(
-                        f"{prefix} reuses a TLS private key from {tls_key_digests[digest]}"
-                    )
+                    raise InventoryError(f"{prefix} reuses a TLS private key from {tls_key_digests[digest]}")
                 tls_key_digests[digest] = f"{unit_id}/{private_name}"
             for tls_name in TLS_FILES:
                 path = material_dir / "tls" / tls_name
@@ -602,9 +780,7 @@ def _env_lines(inventory: dict[str, Any], unit: dict[str, Any]) -> list[str]:
         "",
         _env_assignment("RI_WEB3_RPC_URL", registry["rpc_url"]),
         _env_assignment("RI_WEB3_CHAIN_ID", registry["chain_id"]),
-        _env_assignment(
-            "RI_REGISTRY_CONTRACT_ADDRESS", registry["contract_address"]
-        ),
+        _env_assignment("RI_REGISTRY_CONTRACT_ADDRESS", registry["contract_address"]),
         _env_assignment("RI_REGISTRY_CODE_HASH", registry["runtime_code_hash"]),
         "RI_REGISTRY_POLL_INTERVAL_MS=2000",
         _env_assignment(
@@ -631,13 +807,9 @@ def _env_lines(inventory: dict[str, Any], unit: dict[str, Any]) -> list[str]:
         _env_assignment("AGENT_PORT", unit["agent_port"]),
         _env_assignment("METRICS_BIND_ADDRESS", unit["metrics_bind_address"]),
         _env_assignment("METRICS_PORT", metrics["wrapper"]),
-        _env_assignment(
-            "REGISTRY_METRICS_BIND_ADDRESS", unit["metrics_bind_address"]
-        ),
+        _env_assignment("REGISTRY_METRICS_BIND_ADDRESS", unit["metrics_bind_address"]),
         _env_assignment("REGISTRY_METRICS_PORT", metrics["registry"]),
-        _env_assignment(
-            "TRACE_METRICS_BIND_ADDRESS", unit["metrics_bind_address"]
-        ),
+        _env_assignment("TRACE_METRICS_BIND_ADDRESS", unit["metrics_bind_address"]),
         _env_assignment("TRACE_METRICS_PORT", metrics["trace"]),
         "RI_DOCKER_LOG_MAX_SIZE=50m",
         "RI_DOCKER_LOG_MAX_FILES=5",
@@ -649,12 +821,8 @@ def _env_lines(inventory: dict[str, Any], unit: dict[str, Any]) -> list[str]:
         _env_assignment("RI_FIELD_COMPOSE_PROJECT", unit["compose_project"]),
         _env_assignment("RI_FIELD_RELEASE_ROOT", unit["remote_release_root"]),
         _env_assignment("RI_FIELD_AGENT_SERVICE_URL", unit["_agent_service_url"]),
-        _env_assignment(
-            "RI_FIELD_AGENT_TLS_SERVER_NAME", unit["_agent_tls_server_name"]
-        ),
-        _env_assignment(
-            "RI_FIELD_AGENT_SERVICE_PORT", unit["_agent_service_port"]
-        ),
+        _env_assignment("RI_FIELD_AGENT_TLS_SERVER_NAME", unit["_agent_tls_server_name"]),
+        _env_assignment("RI_FIELD_AGENT_SERVICE_PORT", unit["_agent_service_port"]),
         _env_assignment("RI_FIELD_SHADOW_TEST_NAME", unit["shadow_test_name"]),
         _env_assignment("RI_FIELD_ROLLBACK_TARGET", unit["rollback_target"]),
     ]
@@ -676,11 +844,7 @@ def _file_sha256(path: Path) -> str:
 
 
 def _write_hash_manifest(bundle: Path) -> None:
-    files = sorted(
-        path
-        for path in bundle.rglob("*")
-        if path.is_file() and path.relative_to(bundle).as_posix() != "metadata/SHA256SUMS"
-    )
+    files = sorted(path for path in bundle.rglob("*") if path.is_file() and path.relative_to(bundle).as_posix() != "metadata/SHA256SUMS")
     lines = [f"{_file_sha256(path)}  {path.relative_to(bundle).as_posix()}" for path in files]
     target = bundle / "metadata/SHA256SUMS"
     target.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -688,11 +852,7 @@ def _write_hash_manifest(bundle: Path) -> None:
 
 
 def render_bundles(inventory: dict[str, Any], output_root: Path, *, force: bool = False) -> list[Path]:
-    site_root = (
-        output_root.expanduser().resolve()
-        / inventory["site_id"]
-        / inventory["release"]["git_commit"][:12]
-    )
+    site_root = output_root.expanduser().resolve() / inventory["site_id"] / inventory["release"]["git_commit"][:12]
     site_root.mkdir(parents=True, exist_ok=True)
     rendered: list[Path] = []
     for unit in inventory["units"]:
@@ -706,6 +866,7 @@ def render_bundles(inventory: dict[str, Any], output_root: Path, *, force: bool 
             shutil.rmtree(bundle)
         (bundle / "deploy/link/secrets").mkdir(parents=True)
         (bundle / "deploy/link/tls").mkdir(parents=True)
+        (bundle / "deploy/registry-evidence").mkdir(parents=True)
         (bundle / "metadata").mkdir(parents=True)
         (bundle / "scripts").mkdir(parents=True)
         marker.write_text("resolver-identity-field-bundle-v1\n", encoding="ascii")
@@ -722,6 +883,12 @@ def render_bundles(inventory: dict[str, Any], output_root: Path, *, force: bool 
             bundle / "deploy/issuer-keys.json",
             0o444,
         )
+        for evidence_key, evidence_name in REGISTRY_EVIDENCE_TARGETS.items():
+            _copy_file(
+                Path(inventory["artifacts"][evidence_key]),
+                bundle / "deploy/registry-evidence" / evidence_name,
+                0o444,
+            )
         material_dir = Path(unit["private_material_dir"])
         for name in SECRET_FILES:
             _copy_file(material_dir / "secrets" / name, bundle / "deploy/link/secrets" / name, 0o400)
@@ -745,6 +912,8 @@ def render_bundles(inventory: dict[str, Any], output_root: Path, *, force: bool 
         )
 
         rpc_host = urlsplit(inventory["registry"]["rpc_url"]).hostname
+        verification_rpc_host = urlsplit(inventory["registry"]["verification_rpc_url"]).hostname
+        plan = load_json(Path(inventory["artifacts"]["registry_plan_file"]))
         metadata = {
             "schema_version": 1,
             "site_id": inventory["site_id"],
@@ -754,8 +923,11 @@ def render_bundles(inventory: dict[str, Any], output_root: Path, *, force: bool 
             "network_name": inventory["registry"]["network_name"],
             "chain_id": inventory["registry"]["chain_id"],
             "rpc_host": rpc_host,
+            "verification_rpc_host": verification_rpc_host,
             "contract_address": inventory["registry"]["contract_address"],
             "runtime_code_hash": inventory["registry"]["runtime_code_hash"],
+            "plan_hash": plan["plan_hash"],
+            "state_root": plan["state_root"],
             "link_id": unit["link_id"],
             "unit_id": unit["unit_id"],
             "unit_role": unit["role"],
@@ -794,9 +966,7 @@ def verify_bundle(bundle: Path) -> None:
             raise InventoryError(f"unsafe SHA256SUMS path on line {line_number}")
         expected[relative] = digest
     actual_files = {
-        path.relative_to(bundle).as_posix()
-        for path in bundle.rglob("*")
-        if path.is_file() and path.relative_to(bundle).as_posix() != "metadata/SHA256SUMS"
+        path.relative_to(bundle).as_posix() for path in bundle.rglob("*") if path.is_file() and path.relative_to(bundle).as_posix() != "metadata/SHA256SUMS"
     }
     if actual_files != set(expected):
         raise InventoryError("bundle file set differs from SHA256SUMS")

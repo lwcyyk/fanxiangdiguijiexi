@@ -13,6 +13,8 @@
 - [x] 实现占位值、Mainnet、零地址、文档 IP 和 upstream 回路拒绝
 - [x] 实现 unit/project/server ID/Socket/端口唯一性校验
 - [x] 实现秘密权限和跨链路复用检查
+- [x] 实现 Agent 私钥与签名 identity 公钥一致性检查
+- [x] 实现双 RPC、角色、发布计划和五阶段交易证据绑定
 - [x] 实现每个链路单元的独立运行包生成
 - [x] 实现运行包 SHA-256 清单和二次核验
 - [x] 为校验器和生成器增加单元测试
@@ -21,9 +23,12 @@
 
 - [x] 增加现场预检脚本
 - [x] 增加运行包渲染和验证脚本
+- [x] 增加双 RPC 共同 finalized、高度哈希、bytecode 和实时角色复核
+- [x] 增加 TLS CA 链、密钥配对和 Agent service URL SAN 检查
 - [x] 增加链路主机本地安装脚本
 - [x] 增加 Registry Sync → Agent/Trace → Wrapper 分阶段启动脚本
 - [x] 增加 readiness、SQLite 和 UDP/TCP Shadow 验收脚本
+- [x] 增加 SQLite chain/address/hash、Root、identity 和 Endpoint 二次核验
 - [x] 增加跨链路隔离测试脚本
 - [x] 增加 SQLite 在线备份和隔离恢复演练脚本
 - [x] 增加基于现场目标的容量测试脚本
@@ -58,7 +63,8 @@
 
 - [ ] 获得真实服务器/IP/VIP/Resolver/SSH 清单
 - [ ] 获得真实 TLS、Agent 私钥、三类 Token 和身份制品
-- [ ] 完成公共测试网 Registry、角色和身份发布
+- [x] 完成公共测试网 Registry 部署、双 RPC finalized 核验和角色拆分
+- [ ] 完成真实 Root、Resolver identity 和 Endpoint 五阶段发布
 - [ ] 在 Hub 安装镜像、监控、日志和备份目标
 - [ ] 部署 L01 并接入真实 Resolver Trace
 - [ ] 完成 L01 正向、负向、容量、备份恢复和回滚
@@ -66,5 +72,5 @@
 - [ ] 按 1% → 10% → 50% → 100% 切流
 - [ ] 建设每条链路 A/B 完整单元
 
-> G 组任务只有获得真实现场连接、证书、身份和网络输入后才能完成；本地不得用
-> 示例值勾选。
+> Sepolia Registry 和角色已经有真实链上证据。其余 G 组任务只有获得真实现场
+> 连接、DNS/Agent identity、证书和网络输入后才能完成；本地不得用示例值勾选。

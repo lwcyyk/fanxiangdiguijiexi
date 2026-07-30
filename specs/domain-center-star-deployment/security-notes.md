@@ -58,6 +58,11 @@ Trace、Agent、Registry freshness、identity、Root、Endpoint、DNSSEC 或证�
 
 ## 6. 预发布差距
 
+- Sepolia Registry 和角色拆分已完成，但 Root、Resolver identity 和 Endpoint
+  尚未发布；
+- 免费公共 Sepolia RPC 在 2026-07-30 的重复复核中出现间歇性 TLS EOF/HTTP 500；
+  现场必须使用两家独立、有容量与告警保障的只读 RPC，预检只做有界重试并在超限后
+  失败关闭；
 - Sepolia 不等同于生产联盟链或 Ethereum Mainnet；
 - 测试网 Governance EOA 不等同于生产多签；
 - 公共 DNS 服务 identity 不证明某一 Anycast 物理实例；

@@ -83,7 +83,8 @@ identity 证明服务边界，不证明某个物理服务器。
 
 | 里程碑 | 完成标准 |
 | --- | --- |
-| M1 | 公共 EVM 测试网 Registry、五类角色、Root/identity/Endpoint 发布完成 |
+| M1a | 公共 EVM 测试网 Registry、双 RPC 核验和五类角色拆分完成 |
+| M1b | 真实 Root、identity、Endpoint 五阶段发布完成 |
 | M2 | Hub 镜像、制品、只读 RPC、监控、日志和备份完成 |
 | M3 | L01 安装、Registry Sync 和 SQLite 核验完成 |
 | M4 | L01 真实 Resolver Trace 和完整 Shadow 验收完成 |
@@ -181,7 +182,7 @@ Wrapper 和 R1 不能同时监听同一 IP 的 UDP/TCP 53。
 | --- | --- |
 | 发布 | Git commit、版本、镜像 digest、变更单 |
 | 链路 | link/unit、R1/R2 软件、监听、转发、终止边界 |
-| EVM | 两个 HTTPS RPC、chain、Registry、runtime code hash、finality |
+| EVM | 两个独立且有容量保障的 HTTPS RPC、chain、Registry、runtime code hash、finality |
 | identity | server/operator/role、Endpoint、Agent URL/公钥、有效期 |
 | 网络 | Wrapper、R1/R2、管理网、监控、日志、堡垒机、防火墙 |
 | 恢复 | 原 DNS 入口、切回权限、批准 RTO |
@@ -267,7 +268,15 @@ python3 tools/manage_field_deployment.py validate \
 ```
 
 正式校验会拒绝 Mainnet、占位值、零地址、文档 IP、移动镜像标签、回路、端口冲突、
-identity 不匹配、秘密权限过宽和跨链路复用。
+identity 不匹配、秘密权限过宽和跨链路复用。它还会验证两个 RPC 主机不同、
+Agent 私钥确实对应签名 identity 公钥，并把以下四份只读证据绑定到运行包：
+
+```text
+deployments/sepolia/verification.json
+deployments/sepolia/roles.json
+deployments/sepolia/registry-plan-v2.json
+deployments/sepolia/publication-transactions.json
+```
 
 ## 3.6 停止条件
 
@@ -310,18 +319,38 @@ scripts/sepolia/10-acceptance-test.sh
 
 `initialAdmin` 必须是 Governance，不是链路服务器或临时个人地址。
 
+截至 2026-07-30，Registry 合约和角色拆分已经在真实 Sepolia 完成，不是本地链或
+Mock 结果：
+
+| 项目 | 已核验值 |
+| --- | --- |
+| 网络 / chain ID | Ethereum Sepolia / `11155111` |
+| Registry | `0x519c70babf33771b8e87c22fd3e2e1b1092e1e2a` |
+| runtime code hash | `0x3ff1c0bc964b2751a4006fa9bc54f8a1e1bb04872f62fabaf3eef52132e0a2d3` |
+| 部署交易 | `0x1c84f14dc9be0ad4ed1eb36f41142761773a81eb6b0c31c8cba16b5205884918` |
+| 部署区块 | `11380297` |
+| 合约双 RPC finalized 核验 | `11380319` |
+| 角色双 RPC finalized 核验 | `11380411` |
+
+完整非秘密证据位于 `deployments/sepolia/deployment.json`、
+`verification.json`、`roles.json` 和 `candidate-contract-verification.json`。
+此前提供的 `0x381766b18497993d153c76bF55004358E2238AEb` 经两个 RPC 核验没有
+runtime bytecode，因此被拒绝作为 Registry。
+
 ## 4.3 五类角色
 
 | 角色 | 持有者 |
 | --- | --- |
-| `DEFAULT_ADMIN_ROLE` | Governance 多签 |
-| `ROOT_PUBLISHER_ROLE` | Root Publisher |
-| `RESOLVER_PUBLISHER_ROLE` | Resolver Publisher |
-| `ENDPOINT_MANAGER_ROLE` | Endpoint Manager |
-| `REVOKER_ROLE` | 独立 Revoker |
+| `DEFAULT_ADMIN_ROLE` | `0xca8b5D8164c6ad43eFe98ceaAe96cFA1D44ee5f7` |
+| `ROOT_PUBLISHER_ROLE` | `0x127c49674026A1a9ae368B7585F342DDB8E65D50` |
+| `RESOLVER_PUBLISHER_ROLE` | `0x8959Ff0485436Cc64512B1dC7c569C67Af2e8D01` |
+| `ENDPOINT_MANAGER_ROLE` | `0x39D5FEe8762645b7d88a608AE1Db2c9e0aBAf706` |
+| `REVOKER_ROLE` | `0x12a5C884b930e3c2B53497aCCc88Dee23E7c08c9` |
 
 Governance 只保留 Admin；四个业务角色授予四个独立账户后，从 Governance 撤销。
-Deployer 不保留业务角色。使用第二 RPC 调用 `hasRole` 并保存全部交易哈希。
+Deployer 不保留业务角色。8 笔授权/撤权交易均成功，并已使用第二 RPC 调用
+`hasRole` 核验。当前预发布 Governance 是独立 EOA，不是生产多签；这是明确的
+预发布差距，正式生产必须更换为多签或等效治理签名器。
 
 ## 4.4 双 RPC 核验
 
@@ -340,6 +369,12 @@ cast keccak "${VERIFY_CODE}"
 ```
 
 chain ID、runtime bytecode、code hash 和 finalized block/hash 均一致才继续。
+
+现场 `site-inventory.json` 必须同时引用主 RPC 和核验 RPC。`00-preflight.sh` 会在
+两个 RPC 的共同 finalized 高度比较区块哈希和完整 runtime bytecode，不只比较
+部署脚本输出。RPC 请求采用有界重试，超过限制即失败关闭。2026-07-30 的免费公共
+RPC 重复复核中实际观察到间歇性 TLS EOF/HTTP 500，因此正式现场必须使用两家独立、
+有 SLA/容量额度和告警的只读 RPC；免费端点只适合临时诊断。
 
 ## 4.5 identity 和发布计划
 
@@ -372,6 +407,15 @@ bind-endpoints
 revoke-removed
 ```
 
+即使某阶段没有待执行对象，发布证据也必须记录该阶段已检查完成。只有
+`publication-transactions.json.completed_phases` 精确包含上述五个阶段，所有实际
+交易 receipt 成功，运行包校验才会放行。
+
+当前 Root、Resolver identity 和 Endpoint 尚未发布，因为缺少真实 DNS Endpoint、
+Agent HTTPS URL 和各 Agent Ed25519 公钥。不得用示例 IP、`example.invalid` 或零
+公钥补齐。因此当前可声明的是“Sepolia Registry 合约与角色拆分完成”，还不能声明
+“Sepolia Registry 和链上查询闭环完成”。
+
 ## 4.6 Hub 监控
 
 使用：
@@ -402,8 +446,9 @@ export RELEASE_ROOT="$PWD/deployments/field/private/<SITE>/<COMMIT12>"
 scripts/field/02-verify-bundles.sh "${RELEASE_ROOT}"
 ```
 
-每个 unit 得到独立 `.env`、identity、issuer keys、secret、TLS、Compose、脚本、
-metadata 和 `SHA256SUMS`。RPC 完整 URL只在私有 `.env` 中；metadata 只记录主机名。
+每个 unit 得到独立 `.env`、identity、issuer keys、secret、TLS、只读 Registry
+证据、Compose、脚本、metadata 和 `SHA256SUMS`。RPC 完整 URL 只在私有 `.env`
+中；metadata 只记录主机名。
 
 ## 5.2 受控传输
 
@@ -676,7 +721,8 @@ sudo "${CURRENT}/scripts/07-backup-link.sh" \
 ```
 
 脚本使用 SQLite online backup，保存 evidence、spool、私有运行配置、identity、
-issuer 公钥、unit metadata 和 SHA-256。
+issuer 公钥、TLS 公共证书、只读 Registry 证据、unit metadata 和 SHA-256。它不
+备份 Agent/TLS 私钥或 Token；这些材料必须由独立密钥托管和灾备流程恢复。
 
 恢复只在隔离目录演练：
 
@@ -732,8 +778,10 @@ specs/domain-center-star-deployment/acceptance-checklist.md
 - 峰值容量、在线备份、异机恢复和 VIP 回滚 RTO；
 - A/B 单元未共享 SQLite。
 
-只有全部有真实现场证据时，才能声明“域名中心星型多链路部署完成”。如果 Trace
-插件仍未接入，只能声明“Registry 与链上查询闭环完成”。
+只有全部有真实现场证据时，才能声明“域名中心星型多链路部署完成”。Root、
+identity、Endpoint、Registry Sync 和 SQLite 一致性均完成，但 Trace 插件仍未接入
+时，才能声明“Registry 与链上查询闭环完成”。目前只完成 Registry 合约和角色，
+不能使用后一表述。
 
 # 附录 A 防火墙矩阵
 

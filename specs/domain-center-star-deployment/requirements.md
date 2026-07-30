@@ -2,7 +2,7 @@
 
 状态：已批准执行
 
-基准提交：`1671b83457199e851b8f166f27a4568149ed7638`
+基准分支：`master`；每次发布必须另外批准并固定 40 位 Git commit
 
 实际工作分支：`main`（跟踪 `origin/master`）
 
@@ -41,13 +41,14 @@
 - 现场主机、VIP、Resolver 后端、堡垒机或防火墙；
 - 真实 mTLS 证书、Agent 私钥和三类 Token；
 - 真实 Resolver 内部 Trace 插件及其事件；
-- 真实公共 EVM 写交易、测试币和角色签名；
+- 尚未完成的 Root、Resolver identity、Endpoint 和撤销写交易；
 - 现场 Prometheus、日志平台、备份存储和告警接收人；
 - 现场峰值 QPS 和批准阈值；
 - 公共 Anycast 某个物理实例的硬件级身份。
 
-上述输入缺失时，必须继续完成本地实现和验证，但相应现场任务保持阻断，不得用
-示例 IP、虚假证书、模拟 Trace 或 Mock RPC 声称部署完成。
+Sepolia Registry 部署、双 RPC finalized 核验和五类角色拆分已经真实执行，证据在
+`deployments/sepolia/`。上述其余输入缺失时，必须继续完成本地实现和验证，但相应
+现场任务保持阻断，不得用示例 IP、虚假证书、模拟 Trace 或 Mock RPC 声称部署完成。
 
 ## 4. 必需输入
 
@@ -60,12 +61,14 @@
 
 ### 4.2 EVM 输入
 
-- 非 Mainnet 的 HTTPS 只读 RPC；
+- 两个由不同服务商提供的非 Mainnet HTTPS 只读 RPC；
+- 两路 RPC 应具备现场批准的可用性和限流额度，写入请求不得依赖免费公共端点；
 - 通过实际 RPC 获取的 chain ID；
 - 非零 Registry 地址和 finalized runtime code hash；
 - 已拆分的 Governance、Root Publisher、Resolver Publisher、Endpoint Manager、
   Revoker 地址；
-- 签名 identities、issuer 公钥和链上发布证据。
+- 签名 identities、issuer 公钥、不可变 Registry 发布计划和五阶段链上发布证据；
+- 双 RPC 验证结果、角色配置结果、发布计划和发布交易记录的文件路径。
 
 ### 4.3 每个链路单元输入
 
@@ -114,8 +117,10 @@ Compose 的 `service_started` 不能代替 readiness 门禁。
 - 清单字段缺失、重复或仍为占位值；
 - Git commit 与运行源码不一致；
 - 镜像不是 digest 引用；
-- chain ID 为 `1` 或与 Registry 证据不一致；
+- chain ID 为 `1`、两个 RPC 主机相同或与 Registry 证据不一致；
 - Registry 地址、code hash、identity、Root 或 Endpoint 核验失败；
+- 现场 Agent 私钥导出的公钥与签名 identity 中的公钥不一致；
+- Registry 计划哈希无效、五阶段发布记录不完整或发布交易失败；
 - 任意跨链路秘密复用或 endpoint/port 冲突；
 - TLS 私钥权限过宽、证书过期或密钥不匹配；
 - 任一 `/readyz` 失败；

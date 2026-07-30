@@ -303,10 +303,15 @@ jq -n \
 
 for evidence in \
   deployment.json verification.json roles.json registry-plan-v2.json \
-  registry-sync.json test-results.json acceptance-results.json; do
+  publication-transactions.json registry-sync.json test-results.json \
+  acceptance-results.json; do
   [[ -f "${SEPOLIA_DEPLOYMENTS}/${evidence}" ]] ||
     die "final manifest evidence is absent: ${evidence}"
 done
+[[ "$(jq -c '.completed_phases | sort' \
+  "${SEPOLIA_DEPLOYMENTS}/publication-transactions.json")" ==
+  '["bind-endpoints","publish-resolvers","publish-root","revoke-removed","unbind-endpoints"]' ]] ||
+  die "final manifest publication evidence is incomplete"
 
 jq -n \
   --slurpfile deployment "${SEPOLIA_DEPLOYMENTS}/deployment.json" \

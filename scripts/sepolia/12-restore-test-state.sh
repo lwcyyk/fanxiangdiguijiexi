@@ -25,6 +25,9 @@ if jq -e --arg server_id "${RI_REVOCATION_TEST_SERVER_ID}" \
 fi
 [[ "$(jq -er '.plan_hash' "${PLAN}")" == "$(jq -er '.plan_hash' "${PUBLICATION}")" ]] ||
   die "replacement plan has not completed all publication phases"
+[[ "$(jq -c '.completed_phases | sort' "${PUBLICATION}")" ==
+  '["bind-endpoints","publish-resolvers","publish-root","revoke-removed","unbind-endpoints"]' ]] ||
+  die "replacement publication evidence is incomplete"
 
 PYTHONPATH="${REPO_ROOT}/src" python3 "${REPO_ROOT}/tools/manage_v2_registry.py" verify-identities \
   --identities "${IDENTITIES}" \

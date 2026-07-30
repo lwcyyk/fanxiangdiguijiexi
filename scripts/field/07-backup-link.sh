@@ -25,6 +25,15 @@ field_run_root install -m 0444 \
   "${BUNDLE_ROOT}/deploy/issuer-keys.json" \
   "${BUNDLE_ROOT}/metadata/unit.json" \
   "${backup_dir}/"
+field_run_root install -d -o root -g root -m 0700 \
+  "${backup_dir}/tls-public" \
+  "${backup_dir}/registry-evidence"
+for certificate in "${TLS_DIR}"/*.crt; do
+  field_run_root install -m 0444 "${certificate}" "${backup_dir}/tls-public/"
+done
+for evidence in "${BUNDLE_ROOT}/deploy/registry-evidence/"*.json; do
+  field_run_root install -m 0444 "${evidence}" "${backup_dir}/registry-evidence/"
+done
 # $1 is intentionally evaluated by the privileged child shell.
 # shellcheck disable=SC2016
 field_run_root bash -c '
@@ -32,7 +41,8 @@ field_run_root bash -c '
   cd "$1"
   sha256sum \
     evidence-v2.db trace-spool.db runtime.env \
-    identities-v2.json issuer-keys.json unit.json >SHA256SUMS
+    identities-v2.json issuer-keys.json unit.json \
+    tls-public/*.crt registry-evidence/*.json >SHA256SUMS
   chmod 0600 SHA256SUMS
 ' _ "${backup_dir}"
 field_log "private online backup completed: ${backup_dir}"

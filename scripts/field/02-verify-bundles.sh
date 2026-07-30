@@ -53,9 +53,31 @@ while IFS= read -r -d '' bundle; do
     "${bundle}/deploy/link/tls/agent-client.key"
   (
     cd "${bundle}"
-    project="$(sed -n 's/^RI_FIELD_COMPOSE_PROJECT=//p' deploy/link/.env)"
+    set -a
+    # shellcheck disable=SC1091
+    source deploy/link/.env
+    set +a
+    openssl verify -CAfile deploy/link/tls/agent-ca.crt \
+      deploy/link/tls/agent.crt >/dev/null ||
+      field_die "Agent certificate does not chain to agent-ca.crt"
+    for client_certificate in \
+      wrapper-client.crt trace-client.crt agent-client.crt; do
+      openssl verify -CAfile deploy/link/tls/client-ca.crt \
+        "deploy/link/tls/${client_certificate}" >/dev/null ||
+        field_die "${client_certificate} does not chain to client-ca.crt"
+    done
+    if [[ "${RI_FIELD_AGENT_TLS_SERVER_NAME}" == *:* ||
+      "${RI_FIELD_AGENT_TLS_SERVER_NAME}" =~ ^[0-9.]+$ ]]; then
+      openssl x509 -checkip "${RI_FIELD_AGENT_TLS_SERVER_NAME}" \
+        -noout -in deploy/link/tls/agent.crt >/dev/null ||
+        field_die "Agent certificate SAN does not contain the service IP"
+    else
+      openssl x509 -checkhost "${RI_FIELD_AGENT_TLS_SERVER_NAME}" \
+        -noout -in deploy/link/tls/agent.crt >/dev/null ||
+        field_die "Agent certificate SAN does not contain the service host"
+    fi
     docker compose \
-      --project-name "${project}" \
+      --project-name "${RI_FIELD_COMPOSE_PROJECT}" \
       --env-file deploy/link/.env \
       -f deploy/link/docker-compose.yml \
       config --quiet

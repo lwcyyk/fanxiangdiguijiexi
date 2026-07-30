@@ -8,16 +8,21 @@
   },
   "registry": {
     "network_name": "sepolia",
-    "rpc_url": "https://<READ_ONLY_RPC>",
+    "rpc_url": "https://<PRIMARY_READ_ONLY_RPC>",
+    "verification_rpc_url": "https://<INDEPENDENT_VERIFY_RPC>",
     "chain_id": 11155111,
-    "contract_address": "0x<40_HEX_ADDRESS>",
-    "runtime_code_hash": "0x<64_HEX_RUNTIME_CODE_HASH>",
+    "contract_address": "0x519c70babf33771b8e87c22fd3e2e1b1092e1e2a",
+    "runtime_code_hash": "0x3ff1c0bc964b2751a4006fa9bc54f8a1e1bb04872f62fabaf3eef52132e0a2d3",
     "fallback_confirmations": 12,
     "max_staleness_seconds": 15
   },
   "artifacts": {
     "identities_file": "/secure/field/identities-v2.json",
-    "issuer_keys_file": "/secure/field/issuer-keys.json"
+    "issuer_keys_file": "/secure/field/issuer-keys.json",
+    "registry_verification_file": "/secure/field/verification.json",
+    "roles_file": "/secure/field/roles.json",
+    "registry_plan_file": "/secure/field/registry-plan-v2.json",
+    "publication_transactions_file": "/secure/field/publication-transactions.json"
   },
   "hub": {
     "management_host": "ri-hub-mgmt-01",

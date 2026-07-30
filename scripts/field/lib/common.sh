@@ -25,6 +25,24 @@ field_require_commands() {
   done
 }
 
+field_retry() {
+  local attempts="${RI_FIELD_RETRY_ATTEMPTS:-5}"
+  local delay_seconds="${RI_FIELD_RETRY_DELAY_SECONDS:-2}"
+  local attempt
+  [[ "${attempts}" =~ ^[1-9][0-9]*$ ]] ||
+    field_die "RI_FIELD_RETRY_ATTEMPTS must be a positive integer"
+  [[ "${delay_seconds}" =~ ^[0-9]+$ ]] ||
+    field_die "RI_FIELD_RETRY_DELAY_SECONDS must be a non-negative integer"
+  for ((attempt = 1; attempt <= attempts; attempt += 1)); do
+    if "$@"; then
+      return 0
+    fi
+    (( attempt < attempts )) && sleep "${delay_seconds}"
+  done
+  field_log "command failed after ${attempts} attempts: $1"
+  return 1
+}
+
 field_require_file() {
   [[ -f "$1" ]] || field_die "required file is missing: $1"
 }
@@ -120,6 +138,16 @@ field_sqlite() {
     sqlite3 "${database}" "$@"
   else
     field_run_root sqlite3 "${database}" "$@"
+  fi
+}
+
+field_sqlite_json() {
+  local database="$1"
+  shift
+  if [[ -r "${database}" ]]; then
+    sqlite3 -json "${database}" "$@"
+  else
+    field_run_root sqlite3 -json "${database}" "$@"
   fi
 }
 

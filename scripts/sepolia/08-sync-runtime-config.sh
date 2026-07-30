@@ -25,6 +25,9 @@ ISSUER_KEYS="${SEPOLIA_DEPLOYMENTS}/issuer-keys.json"
 PUBLICATION="${SEPOLIA_DEPLOYMENTS}/publication-transactions.json"
 [[ -f "${IDENTITIES}" && -f "${ISSUER_KEYS}" && -f "${PUBLICATION}" ]] ||
   die "successful identity publication evidence is required"
+[[ "$(jq -c '.completed_phases | sort' "${PUBLICATION}")" ==
+  '["bind-endpoints","publish-resolvers","publish-root","revoke-removed","unbind-endpoints"]' ]] ||
+  die "identity publication evidence does not contain all five phases"
 
 SEPOLIA_ENV="${REPO_ROOT}/deploy/link/.env.sepolia"
 SEPOLIA_IDENTITIES="${REPO_ROOT}/deploy/link/identities-v2.sepolia.json"

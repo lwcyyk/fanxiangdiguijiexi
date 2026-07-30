@@ -38,7 +38,8 @@ field_sqlite "${evidence_db}" \
   'SELECT chain_id,contract_address,contract_code_hash,finalized_block,finalized_block_hash,last_success_at FROM ri_v2_registry_snapshot;' \
   >"${output}/registry-snapshot.txt"
 field_sqlite "${evidence_db}" \
-  'SELECT server_id,status,object_version,valid_until FROM ri_v2_identities ORDER BY server_id;' \
+  'SELECT server_id,identity_hash,status,object_version,valid_until,registry_json
+     FROM ri_v2_identities ORDER BY server_id;' \
   >"${output}/identities.txt"
 field_sqlite "${trace_db}" \
   'SELECT COUNT(*) AS pending FROM trace_spool;

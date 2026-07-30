@@ -28,6 +28,51 @@ snapshot_count="$(
     'SELECT COUNT(*) FROM ri_v2_registry_snapshot;'
 )"
 (( snapshot_count == 1 )) || field_die "Registry snapshot is absent or ambiguous"
+snapshot_json="$(
+  field_sqlite_json "${evidence_mount}/evidence-v2.db" \
+    'SELECT chain_id,contract_address,contract_code_hash,finalized_block,
+            finalized_block_hash
+       FROM ri_v2_registry_snapshot;'
+)"
+jq -e \
+  --argjson chain_id "${RI_WEB3_CHAIN_ID}" \
+  --arg contract_address "${RI_REGISTRY_CONTRACT_ADDRESS,,}" \
+  --arg contract_code_hash "${RI_REGISTRY_CODE_HASH,,}" \
+  '
+    length == 1 and
+    .[0].chain_id == $chain_id and
+    (.[0].contract_address | ascii_downcase) == $contract_address and
+    (.[0].contract_code_hash | ascii_downcase) == $contract_code_hash and
+    .[0].finalized_block > 0 and
+    (.[0].finalized_block_hash | test("^0x[0-9a-fA-F]{64}$"))
+  ' <<<"${snapshot_json}" >/dev/null ||
+  field_die "Registry snapshot pins do not match the unit configuration"
+
+identity_json="$(
+  field_sqlite_json "${evidence_mount}/evidence-v2.db" \
+    'SELECT server_id,status,registry_json FROM ri_v2_identities;'
+)"
+jq -e \
+  --arg server_id "${RI_AGENT_SERVER_ID}" \
+  '
+    [.[] | select(.server_id == $server_id)] as $matches |
+    if ($matches | length) == 1 then
+      ($matches[0].registry_json | fromjson) as $registry |
+      $matches[0].status == "ACTIVE" and
+      $registry.resolver_status == "ACTIVE" and
+      $registry.root_status == "ACTIVE" and
+      $registry.endpoint_binding_status == "MATCHED"
+    else
+      false
+    end
+  ' <<<"${identity_json}" >/dev/null ||
+  field_die "local identity, Root, or Endpoint Registry state is not active and matched"
+
+endpoint_count="$(
+  field_sqlite "${evidence_mount}/evidence-v2.db" \
+    'SELECT COUNT(*) FROM ri_v2_endpoint_lookup;'
+)"
+(( endpoint_count > 0 )) || field_die "Registry endpoint lookup is empty"
 dead_letters="$(
   field_sqlite "${trace_mount}/trace-spool.db" \
     'SELECT COUNT(*) FROM trace_dead_letter;'

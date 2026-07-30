@@ -54,7 +54,9 @@ Issuer Ed25519 密钥与 EVM 交易密钥完全分离。Issuer 私钥只在离�
 
 每个阶段重新检查 Chain ID、合约 runtime code hash、调用账户角色、计划
 哈希和前置链上状态。成功交易以结构化收据追加到
-`publication-transactions.json`。重复执行时，已满足的幂等操作不重复发
+`publication-transactions.json`。每个阶段即使没有待写对象，也必须写入
+`completed_phases`；只有五个阶段完整且全部实际交易 receipt 成功，后续运行配置
+同步才允许继续。重复执行时，已满足的幂等操作不重复发
 交易；状态冲突则立即失败。
 
 ## 双 RPC 与 finalized 核验

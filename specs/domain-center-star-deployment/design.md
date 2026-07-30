@@ -37,13 +37,14 @@
 管理工具执行：
 
 1. JSON 结构与类型校验；
-2. 地址、URL、chain、合约、hash、镜像 digest 校验；
+2. 双 RPC、地址、chain、合约、runtime hash、镜像 digest 校验；
 3. 链路、主机、Compose project、server ID、Socket 和端口唯一性校验；
 4. Wrapper upstream 回路校验；
-5. secret/TLS 文件存在性、权限和跨链路复用校验；
-6. 为每个 unit 生成独立 `.env`、Compose、identity、issuer keys、secret 和 TLS
-   目录；
-7. 对运行包生成不泄漏秘密内容的 SHA-256 文件清单。
+5. 双 RPC 核验、五类角色、发布计划和五阶段交易证据的一致性校验；
+6. Agent 私钥与签名 identity 公钥、secret/TLS 文件、权限和跨链路复用校验；
+7. 为每个 unit 生成独立 `.env`、Compose、identity、issuer keys、secret、TLS
+   和只读 Registry 证据目录；
+8. 对运行包生成不泄漏秘密内容的 SHA-256 文件清单。
 
 可提交的 `site-inventory.example.json` 只描述字段，必须在模板模式校验；正式生成
 命令拒绝模板占位值。
@@ -62,6 +63,11 @@
 │       ├── identities-v2.json
 │       ├── secrets/
 │       └── tls/
+├── deploy/registry-evidence/
+│   ├── verification.json
+│   ├── roles.json
+│   ├── registry-plan-v2.json
+│   └── publication-transactions.json
 ├── metadata/
 │   ├── unit.json
 │   └── SHA256SUMS
@@ -116,6 +122,8 @@ Wrapper 执行。脚本将检查 readiness、Socket、SQLite 和 Compose 状态�
 - Docker `json-file` 日志设置最大文件大小和保留数量；
 - 主机采集磁盘、inode、文件描述符、时间同步和容器重启；
 - evidence 和 trace spool 使用 SQLite online backup；
+- 备份包含配置、签名 identity、issuer 公钥、TLS 公共证书和只读 Registry
+  证据，但不包含 Agent/TLS 私钥或 Token；
 - 恢复演练只写入隔离目录，先做 `PRAGMA integrity_check`，不覆盖在线数据；
 - 普通回滚只切回原 DNS 入口，不撤销 identity。
 
