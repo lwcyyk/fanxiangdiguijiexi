@@ -63,10 +63,12 @@ if [[ "${PREFLIGHT_SCOPE}" == "full" ]]; then
   IDENTITY_INPUTS_VALIDATED=true
 fi
 
+SOURCE_TREE_CLEAN="$(source_tree_clean && printf true || printf false)"
+
 jq -n \
   --arg checked_at "$(utc_now)" \
   --arg git_commit "$(git -C "${REPO_ROOT}" rev-parse HEAD)" \
-  --argjson source_tree_clean "$(source_tree_clean && printf true || printf false)" \
+  --argjson source_tree_clean "${SOURCE_TREE_CLEAN}" \
   --arg scope "${PREFLIGHT_SCOPE}" \
   --argjson identity_inputs_validated "${IDENTITY_INPUTS_VALIDATED}" \
   --argjson chain_id "${CHAIN_ID}" \
