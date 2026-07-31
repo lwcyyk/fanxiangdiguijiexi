@@ -42,12 +42,16 @@ jobs:
       - run: pip-audit -r requirements-production.lock --require-hashes --format cyclonedx-json --output resolver-identity-sbom.cdx.json
       - name: Verify Python lock files are unchanged
         run: |
-          cp requirements-production.lock /tmp/requirements-production.hashed.lock
-          python -m piptools compile pyproject.toml --extra web3 --strip-extras --generate-hashes --no-upgrade --output-file /tmp/requirements-production.hashed.lock --quiet
-          diff -u requirements-production.lock /tmp/requirements-production.hashed.lock
-          cp requirements-ci.lock /tmp/requirements-ci.hashed.lock
-          python -m piptools compile pyproject.toml --extra dev --extra web3 --strip-extras --generate-hashes --allow-unsafe --no-upgrade --output-file /tmp/requirements-ci.hashed.lock --quiet
-          diff -u requirements-ci.lock /tmp/requirements-ci.hashed.lock
+          lock_dir="$(mktemp --directory)"
+          trap 'rm -rf "$lock_dir"' EXIT
+          cp pyproject.toml requirements-production.lock requirements-ci.lock "$lock_dir/"
+          (
+            cd "$lock_dir"
+            python -m piptools compile pyproject.toml --extra web3 --strip-extras --generate-hashes --no-upgrade --output-file requirements-production.lock --quiet
+            python -m piptools compile pyproject.toml --extra dev --extra web3 --strip-extras --generate-hashes --allow-unsafe --no-upgrade --output-file requirements-ci.lock --quiet
+          )
+          diff -u requirements-production.lock "$lock_dir/requirements-production.lock"
+          diff -u requirements-ci.lock "$lock_dir/requirements-ci.lock"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: resolver-identity-sbom
