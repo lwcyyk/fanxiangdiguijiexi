@@ -1,0 +1,137 @@
+x-runtime: &runtime
+  image: ${RI_IMAGE:?pin Rust image digest}
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 256
+  logging:
+    driver: json-file
+    options:
+      max-size: ${RI_DOCKER_LOG_MAX_SIZE:-50m}
+      max-file: ${RI_DOCKER_LOG_MAX_FILES:-5}
+
+services:
+  registry-sync:
+    <<: *runtime
+    command: ["/usr/local/bin/ri-registry-sync"]
+    environment:
+      RI_ENVIRONMENT: production
+      RI_DATABASE: /var/lib/resolver-identity/evidence-v2.db
+      RI_IDENTITIES_FILE: /run/config/identities-v2.json
+      RI_ISSUER_KEYS_FILE: /run/config/issuer-keys.json
+      RI_CHAIN_ADAPTER: norn
+      RI_CHAIN_RPC_URLS: ${RI_CHAIN_RPC_URLS:?two HTTPS endpoints}
+      RI_CHAIN_ID: ${RI_CHAIN_ID:?required}
+      RI_NORN_GENESIS_BLOCK_HASH: ${RI_NORN_GENESIS_BLOCK_HASH:?required}
+      RI_CHAIN_REGISTRY_ADDRESS: ${RI_CHAIN_REGISTRY_ADDRESS:?required}
+      RI_NORN_REGISTRY_KEY: ${RI_NORN_REGISTRY_KEY:?required}
+      RI_NORN_SIGNER_ISSUER: ${RI_NORN_SIGNER_ISSUER:?required}
+      RI_NORN_SIGNER_KEY_ID: ${RI_NORN_SIGNER_KEY_ID:?required}
+      RI_CHAIN_REGISTRY_SCHEMA_HASH: ${RI_CHAIN_REGISTRY_SCHEMA_HASH:?required}
+      RI_CHAIN_CONFIRMATIONS: ${RI_CHAIN_CONFIRMATIONS:?required}
+      RI_NORN_REGISTRY_START_HEIGHT: ${RI_NORN_REGISTRY_START_HEIGHT:-0}
+      RI_NORN_MAX_SCAN_BLOCKS: ${RI_NORN_MAX_SCAN_BLOCKS:-10000}
+      RI_NORN_TLS_CA_FILE: /run/norn-tls/ca.crt
+      RI_NORN_TLS_CLIENT_CERT_FILE: /run/norn-tls/client.crt
+      RI_NORN_TLS_CLIENT_KEY_FILE: /run/norn-tls/client.key
+      RI_RPC_MAX_RESPONSE_BYTES: ${RI_RPC_MAX_RESPONSE_BYTES:-4194304}
+      RI_REGISTRY_POLL_INTERVAL_MS: ${RI_REGISTRY_POLL_INTERVAL_MS:-2000}
+      RI_REGISTRY_SYNC_ONCE: ${RI_REGISTRY_SYNC_ONCE:-false}
+      RI_REGISTRY_MONITORING_BIND: 0.0.0.0:9109
+    volumes:
+      - ${RI_FIELD_DATA_DIR:?required}:/var/lib/resolver-identity
+      - ./config/identities-v2.json:/run/config/identities-v2.json:ro
+      - ./config/issuer-keys.json:/run/config/issuer-keys.json:ro
+      - ${RI_NORN_CLIENT_TLS_DIR:?required}:/run/norn-tls:ro
+    networks: [registry-egress]
+
+  agent:
+    <<: *runtime
+    command: ["/usr/local/bin/ri-agent"]
+    environment:
+      RI_ENVIRONMENT: production
+      RI_VERIFICATION_MODE: ${RI_VERIFICATION_MODE:?required}
+      RI_ISSUER_KEYS_FILE: /run/config/issuer-keys.json
+      RI_AGENT_BIND: 0.0.0.0:8443
+      RI_AGENT_SERVER_ID: ${RI_AGENT_SERVER_ID:?required}
+      RI_AGENT_KEY_ID: ${RI_AGENT_KEY_ID:?required}
+      RI_AGENT_PRIVATE_KEY_FILE: /run/secrets/agent_private_key
+      RI_TRACE_INGEST_TOKEN_FILE: /run/secrets/trace_ingest_token
+      RI_AGENT_WRAPPER_TOKEN_FILE: /run/secrets/agent_wrapper_token
+      RI_AGENT_PEER_TOKEN_FILE: /run/secrets/agent_peer_token
+      RI_DATABASE: /var/lib/resolver-identity/evidence-v2.db
+      RI_REGISTRY_MAX_STALENESS_SECONDS: ${RI_REGISTRY_MAX_STALENESS_SECONDS:-15}
+      RI_AGENT_TLS_CERT_FILE: /run/agent-tls/agent.crt
+      RI_AGENT_TLS_KEY_FILE: /run/agent-tls/agent.key
+      RI_AGENT_TLS_CLIENT_CA_FILE: /run/agent-tls/client-ca.crt
+      RI_AGENT_TLS_CLIENT_CERT_FILE: /run/agent-tls/agent-client.crt
+      RI_AGENT_TLS_CLIENT_KEY_FILE: /run/agent-tls/agent-client.key
+      RI_AGENT_TLS_CA_FILE: /run/agent-tls/agent-ca.crt
+    volumes:
+      - ${RI_FIELD_DATA_DIR:?required}:/var/lib/resolver-identity
+      - ./config/issuer-keys.json:/run/config/issuer-keys.json:ro
+      - ${RI_RESOLVER_SECRET_DIR:?required}:/run/secrets:ro
+      - ${RI_AGENT_TLS_DIR:?required}:/run/agent-tls:ro
+    networks: [link-control, agent-egress]
+
+  trace-adapter:
+    <<: *runtime
+    command: ["/usr/local/bin/ri-trace-adapter"]
+    environment:
+      RI_ENVIRONMENT: production
+      RI_TRACE_SOCKET: /run/resolver-identity/trace/events.sock
+      RI_TRACE_PRODUCER_UID: ${RI_TRACE_PRODUCER_UID:?required}
+      RI_TRACE_SPOOL_DATABASE: /var/lib/resolver-identity/trace-spool.db
+      RI_TRACE_AGENT_URL: https://agent:8443
+      RI_TRACE_INGEST_TOKEN_FILE: /run/secrets/trace_ingest_token
+      RI_TRACE_MONITORING_BIND: 0.0.0.0:9110
+      RI_TRACE_TLS_CLIENT_CERT_FILE: /run/agent-tls/trace-client.crt
+      RI_TRACE_TLS_CLIENT_KEY_FILE: /run/agent-tls/trace-client.key
+      RI_TRACE_TLS_CA_FILE: /run/agent-tls/agent-ca.crt
+    group_add: ["${RI_TRACE_PRODUCER_GID:?required}"]
+    volumes:
+      - ${RI_TRACE_SOCKET_HOST_DIR:?required}:/run/resolver-identity/trace
+      - ${RI_FIELD_DATA_DIR:?required}:/var/lib/resolver-identity
+      - ${RI_RESOLVER_SECRET_DIR:?required}:/run/secrets:ro
+      - ${RI_AGENT_TLS_DIR:?required}:/run/agent-tls:ro
+    networks: [link-control]
+
+  wrapper:
+    <<: *runtime
+    profiles: [first-hop]
+    command: ["/usr/local/bin/ri-wrapper"]
+    environment:
+      RI_ENVIRONMENT: production
+      RI_VERIFICATION_MODE: ${RI_VERIFICATION_MODE:?required}
+      RI_ISSUER_KEYS_FILE: /run/config/issuer-keys.json
+      RI_WRAPPER_UDP_BIND: 0.0.0.0:1053
+      RI_WRAPPER_TCP_BIND: 0.0.0.0:1053
+      RI_WRAPPER_MONITORING_BIND: 0.0.0.0:9108
+      RI_WRAPPER_AGENT_URL: https://agent:8443
+      RI_WRAPPER_AGENT_TOKEN_FILE: /run/secrets/agent_wrapper_token
+      RI_DATABASE: /var/lib/resolver-identity/evidence-v2.db
+      RI_WRAPPER_UPSTREAMS: ${RI_WRAPPER_UPSTREAMS:-}
+      RI_REGISTRY_MAX_STALENESS_SECONDS: ${RI_REGISTRY_MAX_STALENESS_SECONDS:-15}
+      RI_WRAPPER_TLS_CLIENT_CERT_FILE: /run/agent-tls/wrapper-client.crt
+      RI_WRAPPER_TLS_CLIENT_KEY_FILE: /run/agent-tls/wrapper-client.key
+      RI_WRAPPER_TLS_CA_FILE: /run/agent-tls/agent-ca.crt
+    volumes:
+      - ${RI_FIELD_DATA_DIR:?required}:/var/lib/resolver-identity
+      - ./config/issuer-keys.json:/run/config/issuer-keys.json:ro
+      - ${RI_RESOLVER_SECRET_DIR:?required}:/run/secrets:ro
+      - ${RI_AGENT_TLS_DIR:?required}:/run/agent-tls:ro
+    ports:
+      - "${DNS_BIND_ADDRESS:?required}:${DNS_PORT:-53}:1053/udp"
+      - "${DNS_BIND_ADDRESS:?required}:${DNS_PORT:-53}:1053/tcp"
+    networks: [dns-ingress, link-control, resolver-egress]
+
+networks:
+  dns-ingress:
+  link-control:
+    internal: true
+  resolver-egress:
+  agent-egress:
+  registry-egress:
+    external: true
+    name: ${RI_FIELD_NETWORK:?required}
