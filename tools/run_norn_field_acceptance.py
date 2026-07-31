@@ -1053,6 +1053,24 @@ class Lab:
         peer_id_a = self._wait_for("Node A peer ID", peer_a)
         self.bootstrap = f"/dns4/{node_a['host']}/tcp/31258/p2p/{peer_id_a}"
         self._node_compose(
+            node_a["host"],
+            "up",
+            "-d",
+            "norn-read-proxy",
+            name="start-norn-read-a",
+        )
+
+        def genesis_a_ready() -> str | None:
+            block = self._nornctl(
+                "probe-genesis-a",
+                "https://norn-read-a:8443",
+                "block",
+                "0",
+            )
+            return str(json.loads(block.stdout)["hash"])
+
+        genesis_from_a = self._wait_for("Node A genesis", genesis_a_ready)
+        self._node_compose(
             node_b["host"],
             "up",
             "-d",
@@ -1060,13 +1078,6 @@ class Lab:
             "norn-read-proxy",
             overrides={"RI_NORN_BOOTSTRAP": self.bootstrap},
             name="start-norn-node-b-and-read",
-        )
-        self._node_compose(
-            node_a["host"],
-            "up",
-            "-d",
-            "norn-read-proxy",
-            name="start-norn-read-a",
         )
 
         def peer_b() -> str | None:
@@ -1089,7 +1100,11 @@ class Lab:
             b = self._nornctl("nornctl-genesis-b", "https://norn-read-b:8443", "block", "0")
             hash_a = json.loads(a.stdout)["hash"]
             hash_b = json.loads(b.stdout)["hash"]
-            return (hash_a, hash_b) if hash_a == hash_b else None
+            return (
+                (hash_a, hash_b)
+                if hash_a == hash_b == genesis_from_a
+                else None
+            )
 
         genesis_a, genesis_b = self._wait_for("matching Norn genesis", genesis_pair)
         self.inventory["norn"]["genesis_hash"] = genesis_a
