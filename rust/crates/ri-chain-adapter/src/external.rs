@@ -689,6 +689,15 @@ mod tests {
                 .validate_snapshot(&rotated_snapshot, &keys, 1_000)
                 .is_err()
         );
+
+        let (mut tampered, keys) = signed_snapshot();
+        tampered.entries[0].object_hash =
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into();
+        assert!(
+            old_adapter
+                .validate_snapshot(&tampered, &keys, 1_000)
+                .is_err()
+        );
     }
 
     #[test]
@@ -801,6 +810,22 @@ mod tests {
         assert_eq!(reconciled.checkpoint, checkpoint);
         assert_eq!(reconciled.records.len(), 1);
 
+        let mut wrong_finality = snapshot.clone();
+        wrong_finality.checkpoint.finality_type = RegistryFinalityTypeV2::EvmFinalized;
+        wrong_finality.signature =
+            Some(ri_core::sign_ed25519(&wrong_finality, &STANDARD.encode([9_u8; 32])).unwrap());
+        let (url_finality_a, task_finality_a) =
+            spawn_protocol(wrong_finality.clone(), wrong_finality.checkpoint.clone()).await;
+        let (url_finality_b, task_finality_b) =
+            spawn_protocol(wrong_finality.clone(), wrong_finality.checkpoint).await;
+        let wrong_finality_adapter = protocol_adapter(vec![url_finality_a, url_finality_b]);
+        assert!(
+            wrong_finality_adapter
+                .read_snapshot(&[], &issuer_keys, 1_000)
+                .await
+                .is_err()
+        );
+
         let divergent = FinalizedCheckpoint {
             number: checkpoint.number,
             hash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
@@ -817,6 +842,8 @@ mod tests {
         task_a.abort();
         task_b.abort();
         task_c.abort();
+        task_finality_a.abort();
+        task_finality_b.abort();
     }
 
     #[test]

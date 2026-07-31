@@ -241,40 +241,24 @@ impl NornRegistryAdapter {
     }
 
     async fn agreed_block(&self, number: u64) -> AdapterResult<FinalizedCheckpoint> {
-        let mut accepted: Option<FinalizedCheckpoint> = None;
+        let mut blocks = Vec::with_capacity(self.clients.len());
         for client in &self.clients {
-            let block = client.block(number).await?;
-            match &accepted {
-                Some(previous) if previous != &block => {
-                    return Err(format!(
-                        "Norn RPC disagreement at block {number}: {} != {}",
-                        previous.hash, block.hash
-                    )
-                    .into());
-                }
-                None => accepted = Some(block),
-                _ => {}
-            }
+            blocks.push(client.block(number).await?);
         }
-        accepted.ok_or_else(|| "Norn adapter has no RPC clients".into())
+        require_agreement(blocks, &format!("Norn RPC disagreement at block {number}"))
     }
 
     async fn finalized_checkpoint(&self) -> AdapterResult<FinalizedCheckpoint> {
-        let mut minimum_head = u64::MAX;
+        let mut heads = Vec::with_capacity(self.clients.len());
         for client in &self.clients {
-            minimum_head = minimum_head.min(client.head().await?);
+            heads.push(client.head().await?);
         }
-        let number = minimum_head
-            .checked_sub(self.confirmations)
-            .ok_or("Norn head has fewer blocks than configured confirmations")?;
-        if number == 0 {
-            return Err("Norn finalized checkpoint has not advanced past genesis".into());
-        }
+        let number = confirmation_derived_height(&heads, self.confirmations)?;
         self.agreed_block(number).await
     }
 
     async fn agreed_registry_value(&self) -> AdapterResult<String> {
-        let mut accepted: Option<String> = None;
+        let mut values = Vec::with_capacity(self.clients.len());
         for client in &self.clients {
             let value = client
                 .read_contract_address(&self.registry_address, &self.registry_key)
@@ -282,15 +266,12 @@ impl NornRegistryAdapter {
             if value.is_empty() {
                 return Err("Norn Registry state is empty".into());
             }
-            match &accepted {
-                Some(previous) if previous != &value => {
-                    return Err("Norn RPC nodes returned different Registry snapshots".into());
-                }
-                None => accepted = Some(value),
-                _ => {}
-            }
+            values.push(value);
         }
-        accepted.ok_or_else(|| "Norn adapter has no RPC clients".into())
+        require_agreement(
+            values,
+            "Norn RPC nodes returned different Registry snapshots",
+        )
     }
 
     async fn verify_finalized_inclusion(
@@ -326,20 +307,14 @@ impl NornRegistryAdapter {
     }
 
     async fn agreed_full_block(&self, number: u64) -> AdapterResult<Block> {
-        let mut accepted: Option<Block> = None;
+        let mut blocks = Vec::with_capacity(self.clients.len());
         for client in &self.clients {
-            let block = client.full_block(number).await?;
-            match &accepted {
-                Some(previous) if previous != &block => {
-                    return Err(
-                        format!("Norn RPC full-block disagreement at height {number}").into(),
-                    );
-                }
-                None => accepted = Some(block),
-                _ => {}
-            }
+            blocks.push(client.full_block(number).await?);
         }
-        accepted.ok_or_else(|| "Norn adapter has no RPC clients".into())
+        require_agreement(
+            blocks,
+            &format!("Norn RPC full-block disagreement at height {number}"),
+        )
     }
 
     async fn validate_snapshot(
@@ -370,6 +345,32 @@ impl NornRegistryAdapter {
         }
         snapshot_records(snapshot)
     }
+}
+
+fn require_agreement<T: PartialEq>(values: Vec<T>, disagreement: &str) -> AdapterResult<T> {
+    let mut values = values.into_iter();
+    let accepted = values
+        .next()
+        .ok_or("Norn adapter has no independent RPC results")?;
+    if values.any(|value| value != accepted) {
+        return Err(disagreement.to_owned().into());
+    }
+    Ok(accepted)
+}
+
+fn confirmation_derived_height(heads: &[u64], confirmations: u64) -> AdapterResult<u64> {
+    let minimum_head = heads
+        .iter()
+        .copied()
+        .min()
+        .ok_or("Norn adapter has no RPC heads")?;
+    let number = minimum_head
+        .checked_sub(confirmations)
+        .ok_or("Norn head has fewer blocks than configured confirmations")?;
+    if number == 0 {
+        return Err("Norn finalized checkpoint has not advanced past genesis".into());
+    }
+    Ok(number)
 }
 
 #[async_trait]
@@ -856,8 +857,9 @@ mod tests {
 
     use super::{
         MAX_TEXT_FIELD_BYTES, NORN_REGISTRY_SNAPSHOT_V1, NornAdapterConfig, NornRegistryAdapter,
-        NornRegistrySnapshotEntryV1, NornRegistrySnapshotV1, SnapshotPins, decode_data_command,
-        norn_registry_schema_hash, norn_state_root, registry_command, snapshot_records,
+        NornRegistrySnapshotEntryV1, NornRegistrySnapshotV1, SnapshotPins,
+        confirmation_derived_height, decode_data_command, norn_registry_schema_hash,
+        norn_state_root, registry_command, require_agreement, snapshot_records,
         validate_snapshot_shape,
     };
     use crate::{FinalizedCheckpoint, norn::Transaction};
@@ -947,6 +949,89 @@ mod tests {
         let (mut snapshot, keys) = signed_snapshot();
         snapshot.genesis_block_hash =
             "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into();
+        snapshot.signature = Some(sign_ed25519(&snapshot, &STANDARD.encode([7_u8; 32])).unwrap());
+        let checkpoint = FinalizedCheckpoint {
+            number: 110,
+            hash: CHECKPOINT.into(),
+            finality_type: RegistryFinalityTypeV2::NornDualNodeConfirmations,
+        };
+        assert!(
+            validate_snapshot_shape(
+                &snapshot,
+                &keys,
+                &SnapshotPins {
+                    chain_id: 20_001,
+                    genesis_block_hash: GENESIS,
+                    registry_address: ADDRESS,
+                    registry_key: "resolver-identity-registry-v2",
+                    registry_schema_hash: &norn_registry_schema_hash(),
+                    signer_issuer: "norn-registry",
+                    signer_key_id: "snapshot-key-1",
+                    accepted_checkpoint: &checkpoint,
+                    now: 1_700_000_000,
+                },
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn changed_snapshot_payload_fails_signature_verification() {
+        let (mut snapshot, keys) = signed_snapshot();
+        snapshot.entries[0].object_hash =
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into();
+        let checkpoint = FinalizedCheckpoint {
+            number: 110,
+            hash: CHECKPOINT.into(),
+            finality_type: RegistryFinalityTypeV2::NornDualNodeConfirmations,
+        };
+        assert!(
+            validate_snapshot_shape(
+                &snapshot,
+                &keys,
+                &SnapshotPins {
+                    chain_id: 20_001,
+                    genesis_block_hash: GENESIS,
+                    registry_address: ADDRESS,
+                    registry_key: "resolver-identity-registry-v2",
+                    registry_schema_hash: &norn_registry_schema_hash(),
+                    signer_issuer: "norn-registry",
+                    signer_key_id: "snapshot-key-1",
+                    accepted_checkpoint: &checkpoint,
+                    now: 1_700_000_000,
+                },
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn dual_node_disagreement_and_insufficient_confirmations_fail_closed() {
+        let checkpoint = FinalizedCheckpoint {
+            number: 100,
+            hash: CHECKPOINT.into(),
+            finality_type: RegistryFinalityTypeV2::NornDualNodeConfirmations,
+        };
+        let mut divergent = checkpoint.clone();
+        divergent.hash =
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into();
+        assert!(
+            require_agreement(
+                vec![checkpoint, divergent],
+                "Norn RPC checkpoint disagreement"
+            )
+            .is_err()
+        );
+        assert!(require_agreement(vec![GENESIS, "0xother"], "Norn genesis disagreement").is_err());
+        assert_eq!(confirmation_derived_height(&[110, 108], 8).unwrap(), 100);
+        assert!(confirmation_derived_height(&[8, 10], 8).is_err());
+        assert!(confirmation_derived_height(&[7, 10], 8).is_err());
+    }
+
+    #[test]
+    fn snapshot_ahead_of_confirmed_height_fails_closed() {
+        let (mut snapshot, keys) = signed_snapshot();
+        snapshot.checkpoint_height = 111;
         snapshot.signature = Some(sign_ed25519(&snapshot, &STANDARD.encode([7_u8; 32])).unwrap());
         let checkpoint = FinalizedCheckpoint {
             number: 110,

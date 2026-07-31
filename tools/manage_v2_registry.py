@@ -433,14 +433,21 @@ def build_external_snapshot(
     snapshot = {
         "schema_version": EXTERNAL_REGISTRY_SNAPSHOT_V1,
         "target": {
-            "adapter": f"external-{driver}",
+            "adapter": "external",
             "chain_identity": chain_identity,
             "registry_locator": registry_locator,
             "registry_schema_hash": registry_schema_hash,
+            "adapter_metadata": {
+                "adapter_type": "external",
+                "driver": driver,
+                "snapshot_signer_issuer": issuer,
+                "snapshot_signer_key_id": key_id,
+            },
         },
         "checkpoint": {
             "number": checkpoint_height,
             "hash": normalize_fixed_hex(checkpoint_hash, 32),
+            "finality_type": "external-signed-checkpoint",
         },
         "generation": generation,
         "state_root": normalize_fixed_hex(plan["state_root"], 32),
@@ -476,8 +483,11 @@ def validate_external_snapshot_shape(snapshot: dict) -> None:
     checkpoint = snapshot.get("checkpoint")
     if not isinstance(target, dict) or not isinstance(checkpoint, dict):
         raise ValueError("external snapshot target or checkpoint is missing")
+    adapter_metadata = target.get("adapter_metadata")
+    if not isinstance(adapter_metadata, dict):
+        raise ValueError("external snapshot adapter metadata is missing")
     adapter = str(target.get("adapter", ""))
-    driver = adapter.removeprefix("external-") if adapter.startswith("external-") else ""
+    driver = str(adapter_metadata.get("driver", ""))
     if (
         not driver
         or len(driver) > 23
@@ -492,25 +502,84 @@ def validate_external_snapshot_shape(snapshot: dict) -> None:
             target.get("registry_schema_hash", ""),
             32,
         ),
+        "adapter_metadata": {
+            "adapter_type": "external",
+            "driver": driver,
+            "snapshot_signer_issuer": str(
+                adapter_metadata.get("snapshot_signer_issuer", "")
+            ),
+            "snapshot_signer_key_id": str(
+                adapter_metadata.get("snapshot_signer_key_id", "")
+            ),
+        },
     }
+    text_fields = (
+        expected_target["chain_identity"],
+        expected_target["registry_locator"],
+        expected_target["adapter_metadata"]["snapshot_signer_issuer"],
+        expected_target["adapter_metadata"]["snapshot_signer_key_id"],
+    )
     if (
         target != expected_target
-        or not expected_target["chain_identity"].strip()
-        or not expected_target["registry_locator"].strip()
+        or adapter != "external"
+        or any(not value.strip() or len(value) > 256 for value in text_fields)
+        or expected_target["adapter_metadata"]["snapshot_signer_issuer"]
+        != str(snapshot.get("issuer", ""))
+        or expected_target["adapter_metadata"]["snapshot_signer_key_id"]
+        != str(snapshot.get("key_id", ""))
         or expected_target["registry_schema_hash"] == "0x" + "00" * 32
         or int(snapshot.get("generation", 0)) <= 0
         or int(checkpoint.get("number", 0)) <= 0
+        or checkpoint.get("finality_type") != "external-signed-checkpoint"
         or int(snapshot.get("published_at", 0)) <= 0
         or int(snapshot.get("valid_until", 0)) <= int(snapshot.get("published_at", 0))
         or snapshot.get("root_status") != "ACTIVE"
         or not str(snapshot.get("issuer", "")).strip()
         or not str(snapshot.get("key_id", "")).strip()
         or not snapshot.get("entries")
+        or len(snapshot["entries"]) > 10_000
     ):
         raise ValueError("external snapshot required fields are invalid")
     normalize_fixed_hex(checkpoint.get("hash", ""), 32)
     normalize_fixed_hex(snapshot.get("state_root", ""), 32)
-    server_ids = [entry["server_id"] for entry in snapshot["entries"]]
+    expected_entry_fields = {
+        "server_id",
+        "resolver_id_key",
+        "object_hash",
+        "object_version",
+        "valid_until",
+        "status",
+        "endpoint_keys",
+    }
+    all_endpoint_keys: set[str] = set()
+    server_ids: list[str] = []
+    for entry in snapshot["entries"]:
+        if not isinstance(entry, dict) or set(entry) != expected_entry_fields:
+            raise ValueError("external snapshot entry fields are invalid")
+        server_id = str(entry["server_id"])
+        status = str(entry["status"])
+        endpoint_keys = entry["endpoint_keys"]
+        if (
+            not server_id
+            or len(server_id) > 256
+            or not status
+            or len(status) > 32
+            or int(entry["object_version"]) <= 0
+            or int(entry["valid_until"]) <= 0
+            or not isinstance(endpoint_keys, list)
+            or not 1 <= len(endpoint_keys) <= 32
+            or len(endpoint_keys) != len(set(endpoint_keys))
+            or normalize_fixed_hex(entry["resolver_id_key"], 32)
+            != resolver_id_key(server_id)
+        ):
+            raise ValueError("external snapshot entry values are invalid")
+        normalize_fixed_hex(entry["object_hash"], 32)
+        for endpoint_key in endpoint_keys:
+            normalized_endpoint = normalize_fixed_hex(endpoint_key, 32)
+            if normalized_endpoint in all_endpoint_keys:
+                raise ValueError("external snapshot endpoint ownership is ambiguous")
+            all_endpoint_keys.add(normalized_endpoint)
+        server_ids.append(server_id)
     if server_ids != sorted(set(server_ids)):
         raise ValueError("external snapshot entries must be sorted by unique server_id")
 

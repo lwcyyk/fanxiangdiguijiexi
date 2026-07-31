@@ -136,14 +136,63 @@ def test_external_snapshot_reuses_plan_and_pins_native_target():
     )
 
     assert snapshot["state_root"] == plan["state_root"]
-    assert snapshot["target"]["adapter"] == "external-fabric"
+    assert snapshot["target"]["adapter"] == "external"
+    assert snapshot["target"]["adapter_metadata"] == {
+        "adapter_type": "external",
+        "driver": "fabric",
+        "snapshot_signer_issuer": "adapter-operator",
+        "snapshot_signer_key_id": "adapter-key-1",
+    }
     assert snapshot["target"]["registry_schema_hash"] == "0x" + "44" * 32
     assert "chain_id" not in snapshot["target"]
     assert "contract_address" not in snapshot["target"]
     assert "contract_code_hash" not in snapshot["target"]
     assert snapshot["checkpoint"]["number"] == 100
+    assert snapshot["checkpoint"]["finality_type"] == "external-signed-checkpoint"
     snapshot["target"]["chain_id"] = 30_001
     with pytest.raises(ValueError, match="required fields"):
+        manage.validate_external_snapshot_shape(snapshot)
+
+
+def test_external_snapshot_rejects_metadata_confusion_and_field_overflow():
+    plan = build_plan(
+        [
+            {
+                "server_id": "operator/r1",
+                "endpoints": [
+                    {"ip": "192.0.2.53", "port": 53, "transport": "udp"}
+                ],
+                "object_version": 1,
+                "valid_until": int(time.time()) + 7_200,
+                "status": "ACTIVE",
+            }
+        ],
+        root_version=1,
+        chain_id=31337,
+        contract_address="0x" + "11" * 20,
+        contract_code_hash="0x" + "22" * 32,
+    )
+    snapshot = manage.build_external_snapshot(
+        plan,
+        driver="fabric",
+        chain_identity="fabric:channel-a:genesis-abc",
+        registry_locator="fabric:channel-a/identity-registry",
+        registry_schema_hash="0x" + "44" * 32,
+        generation=7,
+        checkpoint_height=100,
+        checkpoint_hash="0x" + "55" * 32,
+        valid_until=int(time.time()) + 3_600,
+        issuer="adapter-operator",
+        key_id="adapter-key-1",
+    )
+
+    snapshot["target"]["adapter_metadata"]["adapter_type"] = "evm"
+    with pytest.raises(ValueError, match="required fields"):
+        manage.validate_external_snapshot_shape(snapshot)
+
+    snapshot["target"]["adapter_metadata"]["adapter_type"] = "external"
+    snapshot["entries"][0]["server_id"] = "x" * 257
+    with pytest.raises(ValueError, match="entry values"):
         manage.validate_external_snapshot_shape(snapshot)
 
 

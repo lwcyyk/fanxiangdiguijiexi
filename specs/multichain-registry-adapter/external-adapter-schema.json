@@ -57,6 +57,7 @@
     "entries": {
       "type": "array",
       "minItems": 1,
+      "maxItems": 10000,
       "items": {
         "$ref": "#/$defs/entry"
       }
@@ -82,23 +83,57 @@
         "adapter",
         "chain_identity",
         "registry_locator",
-        "registry_schema_hash"
+        "registry_schema_hash",
+        "adapter_metadata"
       ],
       "properties": {
         "adapter": {
-          "type": "string",
-          "pattern": "^external-[a-z0-9-]{1,23}$"
+          "const": "external"
         },
         "chain_identity": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "maxLength": 256
         },
         "registry_locator": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "maxLength": 256
         },
         "registry_schema_hash": {
           "$ref": "#/$defs/bytes32"
+        },
+        "adapter_metadata": {
+          "$ref": "#/$defs/externalMetadata"
+        }
+      }
+    },
+    "externalMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter_type",
+        "driver",
+        "snapshot_signer_issuer",
+        "snapshot_signer_key_id"
+      ],
+      "properties": {
+        "adapter_type": {
+          "const": "external"
+        },
+        "driver": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,23}$"
+        },
+        "snapshot_signer_issuer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "snapshot_signer_key_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
         }
       }
     },
@@ -107,7 +142,8 @@
       "additionalProperties": false,
       "required": [
         "number",
-        "hash"
+        "hash",
+        "finality_type"
       ],
       "properties": {
         "number": {
@@ -116,6 +152,9 @@
         },
         "hash": {
           "$ref": "#/$defs/bytes32"
+        },
+        "finality_type": {
+          "const": "external-signed-checkpoint"
         }
       }
     },
@@ -134,7 +173,8 @@
       "properties": {
         "server_id": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "maxLength": 256
         },
         "resolver_id_key": {
           "$ref": "#/$defs/bytes32"
