@@ -576,8 +576,8 @@ class Lab:
     def _generate_norn_config(self, node: dict[str, Any]) -> None:
         config = Path(node["config_dir"])
         data = Path(node["data_dir"])
-        config.mkdir(parents=True)
-        data.mkdir(parents=True)
+        config.mkdir(parents=True, exist_ok=True)
+        data.mkdir(parents=True, exist_ok=True)
         config.chmod(0o777)
         data.chmod(0o777)
         self.run(
