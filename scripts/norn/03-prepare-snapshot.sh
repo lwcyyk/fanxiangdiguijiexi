@@ -110,8 +110,20 @@ PYTHONPATH="${REPO_ROOT}/src" python3 "${REPO_ROOT}/tools/manage_v2_registry.py"
   --contract-code-hash "${schema_hash}" \
   --output "${output_dir}/registry-plan-v2.json"
 
-head_a="$(nornctl http://127.0.0.1:45555 head | jq -r .head)"
-head_b="$(nornctl http://127.0.0.1:45556 head | jq -r .head)"
+head_a=0
+head_b=0
+for _ in $(seq 1 120); do
+  head_a="$(nornctl http://127.0.0.1:45555 head | jq -r .head)"
+  head_b="$(nornctl http://127.0.0.1:45556 head | jq -r .head)"
+  if ((head_a > 0 && head_b > 0)); then
+    break
+  fi
+  sleep 1
+done
+((head_a > 0 && head_b > 0)) || {
+  printf 'Go-Norn nodes did not advance past genesis before snapshot preparation\n' >&2
+  exit 1
+}
 if ((head_a < head_b)); then
   checkpoint_height="${head_a}"
 else
