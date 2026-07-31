@@ -7,7 +7,10 @@ mod norn;
 use std::collections::BTreeMap;
 
 use async_trait::async_trait;
-use ri_core::{DnsServerIdentityV2, IssuerKeyRegistry, RegistryReferenceV2};
+use ri_core::{
+    DnsServerIdentityV2, IssuerKeyRegistry, RegistryAdapterMetadataV2, RegistryFinalityTypeV2,
+    RegistryReferenceV2,
+};
 
 pub use evm::{EvmAdapterConfig, EvmRegistryAdapter};
 pub use external::{
@@ -25,21 +28,12 @@ pub type AdapterResult<T> = Result<T, AdapterError>;
 
 #[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct EvmChainTarget {
-    pub chain_id: u64,
-    pub contract_address: String,
-    pub runtime_code_hash: String,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(deny_unknown_fields)]
 pub struct ChainTarget {
     pub adapter: String,
     pub chain_identity: String,
     pub registry_locator: String,
     pub registry_schema_hash: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub evm: Option<EvmChainTarget>,
+    pub adapter_metadata: RegistryAdapterMetadataV2,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -47,6 +41,7 @@ pub struct ChainTarget {
 pub struct FinalizedCheckpoint {
     pub number: u64,
     pub hash: String,
+    pub finality_type: RegistryFinalityTypeV2,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -65,6 +60,7 @@ pub struct RegistryRecord {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ChainSnapshot {
     pub checkpoint: FinalizedCheckpoint,
+    pub state_root: String,
     pub generation: u64,
     pub records: BTreeMap<String, RegistryRecord>,
 }
@@ -96,11 +92,10 @@ pub fn registry_reference(
         chain_identity: target.chain_identity.clone(),
         registry_locator: target.registry_locator.clone(),
         registry_schema_hash: target.registry_schema_hash.clone(),
-        evm_chain_id: target.evm.as_ref().map(|evm| evm.chain_id),
-        evm_contract_address: target.evm.as_ref().map(|evm| evm.contract_address.clone()),
-        evm_runtime_code_hash: target.evm.as_ref().map(|evm| evm.runtime_code_hash.clone()),
-        finalized_block: checkpoint.number,
-        finalized_block_hash: checkpoint.hash.clone(),
+        adapter_metadata: target.adapter_metadata.clone(),
+        checkpoint_height: checkpoint.number,
+        checkpoint_hash: checkpoint.hash.clone(),
+        finality_type: checkpoint.finality_type,
         state_root: record.state_root,
         object_hash: record.object_hash,
         object_version: record.object_version,
@@ -136,6 +131,8 @@ pub(crate) fn ensure_crypto_provider() {
 mod tests {
     use std::collections::BTreeMap;
 
+    use ri_core::{RegistryAdapterMetadataV2, RegistryFinalityTypeV2};
+
     use super::{ChainTarget, FinalizedCheckpoint, RegistryRecord, registry_reference};
 
     #[test]
@@ -151,12 +148,21 @@ mod tests {
                 registry_schema_hash:
                     "0x3333333333333333333333333333333333333333333333333333333333333333"
                         .into(),
-                evm: None,
+                adapter_metadata: RegistryAdapterMetadataV2::Norn {
+                    genesis_block_hash:
+                        "0x1111111111111111111111111111111111111111111111111111111111111111"
+                            .into(),
+                    registry_address: "0x2222222222222222222222222222222222222222".into(),
+                    registry_key: "identity-registry".into(),
+                    snapshot_signer_issuer: "norn-registry".into(),
+                    snapshot_signer_key_id: "snapshot-key-1".into(),
+                },
             },
             &FinalizedCheckpoint {
                 number: 10,
                 hash: "0x4444444444444444444444444444444444444444444444444444444444444444"
                     .into(),
+                finality_type: RegistryFinalityTypeV2::NornDualNodeConfirmations,
             },
             1,
             RegistryRecord {
@@ -177,9 +183,10 @@ mod tests {
             },
         );
         let mut value = serde_json::to_value(reference).unwrap();
-        assert!(value.get("evm_chain_id").is_none());
-        assert!(value.get("evm_contract_address").is_none());
-        assert!(value.get("evm_runtime_code_hash").is_none());
+        assert_eq!(
+            value["adapter_metadata"]["adapter_type"],
+            serde_json::json!("norn")
+        );
         assert!(value.get("chain_id").is_none());
         assert!(value.get("contract_address").is_none());
         assert!(value.get("contract_code_hash").is_none());

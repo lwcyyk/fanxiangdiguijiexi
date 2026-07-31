@@ -4,13 +4,16 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use futures_util::StreamExt;
-use ri_core::{DnsServerIdentityV2, IssuerKeyRegistry, resolver_id_key};
+use ri_core::{
+    DnsServerIdentityV2, IssuerKeyRegistry, RegistryAdapterMetadataV2, RegistryFinalityTypeV2,
+    resolver_id_key,
+};
 use serde_json::{Value, json};
 use sha3::{Digest, Keccak256};
 
 use crate::{
-    AdapterResult, ChainSnapshot, ChainTarget, EvmChainTarget, FinalizedCheckpoint,
-    RegistryChainAdapter, RegistryRecord, ensure_crypto_provider, is_zero_hex, normalize_hash,
+    AdapterResult, ChainSnapshot, ChainTarget, FinalizedCheckpoint, RegistryChainAdapter,
+    RegistryRecord, ensure_crypto_provider, is_zero_hex, normalize_hash,
 };
 
 #[derive(Clone, Debug)]
@@ -63,11 +66,11 @@ impl EvmRegistryAdapter {
                 chain_identity: format!("eip155:{}", config.chain_id),
                 registry_locator: format!("evm:{contract_address}"),
                 registry_schema_hash: runtime_code_hash.clone(),
-                evm: Some(EvmChainTarget {
+                adapter_metadata: RegistryAdapterMetadataV2::Evm {
                     chain_id: config.chain_id,
                     contract_address: contract_address.clone(),
                     runtime_code_hash,
-                }),
+                },
             },
             contract_address,
             fallback_confirmations: config.fallback_confirmations,
@@ -82,7 +85,7 @@ impl EvmRegistryAdapter {
             .await
             && !value.is_null()
         {
-            return parse_block(&value);
+            return parse_block(&value, RegistryFinalityTypeV2::EvmFinalized);
         }
         let head = parse_quantity(&self.client.call("eth_blockNumber", json!([])).await?)?;
         let number = head
@@ -95,20 +98,23 @@ impl EvmRegistryAdapter {
                 json!([format!("0x{number:x}"), false]),
             )
             .await?;
-        parse_block(&value)
+        parse_block(&value, RegistryFinalityTypeV2::EvmConfirmations)
     }
 
     async fn verify_target(&self, block_tag: &str) -> AdapterResult<()> {
         let chain_id = parse_quantity(&self.client.call("eth_chainId", json!([])).await?)?;
-        let evm = self
-            .target
-            .evm
-            .as_ref()
-            .ok_or("EVM adapter target lacks an EVM anchor")?;
-        if chain_id != evm.chain_id {
+        let RegistryAdapterMetadataV2::Evm {
+            chain_id: expected_chain_id,
+            runtime_code_hash,
+            ..
+        } = &self.target.adapter_metadata
+        else {
+            return Err("EVM adapter target lacks typed EVM metadata".into());
+        };
+        if chain_id != *expected_chain_id {
             return Err(format!(
                 "chain ID mismatch: expected {}, got {chain_id}",
-                evm.chain_id
+                expected_chain_id
             )
             .into());
         }
@@ -124,10 +130,10 @@ impl EvmRegistryAdapter {
             return Err("Registry address has no runtime code".into());
         }
         let actual_code_hash = format!("0x{}", hex::encode(Keccak256::digest(code_bytes)));
-        if actual_code_hash != evm.runtime_code_hash {
+        if actual_code_hash != *runtime_code_hash {
             return Err(format!(
                 "Registry runtime code hash mismatch: expected {}, got {actual_code_hash}",
-                evm.runtime_code_hash
+                runtime_code_hash
             )
             .into());
         }
@@ -211,9 +217,22 @@ impl RegistryChainAdapter for EvmRegistryAdapter {
         if confirmed_hash != checkpoint.hash {
             return Err("finalized block hash changed during EVM reconciliation".into());
         }
+        let state_roots = records
+            .values()
+            .map(|record| record.state_root.as_str())
+            .collect::<HashSet<_>>();
+        if state_roots.len() != 1 {
+            return Err("EVM Registry records do not share one state root".into());
+        }
+        let state_root = state_roots
+            .into_iter()
+            .next()
+            .ok_or("EVM Registry snapshot has no state root")?
+            .to_owned();
         Ok(ChainSnapshot {
             generation: checkpoint.number,
             checkpoint,
+            state_root,
             records,
         })
     }
@@ -246,7 +265,10 @@ struct ResolverAnchor {
     status: String,
 }
 
-fn parse_block(value: &Value) -> AdapterResult<FinalizedCheckpoint> {
+fn parse_block(
+    value: &Value,
+    finality_type: RegistryFinalityTypeV2,
+) -> AdapterResult<FinalizedCheckpoint> {
     Ok(FinalizedCheckpoint {
         number: parse_quantity(value.get("number").ok_or("block number missing")?)?,
         hash: normalize_hash(
@@ -256,6 +278,7 @@ fn parse_block(value: &Value) -> AdapterResult<FinalizedCheckpoint> {
                 .ok_or("block hash missing")?,
             32,
         )?,
+        finality_type,
     })
 }
 
@@ -466,7 +489,142 @@ fn function_selector(function: &str) -> [u8; 4] {
 
 #[cfg(test)]
 mod tests {
-    use super::{function_selector, status_name, word_u64};
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    use axum::extract::State;
+    use axum::routing::post;
+    use axum::{Json, Router};
+    use ri_core::{DnsServerIdentityV2, DnsServerRole, IssuerKeyRegistry, RegistryFinalityTypeV2};
+    use serde_json::{Value, json};
+    use sha3::{Digest, Keccak256};
+    use tokio::net::TcpListener;
+    use tokio::task::JoinHandle;
+
+    use super::{EvmAdapterConfig, EvmRegistryAdapter, function_selector, status_name, word_u64};
+    use crate::RegistryChainAdapter;
+
+    const BLOCK_A: &str = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const BLOCK_B: &str = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
+    #[derive(Clone)]
+    struct RpcState {
+        chain_id: u64,
+        code: String,
+        finalized_available: bool,
+        fork_after_finalized: bool,
+        wrong_id: bool,
+        eth_call_error: bool,
+        oversized: bool,
+    }
+
+    async fn rpc(State(state): State<Arc<RpcState>>, Json(request): Json<Value>) -> Json<Value> {
+        let id = request["id"].as_u64().unwrap();
+        let method = request["method"].as_str().unwrap();
+        let result = match method {
+            "eth_chainId" => json!(format!("0x{:x}", state.chain_id)),
+            "eth_blockNumber" => json!("0x20"),
+            "eth_getCode" => json!(state.code),
+            "eth_getBlockByNumber" => {
+                let tag = request["params"][0].as_str().unwrap();
+                if tag == "finalized" && !state.finalized_available {
+                    Value::Null
+                } else {
+                    json!({
+                        "number": if tag == "finalized" { "0x14" } else { tag },
+                        "hash": if tag != "finalized" && state.fork_after_finalized {
+                            BLOCK_B
+                        } else {
+                            BLOCK_A
+                        }
+                    })
+                }
+            }
+            "eth_call" if state.eth_call_error => {
+                return Json(json!({
+                    "jsonrpc": "2.0",
+                    "id": id,
+                    "error": {"code": -32000, "message": "state unavailable"}
+                }));
+            }
+            "eth_call" => json!("0x"),
+            _ => Value::Null,
+        };
+        let mut response = json!({
+            "jsonrpc": "2.0",
+            "id": if state.wrong_id { id + 1 } else { id },
+            "result": result
+        });
+        if state.oversized {
+            response["padding"] = json!("x".repeat(2_048));
+        }
+        Json(response)
+    }
+
+    async fn spawn_rpc(state: RpcState) -> (String, JoinHandle<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let task = tokio::spawn(async move {
+            axum::serve(
+                listener,
+                Router::new()
+                    .route("/", post(rpc))
+                    .with_state(Arc::new(state)),
+            )
+            .await
+            .unwrap();
+        });
+        (format!("http://{address}"), task)
+    }
+
+    fn state() -> RpcState {
+        RpcState {
+            chain_id: 31_337,
+            code: "0x6000".into(),
+            finalized_available: true,
+            fork_after_finalized: false,
+            wrong_id: false,
+            eth_call_error: false,
+            oversized: false,
+        }
+    }
+
+    fn config(url: String, code_hash: String) -> EvmAdapterConfig {
+        EvmAdapterConfig {
+            rpc_url: url,
+            chain_id: 31_337,
+            contract_address: "0x1111111111111111111111111111111111111111".into(),
+            runtime_code_hash: code_hash,
+            fallback_confirmations: 12,
+            request_timeout: Duration::from_secs(1),
+            max_response_bytes: 1_024,
+            production: false,
+        }
+    }
+
+    fn code_hash() -> String {
+        format!("0x{}", hex::encode(Keccak256::digest([0x60, 0x00])))
+    }
+
+    fn identity() -> DnsServerIdentityV2 {
+        DnsServerIdentityV2 {
+            schema_version: "dns-server-identity-v2".into(),
+            server_id: "operator/r1".into(),
+            operator_id: "operator".into(),
+            role: DnsServerRole::Recursive,
+            endpoints: Vec::new(),
+            anycast: false,
+            anycast_service_id: None,
+            agent: None,
+            valid_from: 1,
+            valid_until: 2_000,
+            object_version: 1,
+            status: "ACTIVE".into(),
+            issuer: "issuer".into(),
+            key_id: "key".into(),
+            signature: None,
+        }
+    }
 
     #[test]
     fn selectors_match_registry_abi() {
@@ -492,5 +650,96 @@ mod tests {
         assert_eq!(status_name(3).unwrap(), "REVOKED");
         word[0] = 1;
         assert!(word_u64(&word, 0).is_err());
+    }
+
+    #[tokio::test]
+    async fn chain_code_and_runtime_hash_pins_fail_closed() {
+        let mut cases = Vec::new();
+        let mut mismatch_chain = state();
+        mismatch_chain.chain_id = 1;
+        cases.push(mismatch_chain);
+        let mut no_code = state();
+        no_code.code = "0x".into();
+        cases.push(no_code);
+        let hash_mismatch = state();
+        cases.push(hash_mismatch);
+
+        for (index, state) in cases.into_iter().enumerate() {
+            let (url, task) = spawn_rpc(state).await;
+            let expected_hash = if index == 2 {
+                format!("0x{}", "11".repeat(32))
+            } else {
+                code_hash()
+            };
+            let adapter = EvmRegistryAdapter::new(config(url, expected_hash)).unwrap();
+            assert!(
+                adapter
+                    .read_snapshot(&[], &IssuerKeyRegistry::default(), 1_000)
+                    .await
+                    .is_err()
+            );
+            task.abort();
+        }
+    }
+
+    #[tokio::test]
+    async fn finalized_fallback_uses_configured_confirmations() {
+        let mut rpc_state = state();
+        rpc_state.finalized_available = false;
+        let (url, task) = spawn_rpc(rpc_state).await;
+        let adapter = EvmRegistryAdapter::new(config(url, code_hash())).unwrap();
+        let checkpoint = adapter.finalized_checkpoint().await.unwrap();
+        assert_eq!(checkpoint.number, 20);
+        assert_eq!(
+            checkpoint.finality_type,
+            RegistryFinalityTypeV2::EvmConfirmations
+        );
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn specified_block_read_and_checkpoint_change_fail_closed() {
+        let mut unavailable = state();
+        unavailable.eth_call_error = true;
+        let (url, task) = spawn_rpc(unavailable).await;
+        let adapter = EvmRegistryAdapter::new(config(url, code_hash())).unwrap();
+        assert!(
+            adapter
+                .read_snapshot(&[identity()], &IssuerKeyRegistry::default(), 1_000)
+                .await
+                .is_err()
+        );
+        task.abort();
+
+        let mut forked = state();
+        forked.fork_after_finalized = true;
+        let (url, task) = spawn_rpc(forked).await;
+        let adapter = EvmRegistryAdapter::new(config(url, code_hash())).unwrap();
+        assert!(
+            adapter
+                .read_snapshot(&[], &IssuerKeyRegistry::default(), 1_000)
+                .await
+                .is_err()
+        );
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn rpc_id_and_response_size_limits_fail_closed() {
+        for rpc_state in [
+            RpcState {
+                wrong_id: true,
+                ..state()
+            },
+            RpcState {
+                oversized: true,
+                ..state()
+            },
+        ] {
+            let (url, task) = spawn_rpc(rpc_state).await;
+            let adapter = EvmRegistryAdapter::new(config(url, code_hash())).unwrap();
+            assert!(adapter.finalized_checkpoint().await.is_err());
+            task.abort();
+        }
     }
 }

@@ -3,7 +3,8 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use ri_core::{
-    DnsEndpoint, DnsServerIdentityV2, QueryEvidenceGraphV2, RegistryReferenceV2, TraceEventV2,
+    DnsEndpoint, DnsServerIdentityV2, QueryEvidenceGraphV2, RegistryAdapterMetadataV2,
+    RegistryFinalityTypeV2, RegistryReferenceV2, TraceEventV2,
 };
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
 use thiserror::Error;
@@ -77,6 +78,13 @@ CREATE TABLE IF NOT EXISTS ri_v2_registry_snapshot (
   finalized_block_hash TEXT NOT NULL,
   snapshot_generation INTEGER NOT NULL,
   snapshot_json TEXT NOT NULL,
+  adapter_type TEXT NOT NULL,
+  chain_identity TEXT NOT NULL,
+  registry_locator TEXT NOT NULL,
+  registry_schema_hash TEXT NOT NULL,
+  finality_type TEXT NOT NULL,
+  state_root TEXT NOT NULL,
+  adapter_metadata_json TEXT NOT NULL,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 "#;
@@ -121,7 +129,7 @@ impl EvidenceStore {
         let store = Self {
             path: path.as_ref().to_path_buf(),
         };
-        let connection = store.connect()?;
+        let mut connection = store.connect()?;
         connection.execute_batch(SCHEMA)?;
         if !table_has_column(&connection, "ri_v2_query_contexts", "registered_at")? {
             connection.execute(
@@ -136,6 +144,7 @@ impl EvidenceStore {
             "INSERT OR IGNORE INTO ri_v2_meta(meta_key,meta_value) VALUES('schema_version','2')",
             [],
         )?;
+        migrate_registry_schema(&mut connection)?;
         connection.execute(
             "INSERT OR IGNORE INTO ri_v2_meta(meta_key,meta_value) VALUES('cache_generation','0')",
             [],
@@ -744,13 +753,15 @@ impl EvidenceStore {
         let mut connection = self.connect()?;
         let transaction = connection.transaction()?;
         let (chain_id, contract_address, runtime_code_hash) = legacy_evm_columns(reference)?;
-        let finalized_block = sql_i64(reference.finalized_block, "finalized_block")?;
+        let finalized_block = sql_i64(reference.checkpoint_height, "checkpoint_height")?;
         let snapshot_generation = sql_i64(reference.snapshot_generation, "snapshot_generation")?;
         transaction.execute(
             r#"INSERT INTO ri_v2_registry_snapshot(
                  snapshot_key,chain_id,contract_address,contract_code_hash,finalized_block,
-                 finalized_block_hash,snapshot_generation,snapshot_json
-               ) VALUES(?,?,?,?,?,?,?,?)
+                 finalized_block_hash,snapshot_generation,snapshot_json,adapter_type,
+                 chain_identity,registry_locator,registry_schema_hash,finality_type,state_root,
+                 adapter_metadata_json
+               ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                ON CONFLICT(snapshot_key) DO UPDATE SET
                  chain_id=excluded.chain_id,
                  contract_address=excluded.contract_address,
@@ -759,6 +770,13 @@ impl EvidenceStore {
                  finalized_block_hash=excluded.finalized_block_hash,
                  snapshot_generation=excluded.snapshot_generation,
                  snapshot_json=excluded.snapshot_json,
+                 adapter_type=excluded.adapter_type,
+                 chain_identity=excluded.chain_identity,
+                 registry_locator=excluded.registry_locator,
+                 registry_schema_hash=excluded.registry_schema_hash,
+                 finality_type=excluded.finality_type,
+                 state_root=excluded.state_root,
+                 adapter_metadata_json=excluded.adapter_metadata_json,
                  updated_at=CURRENT_TIMESTAMP"#,
             params![
                 key,
@@ -766,9 +784,16 @@ impl EvidenceStore {
                 contract_address,
                 runtime_code_hash,
                 finalized_block,
-                reference.finalized_block_hash,
+                reference.checkpoint_hash,
                 snapshot_generation,
                 serde_json::to_string(reference)?,
+                reference.chain_adapter,
+                reference.chain_identity,
+                reference.registry_locator,
+                reference.registry_schema_hash,
+                finality_type_name(reference.finality_type),
+                reference.state_root,
+                serde_json::to_string(&reference.adapter_metadata)?,
             ],
         )?;
         transaction.commit()?;
@@ -796,11 +821,10 @@ impl EvidenceStore {
             first.chain_identity.as_str(),
             first.registry_locator.as_str(),
             first.registry_schema_hash.as_str(),
-            first.evm_chain_id,
-            first.evm_contract_address.as_deref(),
-            first.evm_runtime_code_hash.as_deref(),
-            first.finalized_block,
-            first.finalized_block_hash.as_str(),
+            &first.adapter_metadata,
+            first.checkpoint_height,
+            first.checkpoint_hash.as_str(),
+            first.finality_type,
             first.snapshot_generation,
             first.state_root.as_str(),
         );
@@ -814,11 +838,10 @@ impl EvidenceStore {
                     reference.chain_identity.as_str(),
                     reference.registry_locator.as_str(),
                     reference.registry_schema_hash.as_str(),
-                    reference.evm_chain_id,
-                    reference.evm_contract_address.as_deref(),
-                    reference.evm_runtime_code_hash.as_deref(),
-                    reference.finalized_block,
-                    reference.finalized_block_hash.as_str(),
+                    &reference.adapter_metadata,
+                    reference.checkpoint_height,
+                    reference.checkpoint_hash.as_str(),
+                    reference.finality_type,
                     reference.snapshot_generation,
                     reference.state_root.as_str(),
                 ) != deployment
@@ -856,9 +879,7 @@ impl EvidenceStore {
             .transpose()?;
         if let Some(existing) = existing_reference.as_ref()
             && (existing.chain_adapter != first.chain_adapter
-                || existing.evm_chain_id != first.evm_chain_id
-                || existing.evm_contract_address != first.evm_contract_address
-                || existing.evm_runtime_code_hash != first.evm_runtime_code_hash
+                || existing.adapter_metadata != first.adapter_metadata
                 || (!existing.chain_identity.is_empty()
                     && existing.chain_identity != first.chain_identity)
                 || (!existing.registry_locator.is_empty()
@@ -905,14 +926,14 @@ impl EvidenceStore {
             }
         }
         if let Some(checkpoint) = registry_checkpoint_from(&transaction)? {
-            if first.finalized_block < checkpoint.finalized_block {
+            if first.checkpoint_height < checkpoint.finalized_block {
                 return Err(StoreError::InvalidData(format!(
                     "finalized block rollback: stored {}, received {}",
-                    checkpoint.finalized_block, first.finalized_block
+                    checkpoint.finalized_block, first.checkpoint_height
                 )));
             }
-            if first.finalized_block == checkpoint.finalized_block
-                && first.finalized_block_hash != checkpoint.finalized_block_hash
+            if first.checkpoint_height == checkpoint.finalized_block
+                && first.checkpoint_hash != checkpoint.finalized_block_hash
             {
                 return Err(StoreError::InvalidData(
                     "finalized block hash changed at the stored height".into(),
@@ -1025,8 +1046,10 @@ impl EvidenceStore {
             transaction.execute(
                 r#"INSERT INTO ri_v2_registry_snapshot(
                      snapshot_key,chain_id,contract_address,contract_code_hash,finalized_block,
-                     finalized_block_hash,snapshot_generation,snapshot_json
-                   ) VALUES(?,?,?,?,?,?,?,?)
+                     finalized_block_hash,snapshot_generation,snapshot_json,adapter_type,
+                     chain_identity,registry_locator,registry_schema_hash,finality_type,state_root,
+                     adapter_metadata_json
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(snapshot_key) DO UPDATE SET
                      chain_id=excluded.chain_id,
                      contract_address=excluded.contract_address,
@@ -1035,16 +1058,30 @@ impl EvidenceStore {
                      finalized_block_hash=excluded.finalized_block_hash,
                      snapshot_generation=excluded.snapshot_generation,
                      snapshot_json=excluded.snapshot_json,
+                     adapter_type=excluded.adapter_type,
+                     chain_identity=excluded.chain_identity,
+                     registry_locator=excluded.registry_locator,
+                     registry_schema_hash=excluded.registry_schema_hash,
+                     finality_type=excluded.finality_type,
+                     state_root=excluded.state_root,
+                     adapter_metadata_json=excluded.adapter_metadata_json,
                      updated_at=CURRENT_TIMESTAMP"#,
                 params![
                     format!("registry-v2:{}", identity.server_id),
                     legacy_chain_id,
                     legacy_contract_address,
                     legacy_runtime_code_hash,
-                    sql_i64(reference.finalized_block, "finalized_block")?,
-                    reference.finalized_block_hash,
+                    sql_i64(reference.checkpoint_height, "checkpoint_height")?,
+                    reference.checkpoint_hash,
                     sql_i64(reference.snapshot_generation, "snapshot_generation")?,
                     serde_json::to_string(reference)?,
+                    reference.chain_adapter,
+                    reference.chain_identity,
+                    reference.registry_locator,
+                    reference.registry_schema_hash,
+                    finality_type_name(reference.finality_type),
+                    reference.state_root,
+                    serde_json::to_string(&reference.adapter_metadata)?,
                 ],
             )?;
         }
@@ -1057,12 +1094,12 @@ impl EvidenceStore {
         set_meta(
             &transaction,
             "registry_finalized_block",
-            &first.finalized_block.to_string(),
+            &first.checkpoint_height.to_string(),
         )?;
         set_meta(
             &transaction,
             "registry_finalized_block_hash",
-            &first.finalized_block_hash,
+            &first.checkpoint_hash,
         )?;
         set_meta(
             &transaction,
@@ -1209,6 +1246,103 @@ fn table_has_column(
     Ok(false)
 }
 
+fn migrate_registry_schema(connection: &mut Connection) -> Result<(), StoreError> {
+    for (column, definition) in [
+        ("adapter_type", "TEXT NOT NULL DEFAULT ''"),
+        ("chain_identity", "TEXT NOT NULL DEFAULT ''"),
+        ("registry_locator", "TEXT NOT NULL DEFAULT ''"),
+        ("registry_schema_hash", "TEXT NOT NULL DEFAULT ''"),
+        ("finality_type", "TEXT NOT NULL DEFAULT ''"),
+        ("state_root", "TEXT NOT NULL DEFAULT ''"),
+        ("adapter_metadata_json", "TEXT NOT NULL DEFAULT ''"),
+    ] {
+        if !table_has_column(connection, "ri_v2_registry_snapshot", column)? {
+            connection.execute(
+                &format!("ALTER TABLE ri_v2_registry_snapshot ADD COLUMN {column} {definition}"),
+                [],
+            )?;
+        }
+    }
+
+    let version = connection
+        .query_row(
+            "SELECT meta_value FROM ri_v2_meta WHERE meta_key='schema_version'",
+            [],
+            |row| row.get::<_, String>(0),
+        )?
+        .parse::<u64>()
+        .map_err(|_| StoreError::InvalidData("database schema version is invalid".into()))?;
+    if version > 3 {
+        return Err(StoreError::InvalidData(format!(
+            "database schema version {version} is newer than supported version 3"
+        )));
+    }
+    if version == 3 {
+        return Ok(());
+    }
+
+    let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    let snapshots = {
+        let mut statement = transaction
+            .prepare("SELECT snapshot_key,snapshot_json FROM ri_v2_registry_snapshot")?;
+        statement
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?
+            .collect::<Result<Vec<_>, _>>()?
+    };
+    for (snapshot_key, snapshot_json) in snapshots {
+        let reference: RegistryReferenceV2 = serde_json::from_str(&snapshot_json)?;
+        transaction.execute(
+            r#"UPDATE ri_v2_registry_snapshot SET
+                 snapshot_json=?,adapter_type=?,chain_identity=?,registry_locator=?,
+                 registry_schema_hash=?,finality_type=?,state_root=?,adapter_metadata_json=?
+               WHERE snapshot_key=?"#,
+            params![
+                serde_json::to_string(&reference)?,
+                reference.chain_adapter,
+                reference.chain_identity,
+                reference.registry_locator,
+                reference.registry_schema_hash,
+                finality_type_name(reference.finality_type),
+                reference.state_root,
+                serde_json::to_string(&reference.adapter_metadata)?,
+                snapshot_key,
+            ],
+        )?;
+    }
+
+    let identities = {
+        let mut statement =
+            transaction.prepare("SELECT server_id,registry_json FROM ri_v2_identities")?;
+        statement
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?
+            .collect::<Result<Vec<_>, _>>()?
+    };
+    for (server_id, registry_json) in identities {
+        let reference: RegistryReferenceV2 = serde_json::from_str(&registry_json)?;
+        transaction.execute(
+            "UPDATE ri_v2_identities SET registry_json=? WHERE server_id=?",
+            params![serde_json::to_string(&reference)?, server_id],
+        )?;
+    }
+    set_meta(&transaction, "schema_version", "3")?;
+    transaction.commit()?;
+    Ok(())
+}
+
+fn finality_type_name(value: RegistryFinalityTypeV2) -> &'static str {
+    match value {
+        RegistryFinalityTypeV2::EvmFinalized => "evm-finalized",
+        RegistryFinalityTypeV2::EvmConfirmations => "evm-confirmations",
+        RegistryFinalityTypeV2::EvmFinalizedOrConfirmations => "evm-finalized-or-confirmations",
+        RegistryFinalityTypeV2::NornDualNodeConfirmations => "norn-dual-node-confirmations",
+        RegistryFinalityTypeV2::ExternalSignedCheckpoint => "external-signed-checkpoint",
+    }
+}
+
 fn bump_generation(transaction: &Transaction<'_>) -> Result<u64, StoreError> {
     let current = transaction.query_row(
         "SELECT meta_value FROM ri_v2_meta WHERE meta_key='cache_generation'",
@@ -1309,20 +1443,19 @@ fn sql_i64(value: u64, field: &str) -> Result<i64, StoreError> {
 }
 
 fn legacy_evm_columns(reference: &RegistryReferenceV2) -> Result<(i64, &str, &str), StoreError> {
-    match (
-        reference.evm_chain_id,
-        reference.evm_contract_address.as_deref(),
-        reference.evm_runtime_code_hash.as_deref(),
-    ) {
-        (Some(chain_id), Some(contract_address), Some(runtime_code_hash)) => Ok((
-            sql_i64(chain_id, "evm_chain_id")?,
+    match &reference.adapter_metadata {
+        RegistryAdapterMetadataV2::Evm {
+            chain_id,
+            contract_address,
+            runtime_code_hash,
+        } => Ok((
+            sql_i64(*chain_id, "evm_chain_id")?,
             contract_address,
             runtime_code_hash,
         )),
-        (None, None, None) => Ok((0, "", "")),
-        _ => Err(StoreError::InvalidData(
-            "EVM compatibility anchor must be complete or absent".into(),
-        )),
+        RegistryAdapterMetadataV2::Norn { .. } | RegistryAdapterMetadataV2::External { .. } => {
+            Ok((0, "", ""))
+        }
     }
 }
 
@@ -1331,9 +1464,7 @@ pub fn same_registry_state(left: &RegistryReferenceV2, right: &RegistryReference
         && left.chain_identity == right.chain_identity
         && left.registry_locator == right.registry_locator
         && left.registry_schema_hash == right.registry_schema_hash
-        && left.evm_chain_id == right.evm_chain_id
-        && left.evm_contract_address == right.evm_contract_address
-        && left.evm_runtime_code_hash == right.evm_runtime_code_hash
+        && left.adapter_metadata == right.adapter_metadata
         && left.state_root == right.state_root
         && left.object_hash == right.object_hash
         && left.object_version == right.object_version

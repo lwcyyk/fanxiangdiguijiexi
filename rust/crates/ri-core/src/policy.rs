@@ -5,7 +5,8 @@ use thiserror::Error;
 use crate::crypto::{object_hash, verify_ed25519};
 use crate::evidence::{
     DNS_SERVER_IDENTITY_V2, DnssecStatus, EvidenceLevel, QUERY_EVIDENCE_GRAPH_V2,
-    QueryEvidenceGraphV2, SERVER_HOP_EVIDENCE_V2, TARGET_RESPONSE_ATTESTATION_V2, VerificationMode,
+    QueryEvidenceGraphV2, RegistryAdapterMetadataV2, SERVER_HOP_EVIDENCE_V2,
+    TARGET_RESPONSE_ATTESTATION_V2, VerificationMode,
 };
 
 #[derive(Debug, Error, Eq, PartialEq)]
@@ -107,14 +108,7 @@ pub struct EvidenceValidator<'a> {
     pub issuer_keys: &'a IssuerKeyRegistry,
 }
 
-type RegistryAnchor<'a> = (
-    &'a str,
-    &'a str,
-    &'a str,
-    Option<u64>,
-    Option<&'a str>,
-    Option<&'a str>,
-);
+type RegistryAnchor<'a> = (&'a str, &'a str, &'a str, &'a RegistryAdapterMetadataV2);
 
 impl EvidenceValidator<'_> {
     pub fn validate_graph(
@@ -197,9 +191,7 @@ impl EvidenceValidator<'_> {
                 node.registry.chain_identity.as_str(),
                 node.registry.registry_locator.as_str(),
                 node.registry.registry_schema_hash.as_str(),
-                node.registry.evm_chain_id,
-                node.registry.evm_contract_address.as_deref(),
-                node.registry.evm_runtime_code_hash.as_deref(),
+                &node.registry.adapter_metadata,
             );
             if registry_anchor.is_some_and(|expected| expected != anchor) {
                 return Err(EvidenceValidationError::InvalidGraph(
@@ -762,9 +754,7 @@ fn same_registry_semantics(
         && left.chain_identity == right.chain_identity
         && left.registry_locator == right.registry_locator
         && left.registry_schema_hash == right.registry_schema_hash
-        && left.evm_chain_id == right.evm_chain_id
-        && left.evm_contract_address == right.evm_contract_address
-        && left.evm_runtime_code_hash == right.evm_runtime_code_hash
+        && left.adapter_metadata == right.adapter_metadata
         && left.state_root == right.state_root
         && left.object_hash == right.object_hash
         && left.object_version == right.object_version
@@ -868,20 +858,51 @@ fn validate_registry_shape(
     let explicit_multichain_fields = !registry.chain_identity.is_empty()
         && !registry.registry_locator.is_empty()
         && is_bytes32_hex(&registry.registry_schema_hash);
-    let evm_fields_valid = if registry.chain_adapter == "evm" {
-        registry.evm_chain_id.is_some_and(|value| value > 0)
-            && registry
-                .evm_contract_address
-                .as_deref()
-                .is_some_and(|value| is_hex_width(value, 20))
-            && registry
-                .evm_runtime_code_hash
-                .as_deref()
-                .is_some_and(is_bytes32_hex)
-    } else {
-        registry.evm_chain_id.is_none()
-            && registry.evm_contract_address.is_none()
-            && registry.evm_runtime_code_hash.is_none()
+    let adapter_metadata_valid = match (&*registry.chain_adapter, &registry.adapter_metadata) {
+        (
+            "evm",
+            RegistryAdapterMetadataV2::Evm {
+                chain_id,
+                contract_address,
+                runtime_code_hash,
+            },
+        ) => {
+            *chain_id > 0 && is_hex_width(contract_address, 20) && is_bytes32_hex(runtime_code_hash)
+        }
+        (
+            "norn",
+            RegistryAdapterMetadataV2::Norn {
+                genesis_block_hash,
+                registry_address,
+                registry_key,
+                snapshot_signer_issuer,
+                snapshot_signer_key_id,
+            },
+        ) => {
+            is_bytes32_hex(genesis_block_hash)
+                && is_hex_width(registry_address, 20)
+                && !registry_key.is_empty()
+                && registry_key.len() <= 256
+                && !snapshot_signer_issuer.is_empty()
+                && !snapshot_signer_key_id.is_empty()
+        }
+        (
+            "external",
+            RegistryAdapterMetadataV2::External {
+                driver,
+                snapshot_signer_issuer,
+                snapshot_signer_key_id,
+            },
+        ) => {
+            !driver.is_empty()
+                && driver.len() <= 23
+                && driver
+                    .bytes()
+                    .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+                && !snapshot_signer_issuer.is_empty()
+                && !snapshot_signer_key_id.is_empty()
+        }
+        _ => false,
     };
     if registry.chain_adapter.is_empty()
         || registry.chain_adapter.len() > 32
@@ -890,9 +911,9 @@ fn validate_registry_shape(
             .bytes()
             .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
         || !explicit_multichain_fields
-        || !evm_fields_valid
-        || registry.finalized_block == 0
-        || !is_bytes32_hex(&registry.finalized_block_hash)
+        || !adapter_metadata_valid
+        || registry.checkpoint_height == 0
+        || !is_bytes32_hex(&registry.checkpoint_hash)
         || !is_bytes32_hex(&registry.state_root)
         || !is_bytes32_hex(&registry.object_hash)
     {

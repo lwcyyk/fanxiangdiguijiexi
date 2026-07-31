@@ -133,6 +133,38 @@ impl DnsServerIdentityV2 {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(tag = "adapter_type", rename_all = "kebab-case", deny_unknown_fields)]
+pub enum RegistryAdapterMetadataV2 {
+    Evm {
+        chain_id: u64,
+        contract_address: String,
+        runtime_code_hash: String,
+    },
+    Norn {
+        genesis_block_hash: String,
+        registry_address: String,
+        registry_key: String,
+        snapshot_signer_issuer: String,
+        snapshot_signer_key_id: String,
+    },
+    External {
+        driver: String,
+        snapshot_signer_issuer: String,
+        snapshot_signer_key_id: String,
+    },
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum RegistryFinalityTypeV2 {
+    EvmFinalized,
+    EvmConfirmations,
+    EvmFinalizedOrConfirmations,
+    NornDualNodeConfirmations,
+    ExternalSignedCheckpoint,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct RegistryReferenceV2 {
     /// Explicit adapter name. Missing values fail deserialization; there is no
     /// implicit downgrade to EVM.
@@ -144,25 +176,11 @@ pub struct RegistryReferenceV2 {
     pub registry_locator: String,
     /// Identity of the Registry runtime or snapshot schema.
     pub registry_schema_hash: String,
-    /// EVM-only compatibility anchor. The aliases allow old persisted EVM
-    /// references to deserialize without assigning EVM semantics to other
-    /// adapters.
-    #[serde(default, skip_serializing_if = "Option::is_none", alias = "chain_id")]
-    pub evm_chain_id: Option<u64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        alias = "contract_address"
-    )]
-    pub evm_contract_address: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        alias = "contract_code_hash"
-    )]
-    pub evm_runtime_code_hash: Option<String>,
-    pub finalized_block: u64,
-    pub finalized_block_hash: String,
+    /// Chain-specific values are typed and never overloaded across adapters.
+    pub adapter_metadata: RegistryAdapterMetadataV2,
+    pub checkpoint_height: u64,
+    pub checkpoint_hash: String,
+    pub finality_type: RegistryFinalityTypeV2,
     pub state_root: String,
     pub object_hash: String,
     pub object_version: u64,
@@ -170,6 +188,140 @@ pub struct RegistryReferenceV2 {
     pub root_status: String,
     pub endpoint_binding_status: String,
     pub snapshot_generation: u64,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RegistryReferenceWire {
+    #[serde(default)]
+    chain_adapter: String,
+    #[serde(default)]
+    chain_identity: String,
+    #[serde(default)]
+    registry_locator: String,
+    #[serde(default)]
+    registry_schema_hash: String,
+    #[serde(default)]
+    adapter_metadata: Option<RegistryAdapterMetadataV2>,
+    #[serde(default, alias = "chain_id")]
+    evm_chain_id: Option<u64>,
+    #[serde(default, alias = "contract_address")]
+    evm_contract_address: Option<String>,
+    #[serde(default, alias = "contract_code_hash")]
+    evm_runtime_code_hash: Option<String>,
+    #[serde(alias = "finalized_block")]
+    checkpoint_height: u64,
+    #[serde(alias = "finalized_block_hash")]
+    checkpoint_hash: String,
+    #[serde(default)]
+    finality_type: Option<RegistryFinalityTypeV2>,
+    state_root: String,
+    object_hash: String,
+    object_version: u64,
+    resolver_status: String,
+    root_status: String,
+    endpoint_binding_status: String,
+    snapshot_generation: u64,
+}
+
+impl<'de> Deserialize<'de> for RegistryReferenceV2 {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        let wire = RegistryReferenceWire::deserialize(deserializer)?;
+        let legacy_evm_present = wire.evm_chain_id.is_some()
+            || wire.evm_contract_address.is_some()
+            || wire.evm_runtime_code_hash.is_some();
+        let typed_metadata_present = wire.adapter_metadata.is_some();
+        if typed_metadata_present && wire.chain_adapter.is_empty() {
+            return Err(D::Error::custom(
+                "chain_adapter is required with typed adapter metadata",
+            ));
+        }
+        let adapter_metadata = match (wire.adapter_metadata, legacy_evm_present) {
+            (Some(_), true) => {
+                return Err(D::Error::custom(
+                    "typed adapter metadata conflicts with legacy EVM fields",
+                ));
+            }
+            (Some(metadata), false) => metadata,
+            (None, true) if wire.chain_adapter.is_empty() || wire.chain_adapter == "evm" => {
+                RegistryAdapterMetadataV2::Evm {
+                    chain_id: wire
+                        .evm_chain_id
+                        .ok_or_else(|| D::Error::custom("legacy EVM chain ID is incomplete"))?,
+                    contract_address: wire.evm_contract_address.ok_or_else(|| {
+                        D::Error::custom("legacy EVM contract address is incomplete")
+                    })?,
+                    runtime_code_hash: wire.evm_runtime_code_hash.ok_or_else(|| {
+                        D::Error::custom("legacy EVM runtime code hash is incomplete")
+                    })?,
+                }
+            }
+            (None, _) => {
+                return Err(D::Error::custom(
+                    "typed adapter metadata is required for non-legacy references",
+                ));
+            }
+        };
+        let (chain_adapter, chain_identity, registry_locator, registry_schema_hash) =
+            match &adapter_metadata {
+                RegistryAdapterMetadataV2::Evm {
+                    chain_id,
+                    contract_address,
+                    runtime_code_hash,
+                } => (
+                    if wire.chain_adapter.is_empty() {
+                        "evm".into()
+                    } else {
+                        wire.chain_adapter
+                    },
+                    if wire.chain_identity.is_empty() {
+                        format!("eip155:{chain_id}")
+                    } else {
+                        wire.chain_identity
+                    },
+                    if wire.registry_locator.is_empty() {
+                        format!("evm:{contract_address}")
+                    } else {
+                        wire.registry_locator
+                    },
+                    if wire.registry_schema_hash.is_empty() {
+                        runtime_code_hash.clone()
+                    } else {
+                        wire.registry_schema_hash
+                    },
+                ),
+                _ => (
+                    wire.chain_adapter,
+                    wire.chain_identity,
+                    wire.registry_locator,
+                    wire.registry_schema_hash,
+                ),
+            };
+        Ok(Self {
+            chain_adapter,
+            chain_identity,
+            registry_locator,
+            registry_schema_hash,
+            adapter_metadata,
+            checkpoint_height: wire.checkpoint_height,
+            checkpoint_hash: wire.checkpoint_hash,
+            finality_type: wire
+                .finality_type
+                .unwrap_or(RegistryFinalityTypeV2::EvmFinalizedOrConfirmations),
+            state_root: wire.state_root,
+            object_hash: wire.object_hash,
+            object_version: wire.object_version,
+            resolver_status: wire.resolver_status,
+            root_status: wire.root_status,
+            endpoint_binding_status: wire.endpoint_binding_status,
+            snapshot_generation: wire.snapshot_generation,
+        })
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

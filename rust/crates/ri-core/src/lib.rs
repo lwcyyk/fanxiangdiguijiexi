@@ -12,7 +12,8 @@ pub use crypto::{
 pub use endpoint::DnsEndpoint;
 pub use evidence::{
     AgentBindingV2, CacheProvenanceV2, DnsServerIdentityV2, DnsServerRole, DnssecStatus,
-    EvidenceLevel, EvidenceNodeV2, QueryEvidenceGraphV2, RegistryReferenceV2, ServerHopEvidenceV2,
-    TargetResponseAttestationV2, TraceEventKind, TraceEventV2, VerificationMode,
+    EvidenceLevel, EvidenceNodeV2, QueryEvidenceGraphV2, RegistryAdapterMetadataV2,
+    RegistryFinalityTypeV2, RegistryReferenceV2, ServerHopEvidenceV2, TargetResponseAttestationV2,
+    TraceEventKind, TraceEventV2, VerificationMode,
 };
 pub use policy::{EvidencePolicy, EvidenceValidationError, EvidenceValidator, IssuerKeyRegistry};

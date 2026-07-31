@@ -4,13 +4,15 @@ use std::time::Duration;
 use async_trait::async_trait;
 use prost::Message;
 use ri_core::{
-    DnsServerIdentityV2, IssuerKeyRegistry, resolver_id_key, sha256_hex, verify_ed25519,
+    DnsServerIdentityV2, IssuerKeyRegistry, RegistryAdapterMetadataV2, RegistryFinalityTypeV2,
+    resolver_id_key, sha256_hex, verify_ed25519,
 };
 use serde::{Deserialize, Serialize};
 use tonic::codec::ProstCodec;
 use tonic::codegen::http::uri::PathAndQuery;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint, Identity};
 use tonic::{Request, client::Grpc};
+use url::Url;
 
 use crate::{
     AdapterResult, ChainSnapshot, ChainTarget, FinalizedCheckpoint, RegistryChainAdapter,
@@ -18,6 +20,9 @@ use crate::{
 };
 
 pub const NORN_REGISTRY_SNAPSHOT_V1: &str = "resolver-identity-norn-registry-snapshot-v1";
+const MAX_SNAPSHOT_ENTRIES: usize = 10_000;
+const MAX_ENDPOINTS_PER_ENTRY: usize = 32;
+const MAX_TEXT_FIELD_BYTES: usize = 256;
 const NORN_SCHEMA_DESCRIPTOR_V1: &str = concat!(
     "resolver-identity-norn-registry-snapshot-v1:",
     "chain_id,genesis_block_hash,registry_address,registry_key,",
@@ -169,15 +174,27 @@ impl NornRegistryAdapter {
             return Err("Norn genesis hash and Registry address must not be zero".into());
         }
         let unique_urls = config.rpc_urls.iter().collect::<HashSet<_>>();
-        if unique_urls.len() != config.rpc_urls.len() || config.rpc_urls.is_empty() {
-            return Err("Norn RPC URLs must be non-empty and unique".into());
+        if unique_urls.len() != config.rpc_urls.len() || config.rpc_urls.len() < 2 {
+            return Err("Norn Registry reads require two unique RPC URLs".into());
+        }
+        let rpc_hosts = config
+            .rpc_urls
+            .iter()
+            .map(|endpoint| {
+                Url::parse(endpoint).ok().and_then(|url| {
+                    Some((url.host_str()?.to_owned(), url.port_or_known_default()?))
+                })
+            })
+            .collect::<Option<HashSet<_>>>()
+            .ok_or("Norn RPC endpoint URL is invalid")?;
+        if rpc_hosts.len() != config.rpc_urls.len() {
+            return Err("Norn RPC endpoints must use independent network origins".into());
         }
         if config.production
-            && (config.rpc_urls.len() < 2
-                || config
-                    .rpc_urls
-                    .iter()
-                    .any(|url| !url.starts_with("https://")))
+            && (config
+                .rpc_urls
+                .iter()
+                .any(|url| !url.starts_with("https://")))
         {
             return Err(
                 "production Norn requires at least two independent HTTPS gRPC endpoints".into(),
@@ -202,7 +219,13 @@ impl NornRegistryAdapter {
                 chain_identity: format!("norn-genesis:{genesis_block_hash}"),
                 registry_locator: format!("norn:{registry_address}#{}", config.registry_key),
                 registry_schema_hash: registry_schema_hash.clone(),
-                evm: None,
+                adapter_metadata: RegistryAdapterMetadataV2::Norn {
+                    genesis_block_hash: genesis_block_hash.clone(),
+                    registry_address: registry_address.clone(),
+                    registry_key: config.registry_key.clone(),
+                    snapshot_signer_issuer: config.snapshot_signer_issuer.clone(),
+                    snapshot_signer_key_id: config.snapshot_signer_key_id.clone(),
+                },
             },
             genesis_block_hash,
             registry_address,
@@ -386,6 +409,7 @@ impl RegistryChainAdapter for NornRegistryAdapter {
         }
         Ok(ChainSnapshot {
             checkpoint,
+            state_root: normalize_hash(&snapshot.state_root, 32)?,
             generation: snapshot.snapshot_version,
             records,
         })
@@ -465,6 +489,7 @@ fn validate_snapshot_shape(
         || snapshot.issuer != pins.signer_issuer
         || snapshot.key_id != pins.signer_key_id
         || snapshot.entries.is_empty()
+        || snapshot.entries.len() > MAX_SNAPSHOT_ENTRIES
     {
         return Err("Norn Registry snapshot pins or validity window are invalid".into());
     }
@@ -494,10 +519,13 @@ fn snapshot_records(
     for entry in &snapshot.entries {
         let resolver_key = normalize_hash(&entry.resolver_id_key, 32)?;
         if entry.server_id.is_empty()
+            || entry.server_id.len() > MAX_TEXT_FIELD_BYTES
             || entry.object_version == 0
             || entry.valid_until <= 0
             || entry.status.is_empty()
+            || entry.status.len() > 32
             || entry.endpoint_keys.is_empty()
+            || entry.endpoint_keys.len() > MAX_ENDPOINTS_PER_ENTRY
             || resolver_key != resolver_id_key(&entry.server_id)
             || !resolver_keys.insert(resolver_key.clone())
         {
@@ -636,6 +664,7 @@ impl NornRpcClient {
                     .ok_or("Norn block hash missing")?,
                 32,
             )?,
+            finality_type: RegistryFinalityTypeV2::NornDualNodeConfirmations,
         })
     }
 
@@ -823,10 +852,10 @@ mod tests {
     use base64::Engine;
     use base64::engine::general_purpose::STANDARD;
     use ed25519_dalek::SigningKey;
-    use ri_core::{IssuerKeyRegistry, resolver_id_key, sign_ed25519};
+    use ri_core::{IssuerKeyRegistry, RegistryFinalityTypeV2, resolver_id_key, sign_ed25519};
 
     use super::{
-        NORN_REGISTRY_SNAPSHOT_V1, NornAdapterConfig, NornRegistryAdapter,
+        MAX_TEXT_FIELD_BYTES, NORN_REGISTRY_SNAPSHOT_V1, NornAdapterConfig, NornRegistryAdapter,
         NornRegistrySnapshotEntryV1, NornRegistrySnapshotV1, SnapshotPins, decode_data_command,
         norn_registry_schema_hash, norn_state_root, registry_command, snapshot_records,
         validate_snapshot_shape,
@@ -887,6 +916,7 @@ mod tests {
         let checkpoint = FinalizedCheckpoint {
             number: 110,
             hash: CHECKPOINT.into(),
+            finality_type: RegistryFinalityTypeV2::NornDualNodeConfirmations,
         };
         validate_snapshot_shape(
             &snapshot,
@@ -917,9 +947,11 @@ mod tests {
         let (mut snapshot, keys) = signed_snapshot();
         snapshot.genesis_block_hash =
             "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into();
+        snapshot.signature = Some(sign_ed25519(&snapshot, &STANDARD.encode([7_u8; 32])).unwrap());
         let checkpoint = FinalizedCheckpoint {
             number: 110,
             hash: CHECKPOINT.into(),
+            finality_type: RegistryFinalityTypeV2::NornDualNodeConfirmations,
         };
         assert!(
             validate_snapshot_shape(
@@ -942,11 +974,45 @@ mod tests {
     }
 
     #[test]
+    fn snapshot_field_limits_fail_closed() {
+        let (mut snapshot, keys) = signed_snapshot();
+        snapshot.entries[0].server_id = "x".repeat(MAX_TEXT_FIELD_BYTES + 1);
+        snapshot.entries[0].resolver_id_key = resolver_id_key(&snapshot.entries[0].server_id);
+        snapshot.state_root = norn_state_root(&snapshot.entries).unwrap();
+        snapshot.signature = Some(sign_ed25519(&snapshot, &STANDARD.encode([7_u8; 32])).unwrap());
+        let checkpoint = FinalizedCheckpoint {
+            number: 110,
+            hash: CHECKPOINT.into(),
+            finality_type: RegistryFinalityTypeV2::NornDualNodeConfirmations,
+        };
+        assert!(
+            validate_snapshot_shape(
+                &snapshot,
+                &keys,
+                &SnapshotPins {
+                    chain_id: 20_001,
+                    genesis_block_hash: GENESIS,
+                    registry_address: ADDRESS,
+                    registry_key: "resolver-identity-registry-v2",
+                    registry_schema_hash: &norn_registry_schema_hash(),
+                    signer_issuer: "norn-registry",
+                    signer_key_id: "snapshot-key-1",
+                    accepted_checkpoint: &checkpoint,
+                    now: 1_700_000_000,
+                },
+            )
+            .is_ok()
+        );
+        assert!(snapshot_records(&snapshot).is_err());
+    }
+
+    #[test]
     fn snapshot_signer_is_pinned_and_rotation_is_explicit() {
         let (old_snapshot, mut keys) = signed_snapshot();
         let checkpoint = FinalizedCheckpoint {
             number: 110,
             hash: CHECKPOINT.into(),
+            finality_type: RegistryFinalityTypeV2::NornDualNodeConfirmations,
         };
         let old_pins = SnapshotPins {
             chain_id: 20_001,
@@ -1090,6 +1156,14 @@ mod tests {
             tls: None,
             production: false,
         };
-        assert!(NornRegistryAdapter::new(development).is_ok());
+        assert!(NornRegistryAdapter::new(development.clone()).is_err());
+        let two_nodes = NornAdapterConfig {
+            rpc_urls: vec![
+                "http://127.0.0.1:45555".into(),
+                "http://127.0.0.1:45556".into(),
+            ],
+            ..development
+        };
+        assert!(NornRegistryAdapter::new(two_nodes).is_ok());
     }
 }

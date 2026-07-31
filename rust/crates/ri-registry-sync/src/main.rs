@@ -19,7 +19,8 @@ use ri_chain_adapter::{
 };
 use ri_core::evidence::DNS_SERVER_IDENTITY_V2;
 use ri_core::{
-    DnsServerIdentityV2, IssuerKeyRegistry, object_hash, resolver_id_key, verify_ed25519,
+    DnsServerIdentityV2, IssuerKeyRegistry, RegistryAdapterMetadataV2, object_hash,
+    resolver_id_key, verify_ed25519,
 };
 use ri_store::EvidenceStore;
 use serde::Deserialize;
@@ -161,25 +162,21 @@ async fn sync_metrics(State(state): State<MonitoringState>) -> impl IntoResponse
     let chain_identity = prometheus_label(&target.chain_identity);
     let registry_locator = prometheus_label(&target.registry_locator);
     let registry_schema_hash = prometheus_label(&target.registry_schema_hash);
-    let evm_chain_id = target
-        .evm
-        .as_ref()
-        .map(|evm| evm.chain_id.to_string())
-        .unwrap_or_default();
-    let evm_contract_address = prometheus_label(
-        target
-            .evm
-            .as_ref()
-            .map(|evm| evm.contract_address.as_str())
-            .unwrap_or_default(),
-    );
-    let evm_runtime_code_hash = prometheus_label(
-        target
-            .evm
-            .as_ref()
-            .map(|evm| evm.runtime_code_hash.as_str())
-            .unwrap_or_default(),
-    );
+    let (evm_chain_id, evm_contract_address, evm_runtime_code_hash) =
+        if let RegistryAdapterMetadataV2::Evm {
+            chain_id,
+            contract_address,
+            runtime_code_hash,
+        } = &target.adapter_metadata
+        {
+            (
+                chain_id.to_string(),
+                prometheus_label(contract_address),
+                prometheus_label(runtime_code_hash),
+            )
+        } else {
+            (String::new(), String::new(), String::new())
+        };
     let finalized_block_hash = prometheus_label(&finalized_block_hash);
     (
         StatusCode::OK,
@@ -255,6 +252,13 @@ async fn reconcile(
             .get(&identity.server_id)
             .ok_or_else(|| format!("Registry has no record for {}", identity.server_id))?
             .clone();
+        if record.state_root != snapshot.state_root {
+            return Err(format!(
+                "{}: Registry record state root differs from the snapshot root",
+                identity.server_id
+            )
+            .into());
+        }
         validate_registry_record(identity, &record)
             .map_err(|error| format!("{}: {error}", identity.server_id))?;
         records.push((
@@ -403,21 +407,27 @@ impl Settings {
             "external" => {
                 let driver = required("RI_EXTERNAL_DRIVER")?;
                 let schema_hash = required("RI_CHAIN_REGISTRY_SCHEMA_HASH")?;
+                let signer_issuer = required("RI_EXTERNAL_SIGNER_ISSUER")?;
+                let signer_key_id = required("RI_EXTERNAL_SIGNER_KEY_ID")?;
                 AdapterSettings::External(ExternalAdapterConfig {
                     endpoints: parse_urls(&required_any(&[
                         "RI_EXTERNAL_ADAPTER_URLS",
                         "RI_CHAIN_RPC_URLS",
                     ])?)?,
                     target: ChainTarget {
-                        adapter: format!("external-{driver}"),
+                        adapter: "external".into(),
                         chain_identity: required("RI_CHAIN_IDENTITY")?,
                         registry_locator: required("RI_CHAIN_REGISTRY_LOCATOR")?,
                         registry_schema_hash: schema_hash,
-                        evm: None,
+                        adapter_metadata: RegistryAdapterMetadataV2::External {
+                            driver: driver.clone(),
+                            snapshot_signer_issuer: signer_issuer.clone(),
+                            snapshot_signer_key_id: signer_key_id.clone(),
+                        },
                     },
                     driver,
-                    signer_issuer: required("RI_EXTERNAL_SIGNER_ISSUER")?,
-                    signer_key_id: required("RI_EXTERNAL_SIGNER_KEY_ID")?,
+                    signer_issuer,
+                    signer_key_id,
                     request_timeout,
                     max_response_bytes,
                     tls: optional_external_tls_material()?,
@@ -562,10 +572,30 @@ fn required(name: &str) -> Result<String, AnyError> {
 }
 
 fn required_any(names: &[&str]) -> Result<String, AnyError> {
-    names
+    let configured = names
         .iter()
-        .find_map(|name| env::var(name).ok().filter(|value| !value.trim().is_empty()))
-        .ok_or_else(|| format!("one of {} is required", names.join(", ")).into())
+        .filter_map(|name| {
+            env::var(name)
+                .ok()
+                .filter(|value| !value.trim().is_empty())
+                .map(|value| (*name, value))
+        })
+        .collect::<Vec<_>>();
+    let Some((_, first)) = configured.first() else {
+        return Err(format!("one of {} is required", names.join(", ")).into());
+    };
+    if configured.iter().any(|(_, value)| value != first) {
+        return Err(format!(
+            "conflicting compatibility variables: {}",
+            configured
+                .iter()
+                .map(|(name, _)| *name)
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+        .into());
+    }
+    Ok(first.clone())
 }
 
 fn parse_environment(value: &str) -> Result<bool, AnyError> {
@@ -581,12 +611,11 @@ fn parse_u64(name: &str, default: u64) -> Result<u64, AnyError> {
 }
 
 fn parse_u64_any(names: &[&str], default: u64) -> Result<u64, AnyError> {
-    for name in names {
-        if let Ok(value) = env::var(name)
-            && !value.trim().is_empty()
-        {
-            return Ok(value.parse()?);
-        }
+    if names
+        .iter()
+        .any(|name| env::var(name).is_ok_and(|value| !value.trim().is_empty()))
+    {
+        return Ok(required_any(names)?.parse()?);
     }
     Ok(default)
 }

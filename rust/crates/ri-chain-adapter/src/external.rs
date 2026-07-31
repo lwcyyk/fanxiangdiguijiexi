@@ -5,7 +5,8 @@ use async_trait::async_trait;
 use futures_util::StreamExt;
 use reqwest::{Certificate, Client, Identity, Url};
 use ri_core::{
-    DnsServerIdentityV2, IssuerKeyRegistry, resolver_id_key, sha256_hex, verify_ed25519,
+    DnsServerIdentityV2, IssuerKeyRegistry, RegistryAdapterMetadataV2, RegistryFinalityTypeV2,
+    resolver_id_key, sha256_hex, verify_ed25519,
 };
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -16,6 +17,9 @@ use crate::{
 };
 
 pub const EXTERNAL_REGISTRY_SNAPSHOT_V1: &str = "resolver-identity-external-registry-snapshot-v1";
+const MAX_SNAPSHOT_ENTRIES: usize = 10_000;
+const MAX_ENDPOINTS_PER_ENTRY: usize = 32;
+const MAX_TEXT_FIELD_BYTES: usize = 256;
 
 #[derive(Clone, Debug)]
 pub struct ExternalAdapterConfig {
@@ -60,11 +64,19 @@ impl ExternalRegistryAdapter {
                 "external adapter driver must be a lowercase slug of at most 23 bytes".into(),
             );
         }
-        let expected_adapter = format!("external-{}", config.driver);
-        if config.target.adapter != expected_adapter
+        if config.target.adapter != "external"
             || config.target.chain_identity.is_empty()
             || config.target.registry_locator.is_empty()
-            || config.target.evm.is_some()
+            || !matches!(
+                &config.target.adapter_metadata,
+                RegistryAdapterMetadataV2::External {
+                    driver,
+                    snapshot_signer_issuer,
+                    snapshot_signer_key_id,
+                } if driver == &config.driver
+                    && snapshot_signer_issuer == &config.signer_issuer
+                    && snapshot_signer_key_id == &config.signer_key_id
+            )
             || config.signer_issuer.is_empty()
             || config.signer_key_id.is_empty()
             || config.request_timeout.is_zero()
@@ -82,16 +94,29 @@ impl ExternalRegistryAdapter {
         if config.endpoints.is_empty() || unique_endpoints.len() != config.endpoints.len() {
             return Err("external adapter endpoints must be non-empty and unique".into());
         }
-        if config.production
-            && (config.endpoints.len() < 2
-                || config
-                    .endpoints
-                    .iter()
-                    .any(|endpoint| !endpoint.starts_with("https://")))
+        if config.endpoints.len() < 2
+            || config
+                .endpoints
+                .iter()
+                .any(|endpoint| !endpoint.starts_with("https://"))
+            || config.tls.is_none()
         {
             return Err(
-                "production external adapters require two independent HTTPS endpoints".into(),
+                "external adapters require two independent HTTPS endpoints and mTLS".into(),
             );
+        }
+        let endpoint_hosts = config
+            .endpoints
+            .iter()
+            .map(|endpoint| {
+                Url::parse(endpoint).ok().and_then(|url| {
+                    Some((url.host_str()?.to_owned(), url.port_or_known_default()?))
+                })
+            })
+            .collect::<Option<HashSet<_>>>()
+            .ok_or("external adapter endpoint URL is invalid")?;
+        if endpoint_hosts.len() != config.endpoints.len() {
+            return Err("external adapter endpoints must use independent network origins".into());
         }
         let clients = config
             .endpoints
@@ -143,6 +168,7 @@ impl ExternalRegistryAdapter {
             let checkpoint = FinalizedCheckpoint {
                 number,
                 hash: normalize_hash(&checkpoint.hash, 32)?,
+                finality_type: RegistryFinalityTypeV2::ExternalSignedCheckpoint,
             };
             match &accepted {
                 Some(previous) if previous != &checkpoint => {
@@ -175,6 +201,7 @@ impl ExternalRegistryAdapter {
             || snapshot.issuer != self.signer_issuer
             || snapshot.key_id != self.signer_key_id
             || snapshot.entries.is_empty()
+            || snapshot.entries.len() > MAX_SNAPSHOT_ENTRIES
         {
             return Err("external Registry snapshot pins or validity window are invalid".into());
         }
@@ -215,6 +242,7 @@ impl RegistryChainAdapter for ExternalRegistryAdapter {
         }
         Ok(ChainSnapshot {
             checkpoint: canonical,
+            state_root: normalize_hash(&snapshot.state_root, 32)?,
             generation: snapshot.generation,
             records,
         })
@@ -265,10 +293,13 @@ fn snapshot_records(
     for entry in &snapshot.entries {
         let resolver_key = normalize_hash(&entry.resolver_id_key, 32)?;
         if entry.server_id.is_empty()
+            || entry.server_id.len() > MAX_TEXT_FIELD_BYTES
             || entry.object_version == 0
             || entry.valid_until <= 0
             || entry.status.is_empty()
+            || entry.status.len() > 32
             || entry.endpoint_keys.is_empty()
+            || entry.endpoint_keys.len() > MAX_ENDPOINTS_PER_ENTRY
             || resolver_key != resolver_id_key(&entry.server_id)
             || !resolver_keys.insert(resolver_key.clone())
         {
@@ -441,24 +472,65 @@ mod tests {
     use base64::Engine;
     use base64::engine::general_purpose::STANDARD;
     use ed25519_dalek::SigningKey;
-    use ri_core::{IssuerKeyRegistry, resolver_id_key};
+    use ri_core::{
+        IssuerKeyRegistry, RegistryAdapterMetadataV2, RegistryFinalityTypeV2, resolver_id_key,
+    };
     use tokio::net::TcpListener;
     use tokio::task::JoinHandle;
 
     use super::{
         EXTERNAL_REGISTRY_SNAPSHOT_V1, ExternalAdapterConfig, ExternalRegistryAdapter,
-        ExternalRegistrySnapshotEntryV1, ExternalRegistrySnapshotV1, external_state_root,
+        ExternalRegistrySnapshotEntryV1, ExternalRegistrySnapshotV1, MAX_TEXT_FIELD_BYTES,
+        external_state_root,
     };
     use crate::{ChainTarget, FinalizedCheckpoint, RegistryChainAdapter};
 
-    fn target() -> ChainTarget {
+    fn target_with_key(key_id: &str) -> ChainTarget {
         ChainTarget {
-            adapter: "external-fabric".into(),
+            adapter: "external".into(),
             chain_identity: "fabric:channel-a:genesis-abc".into(),
             registry_locator: "fabric:channel-a/identity-registry".into(),
             registry_schema_hash:
                 "0x2222222222222222222222222222222222222222222222222222222222222222".into(),
-            evm: None,
+            adapter_metadata: RegistryAdapterMetadataV2::External {
+                driver: "fabric".into(),
+                snapshot_signer_issuer: "adapter-operator".into(),
+                snapshot_signer_key_id: key_id.into(),
+            },
+        }
+    }
+
+    fn target() -> ChainTarget {
+        target_with_key("adapter-key-1")
+    }
+
+    fn validation_adapter(key_id: &str) -> ExternalRegistryAdapter {
+        ExternalRegistryAdapter {
+            target: target_with_key(key_id),
+            signer_issuer: "adapter-operator".into(),
+            signer_key_id: key_id.into(),
+            clients: Vec::new(),
+        }
+    }
+
+    fn protocol_adapter(urls: Vec<String>) -> ExternalRegistryAdapter {
+        ExternalRegistryAdapter {
+            target: target(),
+            signer_issuer: "adapter-operator".into(),
+            signer_key_id: "adapter-key-1".into(),
+            clients: urls
+                .into_iter()
+                .map(|url| {
+                    super::ExternalProtocolClient::new(
+                        url,
+                        std::time::Duration::from_secs(1),
+                        4_194_304,
+                        None,
+                        false,
+                    )
+                    .unwrap()
+                })
+                .collect(),
         }
     }
 
@@ -483,10 +555,11 @@ mod tests {
         }];
         let mut snapshot = ExternalRegistrySnapshotV1 {
             schema_version: EXTERNAL_REGISTRY_SNAPSHOT_V1.into(),
-            target: target(),
+            target: target_with_key(key_id),
             checkpoint: FinalizedCheckpoint {
                 number: 10,
                 hash: "0x5555555555555555555555555555555555555555555555555555555555555555".into(),
+                finality_type: RegistryFinalityTypeV2::ExternalSignedCheckpoint,
             },
             generation: 1,
             state_root: external_state_root(&entries).unwrap(),
@@ -553,18 +626,7 @@ mod tests {
     #[test]
     fn arbitrary_chain_snapshot_is_signed_and_pinned() {
         let (mut snapshot, issuer_keys) = signed_snapshot();
-        let adapter = ExternalRegistryAdapter::new(ExternalAdapterConfig {
-            driver: "fabric".into(),
-            endpoints: vec!["http://127.0.0.1:18080/".into()],
-            target: target(),
-            signer_issuer: "adapter-operator".into(),
-            signer_key_id: "adapter-key-1".into(),
-            request_timeout: std::time::Duration::from_secs(1),
-            max_response_bytes: 4_194_304,
-            tls: None,
-            production: false,
-        })
-        .unwrap();
+        let adapter = validation_adapter("adapter-key-1");
         assert_eq!(
             adapter
                 .validate_snapshot(&snapshot, &issuer_keys, 1_000)
@@ -583,18 +645,7 @@ mod tests {
     #[test]
     fn signer_pin_expiration_and_key_rotation_fail_closed() {
         let (old_snapshot, mut keys) = signed_snapshot();
-        let old_adapter = ExternalRegistryAdapter::new(ExternalAdapterConfig {
-            driver: "fabric".into(),
-            endpoints: vec!["http://127.0.0.1:18080/".into()],
-            target: target(),
-            signer_issuer: "adapter-operator".into(),
-            signer_key_id: "adapter-key-1".into(),
-            request_timeout: std::time::Duration::from_secs(1),
-            max_response_bytes: 4_194_304,
-            tls: None,
-            production: false,
-        })
-        .unwrap();
+        let old_adapter = validation_adapter("adapter-key-1");
         assert!(
             old_adapter
                 .validate_snapshot(&old_snapshot, &keys, 1_000)
@@ -613,18 +664,7 @@ mod tests {
                 .get("adapter-operator", "adapter-key-2")
                 .unwrap(),
         );
-        let rotated_adapter = ExternalRegistryAdapter::new(ExternalAdapterConfig {
-            driver: "fabric".into(),
-            endpoints: vec!["http://127.0.0.1:18081/".into()],
-            target: target(),
-            signer_issuer: "adapter-operator".into(),
-            signer_key_id: "adapter-key-2".into(),
-            request_timeout: std::time::Duration::from_secs(1),
-            max_response_bytes: 4_194_304,
-            tls: None,
-            production: false,
-        })
-        .unwrap();
+        let rotated_adapter = validation_adapter("adapter-key-2");
         assert!(
             old_adapter
                 .validate_snapshot(&rotated_snapshot, &keys, 1_000)
@@ -649,6 +689,43 @@ mod tests {
                 .validate_snapshot(&rotated_snapshot, &keys, 1_000)
                 .is_err()
         );
+    }
+
+    #[test]
+    fn chain_registry_schema_and_field_limits_fail_closed() {
+        let (snapshot, keys) = signed_snapshot();
+        let adapter = validation_adapter("adapter-key-1");
+        for changed in [
+            {
+                let mut value = snapshot.clone();
+                value.target.chain_identity = "fabric:channel-b:genesis-abc".into();
+                value
+            },
+            {
+                let mut value = snapshot.clone();
+                value.target.registry_locator = "fabric:channel-a/other-registry".into();
+                value
+            },
+            {
+                let mut value = snapshot.clone();
+                value.target.registry_schema_hash =
+                    "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into();
+                value
+            },
+        ] {
+            let mut changed = changed;
+            changed.signature =
+                Some(ri_core::sign_ed25519(&changed, &STANDARD.encode([9_u8; 32])).unwrap());
+            assert!(adapter.validate_snapshot(&changed, &keys, 1_000).is_err());
+        }
+
+        let mut oversized = snapshot;
+        oversized.entries[0].server_id = "x".repeat(MAX_TEXT_FIELD_BYTES + 1);
+        oversized.entries[0].resolver_id_key = resolver_id_key(&oversized.entries[0].server_id);
+        oversized.state_root = external_state_root(&oversized.entries).unwrap();
+        oversized.signature =
+            Some(ri_core::sign_ed25519(&oversized, &STANDARD.encode([9_u8; 32])).unwrap());
+        assert!(adapter.validate_snapshot(&oversized, &keys, 1_000).is_err());
     }
 
     #[test]
@@ -716,18 +793,7 @@ mod tests {
         let checkpoint = snapshot.checkpoint.clone();
         let (url_a, task_a) = spawn_protocol(snapshot.clone(), checkpoint.clone()).await;
         let (url_b, task_b) = spawn_protocol(snapshot.clone(), checkpoint.clone()).await;
-        let adapter = ExternalRegistryAdapter::new(ExternalAdapterConfig {
-            driver: "fabric".into(),
-            endpoints: vec![url_a.clone(), url_b],
-            target: target(),
-            signer_issuer: "adapter-operator".into(),
-            signer_key_id: "adapter-key-1".into(),
-            request_timeout: std::time::Duration::from_secs(1),
-            max_response_bytes: 4_194_304,
-            tls: None,
-            production: false,
-        })
-        .unwrap();
+        let adapter = protocol_adapter(vec![url_a.clone(), url_b]);
         let reconciled = adapter
             .read_snapshot(&[], &issuer_keys, 1_000)
             .await
@@ -738,20 +804,10 @@ mod tests {
         let divergent = FinalizedCheckpoint {
             number: checkpoint.number,
             hash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
+            finality_type: RegistryFinalityTypeV2::ExternalSignedCheckpoint,
         };
         let (url_c, task_c) = spawn_protocol(snapshot, divergent).await;
-        let forked = ExternalRegistryAdapter::new(ExternalAdapterConfig {
-            driver: "fabric".into(),
-            endpoints: vec![url_a, url_c],
-            target: target(),
-            signer_issuer: "adapter-operator".into(),
-            signer_key_id: "adapter-key-1".into(),
-            request_timeout: std::time::Duration::from_secs(1),
-            max_response_bytes: 4_194_304,
-            tls: None,
-            production: false,
-        })
-        .unwrap();
+        let forked = protocol_adapter(vec![url_a, url_c]);
         assert!(
             forked
                 .read_snapshot(&[], &issuer_keys, 1_000)
@@ -764,7 +820,7 @@ mod tests {
     }
 
     #[test]
-    fn production_external_adapter_requires_two_https_endpoints() {
+    fn external_adapter_requires_two_independent_https_mtls_endpoints() {
         let config = |endpoints| ExternalAdapterConfig {
             driver: "fabric".into(),
             endpoints,
@@ -784,7 +840,7 @@ mod tests {
                 "https://adapter-a.example".into(),
                 "https://adapter-b.example".into(),
             ]))
-            .is_ok()
+            .is_err()
         );
         assert!(
             ExternalRegistryAdapter::new(config(vec![
