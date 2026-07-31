@@ -52,8 +52,8 @@ sum_test_result_field() {
   local field="$2"
   awk -v field="${field}" '
     /test result: ok/ {
-      for (index = 1; index <= NF; index++) {
-        if ($index == field ";") total += $(index - 1)
+      for (field_index = 1; field_index <= NF; field_index++) {
+        if ($field_index == field ";") total += $(field_index - 1)
       }
     }
     END { print total + 0 }
@@ -68,8 +68,8 @@ python_passed="$(
 foundry_passed="$(
   awk '
     /Suite result: ok/ {
-      for (index = 1; index <= NF; index++) {
-        if ($index == "passed;") total += $(index - 1)
+      for (field_index = 1; field_index <= NF; field_index++) {
+        if ($field_index == "passed;") total += $(field_index - 1)
       }
     }
     END { print total + 0 }
