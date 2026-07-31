@@ -37,6 +37,24 @@ index 78c6661..477de10 100644
  	txBodyBytes := writer.Bytes()
  
  	hash := sha256.New()
+diff --git a/common/transaction.go b/common/transaction.go
+index 6bd2701..8fd8ab3 100644
+--- a/common/transaction.go
++++ b/common/transaction.go
+@@ -21,7 +21,12 @@ func (tx *Transaction) Verify() bool {
+ 	//defer writer.Reset()
+ 	// 初始化交易序列化的 writer
+ 	verifyStart := time.Now()
+-	writer := karmem.NewWriter(1024)
++	if len(tx.Body.Data) > 4*1024*1024+512 {
++		log.WithField("size", len(tx.Body.Data)).Debugln("Transaction data is too large.")
++		return false
++	}
++
++	writer := karmem.NewWriter(len(tx.Body.Data) + 1024)
+ 
+ 	txBody := tx.Body
+ 	byteSignature := make([]byte, len(txBody.Signature))
 diff --git a/node/block_syncer.go b/node/block_syncer.go
 index a3131d5..4fd2997 100644
 --- a/node/block_syncer.go

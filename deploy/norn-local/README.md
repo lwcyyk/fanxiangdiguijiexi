@@ -4,13 +4,15 @@ This directory starts two real Go-Norn nodes at pinned upstream commit
 `a7be734ac2e829e2076d06d45719d2716abd3d72`.
 
 The image applies the audited local patch
-`patches/0001-rpc-dynamic-data-writer.patch`. Upstream allocates a fixed 1024-byte
-Karmem writer and ignores serialization errors in `SendTransactionWithData`,
-which silently removes Registry values larger than roughly 1 KiB. Upstream also
-starts a restarted block syncer at height `-1` instead of the persisted chain
-height. The combined patch adds a 4 MiB limit, dynamic allocation, explicit
-error handling, and restart-safe synchronization without changing the
-transaction or state format.
+`patches/0001-rpc-dynamic-data-writer.patch`. Upstream allocates fixed 1024-byte
+Karmem writers in both `SendTransactionWithData` and transaction verification.
+That combination either truncates Registry values larger than roughly 1 KiB or
+lets the transaction enter a proposed block before verification removes it.
+Upstream also starts a restarted block syncer at height `-1` instead of the
+persisted chain height. The combined patch adds a 4 MiB limit, matching dynamic
+allocation in the writer and verifier, explicit serialization error handling,
+and restart-safe synchronization without changing the transaction or state
+format.
 
 - Native gRPC write endpoints bind only to `127.0.0.1:45555` and `:45556`.
 - Registry Sync reads through mTLS method-filtering proxies at

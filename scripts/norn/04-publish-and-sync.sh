@@ -54,6 +54,10 @@ transaction="$(
     "${registry_address#0x}" "${registry_key}" "${snapshot}"
 )"
 transaction_hash="$(jq -r .transaction_hash <<<"${transaction}")"
+[[ "${transaction_hash}" =~ ^[0-9a-f]{64}$ ]] || {
+  printf 'Norn publisher returned an invalid transaction hash\n' >&2
+  exit 1
+}
 
 for _ in $(seq 1 90); do
   nornctl http://127.0.0.1:45555 read \
@@ -66,8 +70,12 @@ for _ in $(seq 1 90); do
   fi
   sleep 1
 done
-cmp "${snapshot}" "${output_dir}/read-a.json"
-cmp "${snapshot}" "${output_dir}/read-b.json"
+if ! cmp -s "${snapshot}" "${output_dir}/read-a.json" ||
+  ! cmp -s "${snapshot}" "${output_dir}/read-b.json"; then
+  printf 'Norn transaction %s was not finalized with identical state on both nodes\n' \
+    "${transaction_hash}" >&2
+  exit 1
+fi
 
 confirmations=3
 publication_head="$(nornctl http://127.0.0.1:45555 head | jq -r .head)"
