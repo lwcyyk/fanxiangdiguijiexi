@@ -130,10 +130,18 @@ identity_count="$(
 }
 snapshot_anchor_count="$(
   sqlite3 "${database}" \
-    "SELECT COUNT(DISTINCT chain_id || ':' || contract_address || ':' || contract_code_hash || ':' || finalized_block || ':' || finalized_block_hash) FROM ri_v2_registry_snapshot;"
+    "SELECT COUNT(DISTINCT adapter_type || ':' || chain_identity || ':' || registry_locator || ':' || registry_schema_hash || ':' || finalized_block || ':' || finalized_block_hash) FROM ri_v2_registry_snapshot;"
 )"
 [[ "${snapshot_anchor_count}" == "1" ]] || {
   printf 'SQLite Registry rows do not share one finalized chain anchor\n' >&2
+  exit 1
+}
+legacy_evm_value_count="$(
+  sqlite3 "${database}" \
+    "SELECT COUNT(*) FROM ri_v2_registry_snapshot WHERE chain_id != 0 OR contract_address != '' OR contract_code_hash != '';"
+)"
+[[ "${legacy_evm_value_count}" == "0" ]] || {
+  printf 'Norn Registry rows unexpectedly contain legacy EVM compatibility values\n' >&2
   exit 1
 }
 read -r finalized_block finalized_hash < <(
@@ -141,17 +149,21 @@ read -r finalized_block finalized_hash < <(
     "SELECT finalized_block,finalized_block_hash FROM ri_v2_registry_snapshot ORDER BY snapshot_key LIMIT 1;"
 )
 image_id="$(docker image inspect "${NORN_IMAGE}" --format '{{.Id}}')"
-runtime_image="${RI_RUNTIME_IMAGE:-resolver-identity-rust:multichain-acceptance}"
+runtime_image="${RI_RUNTIME_IMAGE}"
 runtime_image_id="$(docker image inspect "${runtime_image}" --format '{{.Id}}')"
 generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 git_commit="$(git -C "${REPO_ROOT}" rev-parse HEAD)"
+branch="$(git -C "${REPO_ROOT}" branch --show-current)"
 plan_hash="$(jq -r .plan_hash "${preparation}")"
 signed_checkpoint_height="$(jq -r .signed_checkpoint.number "${preparation}")"
 signed_checkpoint_hash="$(jq -r .signed_checkpoint.hash "${preparation}")"
 node_isolation="$(<"${output_dir}/node-isolation.json")"
 jq -n \
   --arg generated_at "${generated_at}" \
-  --arg git_commit "${git_commit}" \
+  --arg branch "${branch}" \
+  --arg source_commit "${git_commit}" \
+  --arg acceptance_commit "${git_commit}" \
+  --arg go_norn_upstream_commit "${NORN_COMMIT}" \
   --arg transaction_hash "${transaction_hash}" \
   --arg norn_image_digest "${image_id}" \
   --arg runtime_image_digest "${runtime_image_id}" \
@@ -167,9 +179,14 @@ jq -n \
   --argjson identity_count "${identity_count}" \
   --argjson node_isolation "${node_isolation}" \
   '{
+    schema_version: "resolver-identity-multichain-acceptance-v1",
     generated_at: $generated_at,
-    git_commit: $git_commit,
+    pr_number: 1,
+    branch: $branch,
+    source_commit: $source_commit,
+    acceptance_commit: $acceptance_commit,
     adapter: "norn",
+    go_norn_upstream_commit: $go_norn_upstream_commit,
     transaction_hash: $transaction_hash,
     image_digests: {
       go_norn: $norn_image_digest,
@@ -203,9 +220,11 @@ jq -n \
       signer_pin: "passed",
       finalized_inclusion: "passed",
       atomic_sqlite_sync: "passed",
+      non_evm_legacy_columns_empty: "passed",
       mtls_read: "passed",
       write_proxy_denied: "passed"
-    }
+    },
+    temporary_resources_cleaned: false
   }' >"${output_dir}/acceptance.json"
 
 printf 'Norn publication and Registry Sync completed at finalized block %s (%s)\n' \

@@ -67,7 +67,14 @@ cargo test \
   >"${output_dir}/negative-store-high-water.log"
 for name in low-height-replay same-height-different-hash old-generation-replay; do
   jq -nc --arg name "${name}" \
-    '{test:$name,result:"failed-closed",snapshot_unchanged:true,success_heartbeat_unchanged:true}' \
+    '{
+      test:$name,
+      result:"failed-closed",
+      automated_test_source:"ri-store::registry_snapshot_rejects_finalized_chain_rollback_atomically",
+      snapshot_unchanged:true,
+      success_heartbeat_unchanged:true,
+      cache_generation_unchanged:true
+    }' \
     >>"${results_file}"
 done
 
@@ -78,13 +85,21 @@ cargo test \
   --package ri-chain-adapter \
   >"${output_dir}/negative-adapter-security.log"
 for name in \
-  snapshot-signature-and-signer-pin \
+  snapshot-payload-signature-tamper \
+  dual-node-genesis-and-checkpoint-disagreement \
+  snapshot-ahead-of-confirmed-height \
   snapshot-expiration-and-key-rotation \
   external-redirect-denied \
   external-dynamic-upstream-denied \
+  external-dual-endpoint-disagreement \
+  external-chain-registry-schema-pins \
   non-evm-reference-has-no-evm-fields; do
   jq -nc --arg name "${name}" \
-    '{test:$name,result:"failed-closed"}' \
+    '{
+      test:$name,
+      result:"failed-closed",
+      automated_test_source:"cargo test --locked --package ri-chain-adapter"
+    }' \
     >>"${results_file}"
 done
 
@@ -132,8 +147,11 @@ expect_failure_without_snapshot \
   wrong-genesis \
   RI_NORN_GENESIS_BLOCK_HASH=0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 expect_failure_without_snapshot \
-  wrong-registry-id \
+  wrong-registry-address \
   RI_CHAIN_REGISTRY_ADDRESS=0xdddddddddddddddddddddddddddddddddddddddd
+expect_failure_without_snapshot \
+  wrong-registry-key \
+  RI_NORN_REGISTRY_KEY=unapproved-registry-key
 expect_failure_without_snapshot \
   wrong-signer-pin \
   RI_NORN_SIGNER_KEY_ID=untrusted-snapshot-key
@@ -146,6 +164,15 @@ expect_failure_without_snapshot \
 expect_failure_without_snapshot \
   unavailable-verification-rpc \
   RI_CHAIN_RPC_URLS=https://localhost:46555,https://localhost:49999
+expect_failure_without_snapshot \
+  insufficient-confirmations \
+  RI_CHAIN_CONFIRMATIONS=999999999
+expect_failure_without_snapshot \
+  scan-range-insufficient \
+  RI_NORN_REGISTRY_START_HEIGHT=999999999 RI_NORN_MAX_SCAN_BLOCKS=1
+expect_failure_without_snapshot \
+  rpc-response-size-limit \
+  RI_RPC_MAX_RESPONSE_BYTES=1024
 expect_configuration_failure \
   unknown-adapter \
   env RI_ENVIRONMENT=production RI_CHAIN_ADAPTER=unknown "${sync_binary}"
@@ -164,6 +191,10 @@ before_heartbeat="$(
   sqlite3 "${preserved_database}" \
     "SELECT meta_value FROM ri_v2_meta WHERE meta_key='registry_last_success_epoch';"
 )"
+before_generation="$(
+  sqlite3 "${preserved_database}" \
+    "SELECT meta_value FROM ri_v2_meta WHERE meta_key='cache_generation';"
+)"
 if env "${base_environment[@]}" \
   RI_DATABASE="${preserved_database}" \
   RI_CHAIN_REGISTRY_SCHEMA_HASH=0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc \
@@ -179,6 +210,10 @@ after_heartbeat="$(
   sqlite3 "${preserved_database}" \
     "SELECT meta_value FROM ri_v2_meta WHERE meta_key='registry_last_success_epoch';"
 )"
+after_generation="$(
+  sqlite3 "${preserved_database}" \
+    "SELECT meta_value FROM ri_v2_meta WHERE meta_key='cache_generation';"
+)"
 [[ "${before_anchor}" == "${after_anchor}" ]] || {
   printf 'failed reconciliation changed the existing SQLite snapshot\n' >&2
   exit 1
@@ -187,8 +222,18 @@ after_heartbeat="$(
   printf 'failed reconciliation refreshed the success heartbeat\n' >&2
   exit 1
 }
+[[ "${before_generation}" == "${after_generation}" ]] || {
+  printf 'failed reconciliation increased the cache generation\n' >&2
+  exit 1
+}
 jq -nc \
-  '{test:"failed-update-preserves-sqlite-and-heartbeat",result:"failed-closed",snapshot_unchanged:true,success_heartbeat_unchanged:true}' \
+  '{
+    test:"failed-update-preserves-sqlite-heartbeat-and-generation",
+    result:"failed-closed",
+    snapshot_unchanged:true,
+    success_heartbeat_unchanged:true,
+    cache_generation_unchanged:true
+  }' \
   >>"${results_file}"
 
 jq -s \
