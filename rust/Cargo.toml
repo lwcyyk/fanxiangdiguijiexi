@@ -38,7 +38,7 @@ prost = "0.13.5"
 rustls = "0.23.40"
 rustls-pki-types = { version = "1.14.1", features = ["std"] }
 tokio = { version = "1.49.0", features = ["io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
-tonic = { version = "0.12.3", features = ["tls", "tls-webpki-roots", "transport"] }
+tonic = { version = "0.13.1", features = ["tls-ring", "tls-webpki-roots", "transport"] }
 tower = { version = "0.5.3", features = ["limit"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt"] }
