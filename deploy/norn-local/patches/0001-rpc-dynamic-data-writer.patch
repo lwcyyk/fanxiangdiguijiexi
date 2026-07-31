@@ -55,6 +55,32 @@ index 6bd2701..8fd8ab3 100644
  
  	txBody := tx.Body
  	byteSignature := make([]byte, len(txBody.Signature))
+diff --git a/core/blockchain.go b/core/blockchain.go
+index 69930db..cdfe1db 100644
+--- a/core/blockchain.go
++++ b/core/blockchain.go
+@@ -506,7 +506,7 @@ func (bc *BlockChain) insertBlock(block *common.Block) {
+ 
+ 		// 从交易池中移除某个交易
+ 		pool.RemoveTx(tx.Body.Hash)
+-		txWriter := karmem.NewWriter(1024)
++		txWriter := karmem.NewWriter(len(tx.Body.Data) + 1024)
+ 		// 交易的索引：tx#{hash}
+ 		keys[idx+transactionStartIndex] = append([]byte("tx#"), tx.Body.Hash[:]...)
+ 		_, err := tx.WriteAsRoot(txWriter) // 序列化及处理逻辑
+diff --git a/utils/serializer.go b/utils/serializer.go
+index e2d83c4..129ceaf 100644
+--- a/utils/serializer.go
++++ b/utils/serializer.go
+@@ -44,7 +44,7 @@ func SerializeBlock(block *common.Block) ([]byte, error) {
+ }
+ 
+ func SerializeTransaction(transaction *common.Transaction) ([]byte, error) {
+-	writer := karmem.NewWriter(KARMEM_CAP)
++	writer := karmem.NewWriter(len(transaction.Body.Data) + KARMEM_CAP)
+ 
+ 	_, err := transaction.WriteAsRoot(writer)
+ 	if err != nil {
 diff --git a/node/block_syncer.go b/node/block_syncer.go
 index a3131d5..4fd2997 100644
 --- a/node/block_syncer.go
