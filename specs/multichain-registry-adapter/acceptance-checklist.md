@@ -57,7 +57,9 @@
 - [x] Docker image build
 - [x] Docker Compose EVM configuration render
 - [x] Docker Compose Norn configuration render
+- [x] Docker Compose External configuration render
 - [x] Foundry build and 14 contract tests
+- [x] Complete branch and acceptance evidence secret/runtime-artifact audit
 
 ## Fresh-clone Go-Norn evidence
 

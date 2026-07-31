@@ -1,0 +1,147 @@
+{
+  "generated_at": "2026-07-31T01:12:15Z",
+  "git_commit": "fe4ca3fbdbb4254dd727f7509681a37c43fab0cf",
+  "adapter": "norn",
+  "transaction_hash": "f9f404f844bcd02244b2977e50dcd36ab64186261e015d4eacf29af5d7302243",
+  "image_digests": {
+    "go_norn": "sha256:3ec52a631dbbe76adfa21618ae8545fa55d5cfe5b0088dc5599787ed771653fe",
+    "registry_sync": "sha256:b66215386564d008eae345f061c1aef32ae6eb846bfa8cc136d6259764ee78f7"
+  },
+  "genesis_block_hash": "0xf8431ea77f854f72d29113e0505ba7355cf838927dcdbf037b15267b101fc67c",
+  "registry": {
+    "address": "0x1000000000000000000000000000000000000001",
+    "key": "resolver-identity-registry-v2",
+    "schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499"
+  },
+  "plan_hash": "0x8459f167387c068e47a77bb66969a55eef3a027f602f2fda241d52ad3f2fac52",
+  "signed_checkpoint": {
+    "height": 4,
+    "hash": "0xb1864944260c10d717ca64ccfa6e42a0e0cbb6b7608e87c0e622d7dcd6e1bd35"
+  },
+  "registry_sync": {
+    "checkpoint_height": 27,
+    "checkpoint_hash": "0x1a652f8e0a8afd2af5a2e5332c13f937c99748a3a632cbe549c013fec078321c",
+    "identity_count": 1,
+    "sqlite_integrity": "ok"
+  },
+  "node_isolation": {
+    "independent_data_directories": true,
+    "distinct_node_keys": true,
+    "peer_id_sha256": [
+      "1ec22e233c4fff728b3e046a9e128d9bdae23613ae5a5718c21c7c17c04282d7",
+      "d34226dd895c246db4511555c2e74284010916ce6943adae48eb6a54d17e29ad"
+    ]
+  },
+  "mtls_read_endpoints": [
+    "https://localhost:46555",
+    "https://localhost:46556"
+  ],
+  "positive_tests": {
+    "dual_node_agreement": "passed",
+    "signed_snapshot": "passed",
+    "signer_pin": "passed",
+    "finalized_inclusion": "passed",
+    "atomic_sqlite_sync": "passed",
+    "mtls_read": "passed",
+    "write_proxy_denied": "passed"
+  },
+  "result": "passed",
+  "negative_tests": [
+    {
+      "test": "low-height-replay",
+      "result": "failed-closed",
+      "snapshot_unchanged": true,
+      "success_heartbeat_unchanged": true
+    },
+    {
+      "test": "same-height-different-hash",
+      "result": "failed-closed",
+      "snapshot_unchanged": true,
+      "success_heartbeat_unchanged": true
+    },
+    {
+      "test": "old-generation-replay",
+      "result": "failed-closed",
+      "snapshot_unchanged": true,
+      "success_heartbeat_unchanged": true
+    },
+    {
+      "test": "snapshot-signature-and-signer-pin",
+      "result": "failed-closed"
+    },
+    {
+      "test": "snapshot-expiration-and-key-rotation",
+      "result": "failed-closed"
+    },
+    {
+      "test": "external-redirect-denied",
+      "result": "failed-closed"
+    },
+    {
+      "test": "external-dynamic-upstream-denied",
+      "result": "failed-closed"
+    },
+    {
+      "test": "non-evm-reference-has-no-evm-fields",
+      "result": "failed-closed"
+    },
+    {
+      "test": "wrong-genesis",
+      "result": "failed-closed",
+      "registry_rows_written": 0
+    },
+    {
+      "test": "wrong-registry-id",
+      "result": "failed-closed",
+      "registry_rows_written": 0
+    },
+    {
+      "test": "wrong-signer-pin",
+      "result": "failed-closed",
+      "registry_rows_written": 0
+    },
+    {
+      "test": "wrong-schema",
+      "result": "failed-closed",
+      "registry_rows_written": 0
+    },
+    {
+      "test": "one-production-rpc",
+      "result": "failed-closed",
+      "registry_rows_written": 0
+    },
+    {
+      "test": "unavailable-verification-rpc",
+      "result": "failed-closed",
+      "registry_rows_written": 0
+    },
+    {
+      "test": "unknown-adapter",
+      "result": "failed-closed",
+      "registry_rows_written": 0
+    },
+    {
+      "test": "missing-adapter-no-fallback",
+      "result": "failed-closed",
+      "registry_rows_written": 0
+    },
+    {
+      "test": "failed-update-preserves-sqlite-and-heartbeat",
+      "result": "failed-closed",
+      "snapshot_unchanged": true,
+      "success_heartbeat_unchanged": true
+    }
+  ],
+  "implementation_scope": "通过标准 Sidecar 协议扩展新的链适配器",
+  "security_assertions": {
+    "no_adapter_fallback": true,
+    "non_evm_reference_has_no_evm_compatibility_fields": true,
+    "signed_snapshot_and_signer_pin": true,
+    "expiration_and_key_rotation": true,
+    "replay_and_high_water_protection": true,
+    "failed_snapshot_preserves_sqlite_and_success_heartbeat": true,
+    "external_https_only_in_production": true,
+    "external_redirects_disabled": true,
+    "external_dynamic_upstream_fields_rejected": true
+  }
+}

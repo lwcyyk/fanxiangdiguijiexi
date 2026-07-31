@@ -25,3 +25,8 @@
 - [x] Document deployment, security gaps, and adapter extension.
 - [x] Run format, tests, Clippy, Python tests, Compose validation, contract tests,
   and the Rust container build.
+- [x] Re-run the complete test matrix and EVM, Norn, and External Compose
+  rendering from a fresh clone with no prior containers or volumes.
+- [x] Audit the complete branch diff and acceptance evidence for private keys,
+  credentials, databases, TLS private material, RPC credentials, and runtime
+  files before delivery.
