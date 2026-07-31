@@ -10,5 +10,5 @@
 - [x] Add package, isolation, idempotency and data-retention unit tests.
 - [x] Build immutable images and render release artifacts in the package-only lab.
 - [x] Run the six-server package-only deployment simulation.
-- [ ] Regenerate final `acceptance.json` with all language and contract gates enabled.
+- [x] Regenerate final `acceptance.json` with all language and contract gates enabled.
 - [ ] Complete history secret audit and create the Draft PR.

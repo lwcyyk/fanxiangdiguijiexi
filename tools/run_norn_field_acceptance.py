@@ -115,6 +115,7 @@ class Lab:
         self.install_roots: dict[str, Path] = {}
         self.image_refs: dict[str, str] = {}
         self.image_tags: dict[str, str] = {}
+        self.local_image_tags: list[str] = []
         self.projects: dict[str, str] = {}
         self.node_runtime_env: dict[str, dict[str, str]] = {}
         self.bootstrap = ""
@@ -408,6 +409,7 @@ class Lab:
             "management": f"{self.prefix}-management:acceptance",
             "norn": f"{self.prefix}-norn:acceptance",
         }
+        self.local_image_tags = list(local_tags.values())
         self.run(
             "build-rust-image",
             [
@@ -452,6 +454,7 @@ class Lab:
         )
         self._ensure_image("nginx", nginx_source)
         local_tags["nginx"] = f"{self.prefix}-nginx:acceptance"
+        self.local_image_tags.append(local_tags["nginx"])
         self.run("tag-nginx-local", ["docker", "tag", nginx_source, local_tags["nginx"]])
         for key in field.IMAGE_KEYS:
             self._push_image(key, local_tags[key])
@@ -987,6 +990,7 @@ class Lab:
         *,
         env: dict[str, str] | None = None,
         check: bool = True,
+        record: bool = True,
     ) -> subprocess.CompletedProcess[str]:
         root = self.install_roots["ri-hub-mgmt-01"] / "current"
         return self.run(
@@ -994,6 +998,7 @@ class Lab:
             [str(root / script), *arguments],
             env={**os.environ, **(env or {})},
             check=check,
+            record=record,
         )
 
     def _wait_for(self, label: str, callback: Any, timeout: int = 120) -> Any:
@@ -1066,6 +1071,7 @@ class Lab:
                 "https://norn-read-a:8443",
                 "block",
                 "0",
+                record=False,
             )
             return str(json.loads(block.stdout)["hash"])
 
@@ -1096,8 +1102,20 @@ class Lab:
             raise AcceptanceError("Node A and B have the same peer ID")
 
         def genesis_pair() -> tuple[str, str] | None:
-            a = self._nornctl("nornctl-genesis-a", "https://norn-read-a:8443", "block", "0")
-            b = self._nornctl("nornctl-genesis-b", "https://norn-read-b:8443", "block", "0")
+            a = self._nornctl(
+                "nornctl-genesis-a",
+                "https://norn-read-a:8443",
+                "block",
+                "0",
+                record=False,
+            )
+            b = self._nornctl(
+                "nornctl-genesis-b",
+                "https://norn-read-b:8443",
+                "block",
+                "0",
+                record=False,
+            )
             hash_a = json.loads(a.stdout)["hash"]
             hash_b = json.loads(b.stdout)["hash"]
             return (
@@ -1137,12 +1155,14 @@ class Lab:
         command: str,
         *arguments: str,
         check: bool = True,
+        record: bool = True,
     ) -> subprocess.CompletedProcess[str]:
         return self._management_command(
             name,
             "nornctl.sh",
             [url, command, *arguments],
             check=check,
+            record=record,
         )
 
     def prepare_snapshot(self, genesis: str) -> dict[str, Any]:
@@ -1198,10 +1218,20 @@ class Lab:
 
         def common_checkpoint() -> tuple[int, str] | None:
             head_a = json.loads(
-                self._nornctl("checkpoint-head-a", "https://norn-read-a:8443", "head").stdout
+                self._nornctl(
+                    "checkpoint-head-a",
+                    "https://norn-read-a:8443",
+                    "head",
+                    record=False,
+                ).stdout
             )["head"]
             head_b = json.loads(
-                self._nornctl("checkpoint-head-b", "https://norn-read-b:8443", "head").stdout
+                self._nornctl(
+                    "checkpoint-head-b",
+                    "https://norn-read-b:8443",
+                    "head",
+                    record=False,
+                ).stdout
             )["head"]
             height = min(int(head_a), int(head_b))
             if height <= 0:
@@ -1212,6 +1242,7 @@ class Lab:
                     "https://norn-read-a:8443",
                     "block",
                     str(height),
+                    record=False,
                 ).stdout
             )
             block_b = json.loads(
@@ -1220,6 +1251,7 @@ class Lab:
                     "https://norn-read-b:8443",
                     "block",
                     str(height),
+                    record=False,
                 ).stdout
             )
             if block_a["hash"] != block_b["hash"]:
@@ -1346,6 +1378,7 @@ class Lab:
                     "read",
                     REGISTRY_ADDRESS,
                     REGISTRY_KEY,
+                    record=False,
                 )
                 if json.loads(result.stdout) != expected:
                     return False
@@ -1353,16 +1386,48 @@ class Lab:
 
         self._wait_for("snapshot on both Norn nodes", both_nodes_read_snapshot)
         baseline = min(
-            int(json.loads(self._nornctl("post-publish-head-a", "https://norn-read-a:8443", "head").stdout)["head"]),
-            int(json.loads(self._nornctl("post-publish-head-b", "https://norn-read-b:8443", "head").stdout)["head"]),
+            int(
+                json.loads(
+                    self._nornctl(
+                        "post-publish-head-a",
+                        "https://norn-read-a:8443",
+                        "head",
+                        record=False,
+                    ).stdout
+                )["head"]
+            ),
+            int(
+                json.loads(
+                    self._nornctl(
+                        "post-publish-head-b",
+                        "https://norn-read-b:8443",
+                        "head",
+                        record=False,
+                    ).stdout
+                )["head"]
+            ),
         )
 
         def confirmations_reached() -> bool:
             head_a = int(
-                json.loads(self._nornctl("confirm-head-a", "https://norn-read-a:8443", "head").stdout)["head"]
+                json.loads(
+                    self._nornctl(
+                        "confirm-head-a",
+                        "https://norn-read-a:8443",
+                        "head",
+                        record=False,
+                    ).stdout
+                )["head"]
             )
             head_b = int(
-                json.loads(self._nornctl("confirm-head-b", "https://norn-read-b:8443", "head").stdout)["head"]
+                json.loads(
+                    self._nornctl(
+                        "confirm-head-b",
+                        "https://norn-read-b:8443",
+                        "head",
+                        record=False,
+                    ).stdout
+                )["head"]
             )
             return min(head_a, head_b) >= baseline + int(self.inventory["norn"]["confirmations"])
 
@@ -1473,7 +1538,10 @@ class Lab:
                 raise AcceptanceError(f"{resolver['host']} does not have one chain anchor")
             anchor = next(iter(anchors))
             checkpoints[resolver["host"]] = {
-                "database": str(database),
+                "database": f"{resolver['host']}/evidence-v2.db",
+                "database_path_sha256": hashlib.sha256(
+                    str(database.resolve()).encode()
+                ).hexdigest(),
                 "checkpoint_height": anchor[4],
                 "checkpoint_hash": anchor[5],
                 "identity_count": state["identity_count"],
@@ -1600,6 +1668,7 @@ class Lab:
                 "probe-read-b-recovery",
                 "https://norn-read-b:8443",
                 "head",
+                record=False,
             ).returncode
             == 0,
         )
@@ -1632,6 +1701,7 @@ class Lab:
                     "probe-isolated-b",
                     "https://norn-read-b:8443",
                     "head",
+                    record=False,
                 ).returncode
                 == 0,
             )
@@ -1666,6 +1736,7 @@ class Lab:
                     "read",
                     REGISTRY_ADDRESS,
                     REGISTRY_KEY,
+                    record=False,
                 ).stdout
             )
             == _json_file(
@@ -1894,7 +1965,11 @@ class Lab:
 
     def cleanup(self) -> None:
         try:
-            self.stop_runtime()
+            if any(
+                (root / "current").exists()
+                for root in self.install_roots.values()
+            ):
+                self.stop_runtime()
         except Exception:
             pass
         subprocess.run(
@@ -1928,7 +2003,7 @@ class Lab:
                 stderr=subprocess.DEVNULL,
                 check=False,
             )
-        for tag in self.image_tags.values():
+        for tag in [*self.image_tags.values(), *self.local_image_tags]:
             subprocess.run(
                 ["docker", "image", "rm", tag],
                 stdout=subprocess.DEVNULL,
