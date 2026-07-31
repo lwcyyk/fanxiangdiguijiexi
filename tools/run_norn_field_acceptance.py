@@ -1108,9 +1108,26 @@ class Lab:
 
         genesis_a, genesis_b = self._wait_for("matching Norn genesis", genesis_pair)
         self.inventory["norn"]["genesis_hash"] = genesis_a
+        if self.release is None:
+            raise AcceptanceError("release is not rendered")
+        self.release = field.render(
+            self.inventory,
+            self.artifact_root,
+            force=True,
+        )
+        for resolver in self.inventory["resolvers"]:
+            rendered = self.release / "hosts" / resolver["host"] / "config" / ".env"
+            installed = (
+                self.install_roots[resolver["host"]]
+                / "current"
+                / "config"
+                / ".env"
+            )
+            shutil.copy2(rendered, installed)
         self.positive["node_a_b_distinct_peer_ids"] = "passed"
         self.positive["node_a_b_independent_data_paths"] = "passed"
         self.positive["dual_node_genesis_agreement"] = "passed"
+        self.positive["actual_genesis_synchronized_to_resolver_configs"] = "passed"
         return genesis_a, peer_id_a, peer_id_b
 
     def _nornctl(

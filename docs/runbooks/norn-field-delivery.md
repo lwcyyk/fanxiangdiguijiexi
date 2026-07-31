@@ -43,10 +43,11 @@ Inventory 只记录镜像 digest、主机、网络、Registry 固定值和秘密
 3. 从安全系统生成不同的节点配置、节点密钥和 mTLS 材料。
 4. 先启动 Node A，等待其创世块持久化并登记 peer ID，再配置并启动 Node B；
    不得让两个空数据节点同时各自创建创世块。
-5. 核验两个 mTLS 端点只允许三种读方法，所有写方法返回拒绝。
-6. 管理服务器离线生成身份、Plan 和签名快照，经 SSH 隧道发布到 Node A。
-7. 按 R1、R2、R3 顺序安装 resolver-link 包；每台主机先验证 Registry Sync。
-8. R1 使用 `first-hop` profile，R2/R3 不启用该 profile。
+5. 独立核验实际 Genesis Hash，把该非秘密固定值回填 Inventory，重新渲染解析器配置。
+6. 核验两个 mTLS 端点只允许三种读方法，所有写方法返回拒绝。
+7. 管理服务器离线生成身份、Plan 和签名快照，经 SSH 隧道发布到 Node A。
+8. 按 R1、R2、R3 顺序安装 resolver-link 包；每台主机先验证 Registry Sync。
+9. R1 使用 `first-hop` profile，R2/R3 不启用该 profile。
 
 受控预发布 Go-Norn 使用 Node A 单一发布/产块、Node B 独立只读同步副本。
 Node B 保持独立 P2P 密钥、证书和数据目录，但不使用 `-g` 产块参数，避免两个
