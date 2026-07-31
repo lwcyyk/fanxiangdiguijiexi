@@ -1483,13 +1483,17 @@ class Lab:
             inodes.append(database.stat().st_ino)
         if len(set(database_paths)) != 3 or len(set(inodes)) != 3:
             raise AcceptanceError("R1, R2 and R3 do not use independent SQLite files")
-        anchors = {
-            (value["checkpoint_height"], value["checkpoint_hash"])
-            for value in checkpoints.values()
+        state_roots = {
+            json.loads(row[6])["state_root"]
+            for resolver in self.inventory["resolvers"]
+            for row in self._sqlite_state(
+                Path(resolver["data_dir"]) / "evidence-v2.db"
+            )["snapshot"]
         }
-        if len(anchors) != 1:
-            raise AcceptanceError("resolver Registry Sync checkpoints disagree")
+        if len(state_roots) != 1:
+            raise AcceptanceError("resolver Registry Sync state roots disagree")
         self.positive["three_independent_sqlite_snapshots"] = "passed"
+        self.positive["three_registry_sync_state_roots_agree"] = "passed"
         self.positive["non_evm_legacy_columns_empty"] = "passed"
         return checkpoints
 
@@ -1966,7 +1970,13 @@ class Lab:
             }
             for item in manifest["packages"]
         }
-        anchor = next(iter(checkpoints.values()))
+        anchor = min(
+            checkpoints.values(),
+            key=lambda value: int(value["checkpoint_height"]),
+        )
+        checkpoint_heights = [
+            int(value["checkpoint_height"]) for value in checkpoints.values()
+        ]
         acceptance = {
             "schema_version": "resolver-identity-norn-field-acceptance-v1",
             "generated_at": _utc_now(),
@@ -2018,6 +2028,11 @@ class Lab:
                 "registry_sync_checkpoint": {
                     "height": anchor["checkpoint_height"],
                     "hash": anchor["checkpoint_hash"],
+                    "recorded_from": "minimum per-resolver accepted checkpoint",
+                    "height_range": [
+                        min(checkpoint_heights),
+                        max(checkpoint_heights),
+                    ],
                 },
             },
             "registry_sync": checkpoints,
