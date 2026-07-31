@@ -214,6 +214,8 @@ def test_adapter_access_and_role_boundaries_are_encoded_in_compose():
     assert "SendTransactionWithData" not in proxy
     assert "return 403" in proxy
     assert "@@NORN_NODE_HOSTNAME@@" in proxy
+    for path in ("fastcgi_temp", "uwsgi_temp", "scgi_temp"):
+        assert f"/tmp/{path}" in proxy
 
     node_compose = (
         REPO_ROOT / "deploy" / "field" / "norn-node" / "docker-compose.yml"
