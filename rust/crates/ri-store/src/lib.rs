@@ -743,7 +743,7 @@ impl EvidenceStore {
     ) -> Result<(), StoreError> {
         let mut connection = self.connect()?;
         let transaction = connection.transaction()?;
-        let chain_id = sql_i64(reference.chain_id, "chain_id")?;
+        let (chain_id, contract_address, runtime_code_hash) = legacy_evm_columns(reference)?;
         let finalized_block = sql_i64(reference.finalized_block, "finalized_block")?;
         let snapshot_generation = sql_i64(reference.snapshot_generation, "snapshot_generation")?;
         transaction.execute(
@@ -763,8 +763,8 @@ impl EvidenceStore {
             params![
                 key,
                 chain_id,
-                reference.contract_address,
-                reference.contract_code_hash,
+                contract_address,
+                runtime_code_hash,
                 finalized_block,
                 reference.finalized_block_hash,
                 snapshot_generation,
@@ -792,11 +792,17 @@ impl EvidenceStore {
         }
         let first = &records[0].1;
         let deployment = (
-            first.chain_id,
-            first.contract_address.as_str(),
-            first.contract_code_hash.as_str(),
+            first.chain_adapter.as_str(),
+            first.chain_identity.as_str(),
+            first.registry_locator.as_str(),
+            first.registry_schema_hash.as_str(),
+            first.evm_chain_id,
+            first.evm_contract_address.as_deref(),
+            first.evm_runtime_code_hash.as_deref(),
             first.finalized_block,
             first.finalized_block_hash.as_str(),
+            first.snapshot_generation,
+            first.state_root.as_str(),
         );
         let mut configured_ids = HashSet::new();
         let mut configured_endpoints = HashSet::new();
@@ -804,11 +810,17 @@ impl EvidenceStore {
             if reference.object_version != identity.object_version
                 || reference.object_hash != ri_core::object_hash(identity)?
                 || (
-                    reference.chain_id,
-                    reference.contract_address.as_str(),
-                    reference.contract_code_hash.as_str(),
+                    reference.chain_adapter.as_str(),
+                    reference.chain_identity.as_str(),
+                    reference.registry_locator.as_str(),
+                    reference.registry_schema_hash.as_str(),
+                    reference.evm_chain_id,
+                    reference.evm_contract_address.as_deref(),
+                    reference.evm_runtime_code_hash.as_deref(),
                     reference.finalized_block,
                     reference.finalized_block_hash.as_str(),
+                    reference.snapshot_generation,
+                    reference.state_root.as_str(),
                 ) != deployment
             {
                 return Err(StoreError::InvalidData(
@@ -833,6 +845,65 @@ impl EvidenceStore {
 
         let mut connection = self.connect()?;
         let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let existing_reference = transaction
+            .query_row(
+                "SELECT registry_json FROM ri_v2_identities ORDER BY server_id LIMIT 1",
+                [],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()?
+            .map(|value| serde_json::from_str::<RegistryReferenceV2>(&value))
+            .transpose()?;
+        if let Some(existing) = existing_reference.as_ref()
+            && (existing.chain_adapter != first.chain_adapter
+                || existing.evm_chain_id != first.evm_chain_id
+                || existing.evm_contract_address != first.evm_contract_address
+                || existing.evm_runtime_code_hash != first.evm_runtime_code_hash
+                || (!existing.chain_identity.is_empty()
+                    && existing.chain_identity != first.chain_identity)
+                || (!existing.registry_locator.is_empty()
+                    && existing.registry_locator != first.registry_locator)
+                || (!existing.registry_schema_hash.is_empty()
+                    && existing.registry_schema_hash != first.registry_schema_hash))
+        {
+            return Err(StoreError::InvalidData(
+                "Registry target changed; use a new database".into(),
+            ));
+        }
+        if let Some(existing) = existing_reference.as_ref() {
+            if first.snapshot_generation < existing.snapshot_generation {
+                return Err(StoreError::InvalidData(format!(
+                    "Registry source generation rollback: stored {}, received {}",
+                    existing.snapshot_generation, first.snapshot_generation
+                )));
+            }
+            if first.snapshot_generation == existing.snapshot_generation
+                && first.state_root != existing.state_root
+            {
+                return Err(StoreError::InvalidData(
+                    "Registry state root changed at the stored source generation".into(),
+                ));
+            }
+        }
+        for (key, expected) in [
+            ("registry_chain_adapter", first.chain_adapter.as_str()),
+            ("registry_chain_identity", first.chain_identity.as_str()),
+            ("registry_locator", first.registry_locator.as_str()),
+            ("registry_schema_hash", first.registry_schema_hash.as_str()),
+        ] {
+            let stored = transaction
+                .query_row(
+                    "SELECT meta_value FROM ri_v2_meta WHERE meta_key=?",
+                    [key],
+                    |row| row.get::<_, String>(0),
+                )
+                .optional()?;
+            if stored.as_deref().is_some_and(|value| value != expected) {
+                return Err(StoreError::InvalidData(format!(
+                    "Registry target changed for {key}; use a new database"
+                )));
+            }
+        }
         if let Some(checkpoint) = registry_checkpoint_from(&transaction)? {
             if first.finalized_block < checkpoint.finalized_block {
                 return Err(StoreError::InvalidData(format!(
@@ -891,6 +962,8 @@ impl EvidenceStore {
         }
 
         for (identity, reference) in records {
+            let (legacy_chain_id, legacy_contract_address, legacy_runtime_code_hash) =
+                legacy_evm_columns(reference)?;
             let identity_json = serde_json::to_string(identity)?;
             let registry_json = serde_json::to_string(reference)?;
             let current = transaction
@@ -965,9 +1038,9 @@ impl EvidenceStore {
                      updated_at=CURRENT_TIMESTAMP"#,
                 params![
                     format!("registry-v2:{}", identity.server_id),
-                    sql_i64(reference.chain_id, "chain_id")?,
-                    reference.contract_address,
-                    reference.contract_code_hash,
+                    legacy_chain_id,
+                    legacy_contract_address,
+                    legacy_runtime_code_hash,
                     sql_i64(reference.finalized_block, "finalized_block")?,
                     reference.finalized_block_hash,
                     sql_i64(reference.snapshot_generation, "snapshot_generation")?,
@@ -995,6 +1068,18 @@ impl EvidenceStore {
             &transaction,
             "registry_last_success_epoch",
             &success_epoch.to_string(),
+        )?;
+        set_meta(&transaction, "registry_chain_adapter", &first.chain_adapter)?;
+        set_meta(
+            &transaction,
+            "registry_chain_identity",
+            &first.chain_identity,
+        )?;
+        set_meta(&transaction, "registry_locator", &first.registry_locator)?;
+        set_meta(
+            &transaction,
+            "registry_schema_hash",
+            &first.registry_schema_hash,
         )?;
         transaction.commit()?;
         Ok(generation)
@@ -1223,10 +1308,32 @@ fn sql_i64(value: u64, field: &str) -> Result<i64, StoreError> {
         .map_err(|_| StoreError::InvalidData(format!("{field} exceeds SQLite INTEGER range")))
 }
 
+fn legacy_evm_columns(reference: &RegistryReferenceV2) -> Result<(i64, &str, &str), StoreError> {
+    match (
+        reference.evm_chain_id,
+        reference.evm_contract_address.as_deref(),
+        reference.evm_runtime_code_hash.as_deref(),
+    ) {
+        (Some(chain_id), Some(contract_address), Some(runtime_code_hash)) => Ok((
+            sql_i64(chain_id, "evm_chain_id")?,
+            contract_address,
+            runtime_code_hash,
+        )),
+        (None, None, None) => Ok((0, "", "")),
+        _ => Err(StoreError::InvalidData(
+            "EVM compatibility anchor must be complete or absent".into(),
+        )),
+    }
+}
+
 pub fn same_registry_state(left: &RegistryReferenceV2, right: &RegistryReferenceV2) -> bool {
-    left.chain_id == right.chain_id
-        && left.contract_address == right.contract_address
-        && left.contract_code_hash == right.contract_code_hash
+    left.chain_adapter == right.chain_adapter
+        && left.chain_identity == right.chain_identity
+        && left.registry_locator == right.registry_locator
+        && left.registry_schema_hash == right.registry_schema_hash
+        && left.evm_chain_id == right.evm_chain_id
+        && left.evm_contract_address == right.evm_contract_address
+        && left.evm_runtime_code_hash == right.evm_runtime_code_hash
         && left.state_root == right.state_root
         && left.object_hash == right.object_hash
         && left.object_version == right.object_version

@@ -107,6 +107,15 @@ pub struct EvidenceValidator<'a> {
     pub issuer_keys: &'a IssuerKeyRegistry,
 }
 
+type RegistryAnchor<'a> = (
+    &'a str,
+    &'a str,
+    &'a str,
+    Option<u64>,
+    Option<&'a str>,
+    Option<&'a str>,
+);
+
 impl EvidenceValidator<'_> {
     pub fn validate_graph(
         &self,
@@ -174,7 +183,7 @@ impl EvidenceValidator<'_> {
         }
 
         let mut nodes = HashMap::new();
-        let mut registry_anchor: Option<(u64, &str, &str)> = None;
+        let mut registry_anchor: Option<RegistryAnchor<'_>> = None;
         for node in &graph.nodes {
             let identity = &node.identity;
             if identity.schema_version != DNS_SERVER_IDENTITY_V2 {
@@ -185,9 +194,12 @@ impl EvidenceValidator<'_> {
             validate_identity_shape(identity)?;
             validate_registry_shape(&node.registry)?;
             let anchor = (
-                node.registry.chain_id,
-                node.registry.contract_address.as_str(),
-                node.registry.contract_code_hash.as_str(),
+                node.registry.chain_identity.as_str(),
+                node.registry.registry_locator.as_str(),
+                node.registry.registry_schema_hash.as_str(),
+                node.registry.evm_chain_id,
+                node.registry.evm_contract_address.as_deref(),
+                node.registry.evm_runtime_code_hash.as_deref(),
             );
             if registry_anchor.is_some_and(|expected| expected != anchor) {
                 return Err(EvidenceValidationError::InvalidGraph(
@@ -746,9 +758,13 @@ fn same_registry_semantics(
     left: &crate::evidence::RegistryReferenceV2,
     right: &crate::evidence::RegistryReferenceV2,
 ) -> bool {
-    left.chain_id == right.chain_id
-        && left.contract_address == right.contract_address
-        && left.contract_code_hash == right.contract_code_hash
+    left.chain_adapter == right.chain_adapter
+        && left.chain_identity == right.chain_identity
+        && left.registry_locator == right.registry_locator
+        && left.registry_schema_hash == right.registry_schema_hash
+        && left.evm_chain_id == right.evm_chain_id
+        && left.evm_contract_address == right.evm_contract_address
+        && left.evm_runtime_code_hash == right.evm_runtime_code_hash
         && left.state_root == right.state_root
         && left.object_hash == right.object_hash
         && left.object_version == right.object_version
@@ -849,10 +865,33 @@ fn validate_identity_shape(
 fn validate_registry_shape(
     registry: &crate::evidence::RegistryReferenceV2,
 ) -> Result<(), EvidenceValidationError> {
-    if registry.chain_id == 0
+    let explicit_multichain_fields = !registry.chain_identity.is_empty()
+        && !registry.registry_locator.is_empty()
+        && is_bytes32_hex(&registry.registry_schema_hash);
+    let evm_fields_valid = if registry.chain_adapter == "evm" {
+        registry.evm_chain_id.is_some_and(|value| value > 0)
+            && registry
+                .evm_contract_address
+                .as_deref()
+                .is_some_and(|value| is_hex_width(value, 20))
+            && registry
+                .evm_runtime_code_hash
+                .as_deref()
+                .is_some_and(is_bytes32_hex)
+    } else {
+        registry.evm_chain_id.is_none()
+            && registry.evm_contract_address.is_none()
+            && registry.evm_runtime_code_hash.is_none()
+    };
+    if registry.chain_adapter.is_empty()
+        || registry.chain_adapter.len() > 32
+        || !registry
+            .chain_adapter
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+        || !explicit_multichain_fields
+        || !evm_fields_valid
         || registry.finalized_block == 0
-        || !is_hex_width(&registry.contract_address, 20)
-        || !is_bytes32_hex(&registry.contract_code_hash)
         || !is_bytes32_hex(&registry.finalized_block_hash)
         || !is_bytes32_hex(&registry.state_root)
         || !is_bytes32_hex(&registry.object_hash)

@@ -18,7 +18,9 @@ client -> Rust Wrapper -> Recursive R1
 - `ri-wrapper`：UDP/TCP DNS、帧/问题核对、资源上限、证据与 Registry 双重复验；
 - `ri-agent`：从实际 Trace 构图、目标响应证明、R1/R2 子图递归合并、mTLS；
 - `ri-trace-adapter`：Unix Socket、producer UID、SQLite 持久队列、批量 mTLS 续传；
-- `ri-registry-sync`：finalized chain/address/runtime hash/identity/root/endpoint 核验；
+- `ri-chain-adapter`：统一链身份、最终检查点、Registry 快照和历史区块哈希接口，
+  已实现 EVM、Go-Norn，并通过标准 Sidecar 协议扩展新的链适配器；
+- `ri-registry-sync`：通过多链适配器完成 identity/root/endpoint 核验和原子同步；
 - `ri-core`：canonical JSON、SHA-256、Ed25519、V2 模型和安全策略；
 - `ri-store`：SQLite WAL、事务、Registry 代际和缓存来源。
 
@@ -111,6 +113,8 @@ PYTHONPATH=src python3 tools/manage_v2_registry.py --help
 - [运行部署手册](docs/runbooks/production-deployment.md)
 - [Sepolia 预发布部署](docs/runbooks/sepolia-preproduction-deployment.md)
 - [Sepolia 部署规格](specs/public-testnet-preproduction/requirements.md)
+- [多链 Registry 兼容层](docs/runbooks/multichain-registry-adapter.md)
+- [多链适配器规格](specs/multichain-registry-adapter/requirements.md)
 - [生产就绪门禁](docs/production_readiness.md)
 - [安全边界](docs/security_boundary.md)
 - [V2 API](docs/api.md)

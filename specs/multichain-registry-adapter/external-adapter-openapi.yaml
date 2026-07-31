@@ -1,0 +1,53 @@
+openapi: 3.1.0
+info:
+  title: Resolver Identity External Chain Adapter Protocol
+  version: 1.0.0
+  description: >-
+    Read-only protocol implemented by chain-specific sidecars. The sidecar
+    derives finalized state from its native chain and returns a normalized,
+    Ed25519-signed Resolver Identity snapshot.
+paths:
+  /v1/registry/snapshot:
+    get:
+      operationId: getRegistrySnapshot
+      responses:
+        "200":
+          description: Latest finalized normalized Registry snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: ./external-snapshot.schema.json
+        "503":
+          description: Native chain is unavailable, stale, or not finalized.
+  /v1/blocks/{number}:
+    get:
+      operationId: getFinalizedBlock
+      parameters:
+        - name: number
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Canonical finalized block identifier.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - number
+                  - hash
+                properties:
+                  number:
+                    type: integer
+                    minimum: 1
+                  hash:
+                    type: string
+                    pattern: ^0x[0-9a-f]{64}$
+        "404":
+          description: Block is unknown or outside retained history.
+        "503":
+          description: Native chain is unavailable or not finalized.

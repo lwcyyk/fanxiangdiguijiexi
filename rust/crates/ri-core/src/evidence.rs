@@ -134,9 +134,33 @@ impl DnsServerIdentityV2 {
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct RegistryReferenceV2 {
-    pub chain_id: u64,
-    pub contract_address: String,
-    pub contract_code_hash: String,
+    /// Explicit adapter name. Missing values fail deserialization; there is no
+    /// implicit downgrade to EVM.
+    pub chain_adapter: String,
+    /// Stable chain identity, for example `eip155:11155111` or
+    /// `norn-genesis:0x...`.
+    pub chain_identity: String,
+    /// Adapter-specific Registry locator in a human-auditable canonical form.
+    pub registry_locator: String,
+    /// Identity of the Registry runtime or snapshot schema.
+    pub registry_schema_hash: String,
+    /// EVM-only compatibility anchor. The aliases allow old persisted EVM
+    /// references to deserialize without assigning EVM semantics to other
+    /// adapters.
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "chain_id")]
+    pub evm_chain_id: Option<u64>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "contract_address"
+    )]
+    pub evm_contract_address: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "contract_code_hash"
+    )]
+    pub evm_runtime_code_hash: Option<String>,
     pub finalized_block: u64,
     pub finalized_block_hash: String,
     pub state_root: String,

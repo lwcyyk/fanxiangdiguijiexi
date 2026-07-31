@@ -38,3 +38,6 @@ deployments/sepolia/private/
 deployments/field/private/
 deploy/field/private/
 artifacts/field-deployment/private/
+deploy/norn-local/private/
+deploy/norn-local/runtime.env
+deployments/norn-local/

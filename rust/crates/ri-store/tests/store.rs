@@ -280,6 +280,17 @@ fn registry_snapshot_rejects_finalized_chain_rollback_atomically() {
     assert_eq!(stored.1.finalized_block, 100);
     assert_eq!(store.registry_last_success_epoch().unwrap(), 1_800_000_000);
 
+    let mut old_generation = reference.clone();
+    old_generation.snapshot_generation = 99;
+    assert!(
+        store
+            .apply_registry_snapshot(&[(identity.clone(), old_generation)], 1_800_000_001,)
+            .unwrap_err()
+            .to_string()
+            .contains("generation rollback")
+    );
+    assert_eq!(store.registry_last_success_epoch().unwrap(), 1_800_000_000);
+
     let mut conflicting_hash = reference;
     conflicting_hash.finalized_block_hash =
         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into();
@@ -289,6 +300,31 @@ fn registry_snapshot_rejects_finalized_chain_rollback_atomically() {
             .unwrap_err()
             .to_string()
             .contains("hash changed")
+    );
+    assert_eq!(store.registry_last_success_epoch().unwrap(), 1_800_000_000);
+}
+
+#[test]
+fn registry_snapshot_rejects_adapter_target_change() {
+    let directory = tempfile::tempdir().unwrap();
+    let store = EvidenceStore::open(directory.path().join("evidence.db")).unwrap();
+    let identity = unsigned_identity();
+    let reference = registry(&identity, 100);
+    store
+        .apply_registry_snapshot(&[(identity.clone(), reference.clone())], 1_800_000_000)
+        .unwrap();
+
+    let mut changed = reference;
+    changed.chain_adapter = "norn".into();
+    changed.chain_identity =
+        "norn-genesis:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into();
+    changed.registry_locator = "norn:0x1111111111111111111111111111111111111111#registry".into();
+    assert!(
+        store
+            .apply_registry_snapshot(&[(identity, changed)], 1_800_000_001)
+            .unwrap_err()
+            .to_string()
+            .contains("target changed")
     );
     assert_eq!(store.registry_last_success_epoch().unwrap(), 1_800_000_000);
 }
@@ -343,10 +379,16 @@ fn unsigned_identity() -> DnsServerIdentityV2 {
 
 fn registry(identity: &DnsServerIdentityV2, generation: u64) -> RegistryReferenceV2 {
     RegistryReferenceV2 {
-        chain_id: 31_337,
-        contract_address: "0x1111111111111111111111111111111111111111".into(),
-        contract_code_hash: "0x2222222222222222222222222222222222222222222222222222222222222222"
+        chain_adapter: "evm".into(),
+        chain_identity: "eip155:31337".into(),
+        registry_locator: "evm:0x1111111111111111111111111111111111111111".into(),
+        registry_schema_hash: "0x2222222222222222222222222222222222222222222222222222222222222222"
             .into(),
+        evm_chain_id: Some(31_337),
+        evm_contract_address: Some("0x1111111111111111111111111111111111111111".into()),
+        evm_runtime_code_hash: Some(
+            "0x2222222222222222222222222222222222222222222222222222222222222222".into(),
+        ),
         finalized_block: 100,
         finalized_block_hash: "0x3333333333333333333333333333333333333333333333333333333333333333"
             .into(),

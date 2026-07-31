@@ -653,10 +653,16 @@ fn identity(
 
 fn registry(identity: &DnsServerIdentityV2) -> RegistryReferenceV2 {
     RegistryReferenceV2 {
-        chain_id: 31_337,
-        contract_address: "0x1111111111111111111111111111111111111111".into(),
-        contract_code_hash: "0x2222222222222222222222222222222222222222222222222222222222222222"
+        chain_adapter: "evm".into(),
+        chain_identity: "eip155:31337".into(),
+        registry_locator: "evm:0x1111111111111111111111111111111111111111".into(),
+        registry_schema_hash: "0x2222222222222222222222222222222222222222222222222222222222222222"
             .into(),
+        evm_chain_id: Some(31_337),
+        evm_contract_address: Some("0x1111111111111111111111111111111111111111".into()),
+        evm_runtime_code_hash: Some(
+            "0x2222222222222222222222222222222222222222222222222222222222222222".into(),
+        ),
         finalized_block: 100,
         finalized_block_hash: "0x3333333333333333333333333333333333333333333333333333333333333333"
             .into(),

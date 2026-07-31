@@ -1,0 +1,19 @@
+{
+  "schema_version": "resolver-identity-norn-registry-snapshot-v1",
+  "chain_id": 20001,
+  "genesis_block_hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "registry_address": "0x0000000000000000000000000000000000000000",
+  "registry_key": "resolver-identity-registry-v2",
+  "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+  "snapshot_version": 1,
+  "checkpoint_height": 1,
+  "checkpoint_hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "state_root": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "root_status": "ACTIVE",
+  "published_at": 0,
+  "valid_until": 0,
+  "issuer": "replace-with-snapshot-issuer",
+  "key_id": "replace-with-key-id",
+  "entries": [],
+  "signature": "base64:ed25519:replace-with-signature"
+}

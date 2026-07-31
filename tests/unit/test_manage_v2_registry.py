@@ -1,4 +1,5 @@
 import json
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -47,6 +48,103 @@ def test_publication_plan_is_stable_and_requires_approved_hash(tmp_path):
     backend.config.chain_id = 1
     with pytest.raises(ValueError, match="live Registry"):
         manage.verify_plan_target(backend, plan)
+
+
+def test_norn_snapshot_reuses_plan_root_and_has_pinned_schema():
+    plan = build_plan(
+        [
+            {
+                "server_id": "operator/r1",
+                "endpoints": [
+                    {"ip": "192.0.2.53", "port": 53, "transport": "udp"}
+                ],
+                "object_version": 1,
+                "valid_until": int(time.time()) + 7_200,
+                "status": "ACTIVE",
+            }
+        ],
+        root_version=1,
+        chain_id=31337,
+        contract_address="0x" + "11" * 20,
+        contract_code_hash="0x" + "22" * 32,
+    )
+    snapshot = manage.build_norn_snapshot(
+        plan,
+        chain_id=20_001,
+        genesis_block_hash="0x" + "33" * 32,
+        registry_address="0x" + "44" * 20,
+        registry_key="resolver-identity-registry-v2",
+        snapshot_version=1,
+        checkpoint_height=100,
+        checkpoint_hash="0x" + "55" * 32,
+        valid_until=int(time.time()) + 3_600,
+        issuer="norn-registry",
+        key_id="snapshot-key-1",
+    )
+
+    assert snapshot["state_root"] == plan["state_root"]
+    assert snapshot["registry_schema_hash"] == manage.NORN_REGISTRY_SCHEMA_HASH_V1
+    assert snapshot["entries"][0]["resolver_id_key"] == plan["entries"][0][
+        "resolver_id_key"
+    ]
+    with pytest.raises(ValueError, match="32-byte"):
+        manage.build_norn_snapshot(
+            plan,
+            chain_id=20_001,
+            genesis_block_hash="0x12",
+            registry_address="0x" + "44" * 20,
+            registry_key="resolver-identity-registry-v2",
+            snapshot_version=1,
+            checkpoint_height=100,
+            checkpoint_hash="0x" + "55" * 32,
+            valid_until=int(time.time()) + 3_600,
+            issuer="norn-registry",
+            key_id="snapshot-key-1",
+        )
+
+
+def test_external_snapshot_reuses_plan_and_pins_native_target():
+    plan = build_plan(
+        [
+            {
+                "server_id": "operator/r1",
+                "endpoints": [
+                    {"ip": "192.0.2.53", "port": 53, "transport": "udp"}
+                ],
+                "object_version": 1,
+                "valid_until": int(time.time()) + 7_200,
+                "status": "ACTIVE",
+            }
+        ],
+        root_version=1,
+        chain_id=31337,
+        contract_address="0x" + "11" * 20,
+        contract_code_hash="0x" + "22" * 32,
+    )
+    snapshot = manage.build_external_snapshot(
+        plan,
+        driver="fabric",
+        chain_identity="fabric:channel-a:genesis-abc",
+        registry_locator="fabric:channel-a/identity-registry",
+        registry_schema_hash="0x" + "44" * 32,
+        generation=7,
+        checkpoint_height=100,
+        checkpoint_hash="0x" + "55" * 32,
+        valid_until=int(time.time()) + 3_600,
+        issuer="adapter-operator",
+        key_id="adapter-key-1",
+    )
+
+    assert snapshot["state_root"] == plan["state_root"]
+    assert snapshot["target"]["adapter"] == "external-fabric"
+    assert snapshot["target"]["registry_schema_hash"] == "0x" + "44" * 32
+    assert "chain_id" not in snapshot["target"]
+    assert "contract_address" not in snapshot["target"]
+    assert "contract_code_hash" not in snapshot["target"]
+    assert snapshot["checkpoint"]["number"] == 100
+    snapshot["target"]["chain_id"] = 30_001
+    with pytest.raises(ValueError, match="required fields"):
+        manage.validate_external_snapshot_shape(snapshot)
 
 
 def test_identity_set_rejects_cross_server_endpoint_conflict(tmp_path, monkeypatch):

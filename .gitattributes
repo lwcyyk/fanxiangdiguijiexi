@@ -1,0 +1,1 @@
+deploy/norn-local/patches/*.patch whitespace=-blank-at-eol,-space-before-tab

@@ -1,0 +1,52 @@
+diff --git a/rpc/blockchain.go b/rpc/blockchain.go
+index 78c6661..477de10 100644
+--- a/rpc/blockchain.go
++++ b/rpc/blockchain.go
+@@ -297,20 +297,30 @@ func (s *blockchainService) SendTransactionWithData(ctx context.
+ 	txBody.Signature = []byte{}
+ 
+ 	if in.Key != nil && in.Value != nil {
++		if len(*in.Key) == 0 || len(*in.Key) > 256 {
++			return nil, fmt.Errorf("transaction key length is invalid")
++		}
++		if len(*in.Value) == 0 || len(*in.Value) > 4*1024*1024 {
++			return nil, fmt.Errorf("transaction value length is invalid")
++		}
+ 		dataCmd := common.DataCommand{
+ 			Opt:   []byte(*in.Type),
+ 			Key:   []byte(*in.Key),
+ 			Value: []byte(*in.Value),
+ 		}
+ 
+-		writer := karmem.NewWriter(1024)
+-		dataCmd.WriteAsRoot(writer)
++		writer := karmem.NewWriter(len(*in.Key) + len(*in.Value) + 256)
++		if _, err = dataCmd.WriteAsRoot(writer); err != nil {
++			return nil, fmt.Errorf("serialize data command: %w", err)
++		}
+ 		txBody.Data = writer.Bytes()
+ 	}
+ 
+ 	// 将当前未签名的交易进行序列化 -> 字节形式
+-	writer := karmem.NewWriter(1024)
+-	txBody.WriteAsRoot(writer)
++	writer := karmem.NewWriter(len(txBody.Data) + 1024)
++	if _, err = txBody.WriteAsRoot(writer); err != nil {
++		return nil, fmt.Errorf("serialize transaction body: %w", err)
++	}
+ 	txBodyBytes := writer.Bytes()
+ 
+ 	hash := sha256.New()
+diff --git a/node/block_syncer.go b/node/block_syncer.go
+index a3131d5..4fd2997 100644
+--- a/node/block_syncer.go
++++ b/node/block_syncer.go
+@@ -60,7 +60,7 @@ func NewBlockSyncer(config *BlockSyncerConfig) *BlockSyncer {
+ 
+ 		remoteHeight:     -3,
+ 		targetHeight:     -2,
+-		knownHeight:      -1,
++		knownHeight:      config.Chain.Height(),
+ 		requestTimestamp: make(map[int64]time.Time),
+ 		blockMap:         make(map[int64]*common.Block),
+ 		peerReqTime:      make(map[peer.ID]time.Time),
