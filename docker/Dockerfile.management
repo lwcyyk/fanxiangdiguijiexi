@@ -5,7 +5,7 @@ COPY rust/Cargo.toml rust/Cargo.lock ./
 COPY rust/crates ./crates
 RUN cargo build --locked --release --package ri-chain-adapter --bin ri-nornctl
 
-FROM python:3.13.11-slim AS python-builder
+FROM python:3.13.11-slim@sha256:2b9c9803c6a287cafa0a8c917211dddd23dcd2016f049690ee5219f5d3f1636e AS python-builder
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
@@ -17,7 +17,7 @@ COPY src ./src
 RUN /opt/venv/bin/pip install --no-deps . \
     && /opt/venv/bin/pip uninstall --yes pip setuptools
 
-FROM python:3.13.11-slim
+FROM python:3.13.11-slim@sha256:2b9c9803c6a287cafa0a8c917211dddd23dcd2016f049690ee5219f5d3f1636e
 
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \

@@ -32,6 +32,10 @@ REGISTRY_KEY = "resolver-identity-registry-v2"
 VERSION = "0.3.0-norn-field-rc1"
 SECOND_VERSION = "0.3.0-norn-field-rc2"
 THIRD_VERSION = "0.3.0-norn-field-rc3"
+REGISTRY_HELPER = (
+    "registry:2.8.3@"
+    "sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373"
+)
 
 
 class AcceptanceError(RuntimeError):
@@ -351,7 +355,7 @@ class Lab:
             )
 
     def _start_registry(self) -> None:
-        self.run("pull-registry-helper", ["docker", "pull", "registry:2.8.3"])
+        self._ensure_image("registry-helper", REGISTRY_HELPER)
         self.run(
             "start-registry-helper",
             [
@@ -364,9 +368,19 @@ class Lab:
                 f"resolver-identity.acceptance={self.prefix}",
                 "-p",
                 f"127.0.0.1:{self.registry_port}:5000",
-                "registry:2.8.3",
+                REGISTRY_HELPER,
             ],
         )
+
+    def _ensure_image(self, name: str, reference: str) -> None:
+        inspected = self.run(
+            f"inspect-{name}-image",
+            ["docker", "image", "inspect", reference],
+            check=False,
+            record=False,
+        )
+        if inspected.returncode != 0:
+            self.run(f"pull-{name}-image", ["docker", "pull", reference])
 
     def _push_image(self, key: str, local_tag: str) -> None:
         repository = f"{self.registry_host}/resolver-identity/{key}"
@@ -399,7 +413,6 @@ class Lab:
             [
                 "docker",
                 "build",
-                "--pull",
                 "--file",
                 "docker/Dockerfile.rust",
                 "--tag",
@@ -412,7 +425,6 @@ class Lab:
             [
                 "docker",
                 "build",
-                "--pull",
                 "--file",
                 "docker/Dockerfile.management",
                 "--tag",
@@ -425,7 +437,6 @@ class Lab:
             [
                 "docker",
                 "build",
-                "--pull",
                 "--file",
                 "deploy/norn-local/Dockerfile",
                 "--build-arg",
@@ -439,7 +450,7 @@ class Lab:
             "nginx:1.27.5-bookworm@"
             "sha256:6784fb0834aa7dbbe12e3d7471e69c290df3e6ba810dc38b34ae33d3c1c05f7d"
         )
-        self.run("pull-nginx-image", ["docker", "pull", nginx_source])
+        self._ensure_image("nginx", nginx_source)
         local_tags["nginx"] = f"{self.prefix}-nginx:acceptance"
         self.run("tag-nginx-local", ["docker", "tag", nginx_source, local_tags["nginx"]])
         for key in field.IMAGE_KEYS:
