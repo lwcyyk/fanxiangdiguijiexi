@@ -1,4 +1,4 @@
-# Security Notes
+# Multi-chain Registry Adapter Threat Model
 
 ## Go-Norn upstream boundary
 
@@ -54,14 +54,31 @@ The generic protocol does not make an unsupported chain trustworthy by itself.
 Each sidecar must derive its snapshot and checkpoint from the native chain,
 enforce native finality, and retain historical block hashes. Registry Sync
 requires two endpoint responses to agree and verifies an independently pinned
-Ed25519 signature. Production endpoints use HTTPS; private deployments should
-also configure `RI_EXTERNAL_TLS_*` mTLS material.
-
-The HTTP client disables redirects. Snapshot JSON and target objects reject
-unknown fields, so a response cannot dynamically select an arbitrary upstream.
+Ed25519 signature. Every External endpoint uses HTTPS and mTLS through
+`RI_EXTERNAL_TLS_*` material. The HTTP client disables redirects. Snapshot JSON
+and target objects reject unknown fields, so a response cannot dynamically
+select an arbitrary upstream.
 External and Norn references contain only neutral chain identity, Registry
 locator and schema pins; EVM chain/contract/runtime fields are EVM-only.
 
 A sidecar that only republishes operator input, cannot resolve historical block
 hashes, or cannot explain native finality is integration-only and must not be
 described as a production adapter.
+
+## STRIDE summary
+
+| Threat | Required control | Failure behavior |
+|---|---|---|
+| Spoofed chain or Registry | Fixed chain identity, Registry locator, schema hash, typed metadata | Reconciliation fails |
+| Spoofed sidecar | mTLS plus pinned Ed25519 issuer/key ID | Signature or TLS failure |
+| Snapshot tampering | Canonical Ed25519 signature and state-root recomputation | Snapshot is discarded |
+| Rollback/replay | Checkpoint high-water, same-height hash pin, generation monotonicity, expiry | SQLite and heartbeat stay unchanged |
+| Endpoint equivocation | Two independent Norn/External readers must agree byte-for-byte | Reconciliation fails |
+| Adapter confusion | Mandatory exact `RI_CHAIN_ADAPTER`; no fallback; tagged metadata | Process startup/reconciliation fails |
+| Arbitrary upstream/redirect | Fixed configuration, deny unknown response fields, redirect policy `none` | Request fails |
+| Resource exhaustion | Response byte limits, 10,000-entry and 32-endpoint limits, timeouts | Snapshot is discarded |
+| Privilege escalation | Registry Sync read-only; Norn write proxy method denied; Agent/Wrapper have no RPC dependency | Write attempt is rejected |
+
+The last trusted SQLite transaction is the runtime trust boundary. A failed
+candidate snapshot cannot partially update identities, checkpoint metadata,
+success time, or the cache generation used by Agent and Wrapper.

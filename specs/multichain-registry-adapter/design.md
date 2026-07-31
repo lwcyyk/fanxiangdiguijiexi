@@ -23,21 +23,24 @@ does not require changes to the DNS data plane.
 
 | Field | EVM | Go-Norn | External sidecar |
 |---|---|---|---|
-| adapter | `evm` | `norn` | `external-<driver>` |
+| adapter | `evm` | `norn` | `external` |
 | chain identity | `eip155:<chain-id>` | `norn-genesis:<hash>` | native immutable identity |
-| EVM-only anchor | chain ID, contract, runtime hash | absent | absent |
+| typed metadata | chain ID, contract, runtime hash | genesis, Registry address/key, signer pin | driver and signer pin |
 | Registry locator | contract address | state address plus key | native channel/module/object |
 | Registry schema identity | runtime Keccak-256 | snapshot schema SHA-256 | adapter/schema hash |
 | checkpoint | `finalized` or confirmations | minimum head minus confirmations | native finalized checkpoint |
 
 `RegistryReferenceV2` uses `chain_adapter`, `chain_identity`,
-`registry_locator`, and `registry_schema_hash` for every adapter. EVM-only
-anchors are optional `evm_*` fields and MUST be absent for Norn and External
-snapshots. Legacy SQLite columns remain for schema compatibility and contain
-zero/empty values for non-EVM adapters; they do not carry Norn semantics.
-Existing databases without an explicit `chain_adapter` and neutral target
-fields are rejected and must be rebuilt by Registry Sync. No adapter downgrade
-or implicit EVM fallback is performed.
+`registry_locator`, `registry_schema_hash`, checkpoint height/hash,
+`finality_type`, state root, and snapshot generation for every adapter.
+`adapter_metadata` is a tagged enum. It is impossible to serialize a Norn
+genesis, Registry key, or signer as an EVM contract/runtime anchor.
+
+SQLite schema v3 keeps the old EVM columns only for read compatibility, adds
+neutral columns, and stores the typed reference as JSON. The v2-to-v3 migration
+parses old EVM rows, derives their neutral target fields, rewrites typed JSON,
+and does not delete Resolver data. No adapter downgrade or implicit EVM
+fallback is performed.
 
 ## EVM flow
 
@@ -70,10 +73,11 @@ misrepresented as native historical state.
 ## External compatibility protocol
 
 `ExternalRegistryAdapter` is the stable boundary for Fabric, Cosmos,
-Substrate, permissioned chains, and future ledgers. Two sidecars expose the
-machine-readable contract in `external-adapter-openapi.yaml`. Registry Sync
-requires exact signed snapshot agreement, validates the native target pins and
-Merkle root, then asks both sidecars for the checkpoint hash.
+Substrate, permissioned chains, and future ledgers. Two fixed mTLS sidecars
+expose the machine-readable contract in `external-adapter-openapi.yaml`.
+Registry Sync rejects HTTP and redirects, requires exact signed snapshot
+agreement, validates the native target pins and Merkle root, then asks both
+sidecars for the checkpoint hash.
 
 The sidecar is chain-specific: it owns native RPC, finality, proof and Registry
 decoding. It cannot merely proxy an arbitrary JSON document. The Rust data

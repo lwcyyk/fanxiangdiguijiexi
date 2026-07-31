@@ -2,8 +2,9 @@
 
 ## 1. 目标与边界
 
-`ri-chain-adapter` 是 Registry Sync 与具体区块链之间的稳定兼容层。DNS 数据面
-只接收统一的 `ChainSnapshot`，不再调用 EVM 或 Norn RPC。
+`ri-chain-adapter` 是 Registry Sync 与具体区块链之间的稳定兼容层。只有
+Registry Sync 能访问区块链或 Sidecar；Agent 和 Wrapper 只读取本机可信
+SQLite 快照。适配器失败后不会切换到另一条链。
 
 ```text
 ri-registry-sync
@@ -15,7 +16,10 @@ EvmRegistryAdapter  NornRegistryAdapter  ExternalRegistryAdapter
 JSON-RPC/eth_call   gRPC/signed snapshot  standard HTTPS sidecar
 ```
 
-新增区块链时实现以下三个方法即可：
+当前实现三类接入：原生 EVM、原生 Go-Norn、标准 External Sidecar。“支持其他
+链”是指目标链实现 Sidecar 协议，不代表软件会自动识别或兼容所有区块链。
+
+公共 Rust 接口为：
 
 ```rust
 #[async_trait]
@@ -30,6 +34,13 @@ pub trait RegistryChainAdapter {
 区块哈希和完整 Registry 快照。无法提供历史区块哈希或可靠最终性语义的链不能
 用于生产模式。
 
+域名中心部署时，每台受控递归解析器服务器运行 Agent、Trace Adapter、
+Registry Sync 和独立 SQLite；只有接收客户端查询的第一跳 R1 运行 Wrapper。
+每个递归解析器不需要部署 Norn 节点。一套受控 Norn 预发布网络至少包含两个
+独立数据目录、独立节点密钥的远程读取节点，供各 Registry Sync 通过 mTLS
+访问。同步失败超过 `RI_REGISTRY_MAX_STALENESS_SECONDS` 后，Agent/Wrapper
+readiness 失败并停止释放原始 DNS 响应。
+
 ## 2. 已实现的适配器
 
 | 适配器 | `RI_CHAIN_ADAPTER` | 链身份 | 最终性 | Registry 证明 |
@@ -40,7 +51,8 @@ pub trait RegistryChainAdapter {
 
 EVM 旧变量 `RI_WEB3_RPC_URL`、`RI_WEB3_CHAIN_ID`、
 `RI_REGISTRY_CONTRACT_ADDRESS`、`RI_REGISTRY_CODE_HASH` 继续兼容。新部署应
-使用统一的 `RI_CHAIN_*` 变量。
+使用统一的 `RI_CHAIN_*` 变量。新旧变量同时存在时必须完全相等，否则进程
+启动失败。
 
 ## 3. Go-Norn 版本与安全约束
 
@@ -203,15 +215,21 @@ scripts/norn/02-start.sh
 scripts/norn/03-prepare-snapshot.sh
 scripts/norn/04-publish-and-sync.sh
 scripts/norn/05-negative-tests.sh
+scripts/norn/06-finalize-acceptance.sh
+scripts/norn/99-stop.sh
 ```
 
-非秘密验收摘要位于忽略目录：
+`06-finalize-acceptance.sh` 会重新执行 Rust、Python、Foundry 和三种 Compose
+门禁，并从真实命令结果生成非秘密验收文件。`99-stop.sh` 在确认容器和网络已
+删除后清除节点数据、节点密钥、TLS 私钥、SQLite 和临时日志，同时把清理结果
+写入最终证据：
 
 ```text
-deployments/norn-local/acceptance.json
-deployments/norn-local/acceptance-negative.json
-deployments/norn-local/evidence-v2.db
+specs/multichain-registry-adapter/acceptance.json
 ```
+
+`deployments/norn-local/` 和 `deploy/norn-local/private/` 只在验收运行期间存在，
+始终被 Git 忽略。
 
 本地原生写端口仅绑定 loopback；`46555` 和 `46556` 是 mTLS 且拒绝写方法的
 独立读取入口。这是适配器集成环境，不是生产共识网络。
@@ -231,7 +249,7 @@ deployments/norn-local/evidence-v2.db
 9. 过期快照；
 10. finalized 高度低于 SQLite 高水位；
 11. 已保存高度的区块哈希发生变化；
-12. 生产模式只有一个 RPC 或使用明文 `http://`。
+12. 只有一个 RPC；生产模式使用明文 `http://` 或缺少 mTLS。
 
 ## 9. 标准 Sidecar 扩展协议
 
@@ -240,7 +258,7 @@ Registry Sync。机器契约：
 
 ```text
 specs/multichain-registry-adapter/external-adapter-openapi.yaml
-specs/multichain-registry-adapter/external-snapshot.schema.json
+specs/multichain-registry-adapter/external-adapter-schema.json
 ```
 
 sidecar 必须实现：
@@ -291,20 +309,25 @@ RI_EXTERNAL_TLS_CLIENT_CERT_FILE=/run/tls/external-client.crt
 RI_EXTERNAL_TLS_CLIENT_KEY_FILE=/run/tls/external-client.key
 ```
 
-生产模式要求两个不同 HTTPS URL。两个 sidecar 的完整签名快照及指定历史块
-哈希必须完全一致，否则不写 SQLite。sidecar 必须从原生链推导 finalized 状态；
+External 模式始终要求两个不同网络源的 HTTPS URL 和 mTLS。客户端不跟随
+重定向，响应也不能动态指定上游。两个 Sidecar 的完整签名快照及指定历史块
+哈希必须完全一致，否则不写 SQLite。Sidecar 必须从原生链推导 finalized 状态；
 只把任意 JSON 包装成标准响应不构成链适配。
 
-## 10. 编写原生 Rust 适配器
+## 10. 扩展其他链
 
-1. 在 `ri-chain-adapter` 新增模块并实现 `RegistryChainAdapter`。
-2. 定义不可混淆的 `chain_identity` 和 `registry_locator`。
-3. 明确最终性类型、回滚窗口和历史块哈希来源。
-4. 验证 Registry 实现或快照 schema，不只验证 RPC URL。
-5. 把链上原始状态转换为完整 `RegistryRecord`，不要在主同步循环增加分支。
-6. 在 `Settings` 工厂注册适配器和专用配置。
-7. 增加正常、RPC 分叉、回滚、状态篡改、超时和响应体上限测试。
-8. 在生产文档中记录该链相对于 EVM 的能力差距。
+第一阶段发布候选不再增加原生链类型。扩展其他链时实现
+`external-adapter-openapi.yaml`，并提交链身份、Registry 定位、最终性、
+历史检查点、签名密钥轮换和双 Sidecar 一致性测试。目标链若只能提供当前键值，
+且没有历史区块、包含证明、签名快照或可信最终性，只能用于开发集成。
 
-若目标链只能提供当前键值且没有历史区块、包含证明、签名快照或可信最终性，
-该链只能作为开发适配器，不能通过生产门禁。
+手工容量基准不在共享 CI 中执行：
+
+```bash
+cd rust
+cargo test --release --test evidence_graph \
+  validation_capacity_baseline -- --ignored --nocapture
+```
+
+结果必须记录 CPU、内存、P95/P99、最大证据图和目标 QPS；单元测试通过不能
+替代现场容量结论。

@@ -34,7 +34,8 @@ Every production adapter must provide:
 
 - Use Go-Norn's `Blockchain` gRPC read API.
 - Pin the genesis block hash because the API does not expose a chain ID.
-- Read from at least two independent TLS-protected RPC endpoints in production.
+- Read from at least two independent RPC endpoints in every mode. Production
+  endpoints must use HTTPS and mTLS.
 - Derive the checkpoint as the lowest observed head minus configured
   confirmations.
 - Require both nodes to agree on genesis, checkpoint block hash, and the exact
@@ -48,20 +49,24 @@ Every production adapter must provide:
 - Implement the read-only external adapter protocol instead of modifying the
   DNS data plane.
 - Serve `GET /v1/registry/snapshot` and `GET /v1/blocks/{number}` from two
-  independently operated sidecar instances.
+  independently operated sidecar instances over HTTPS and mTLS.
 - Derive the checkpoint and Registry records from the native chain; do not
   accept caller-supplied normalized state as trusted input.
 - Sign the normalized snapshot with a pinned Ed25519 adapter key.
-- Use HTTPS in production and support mTLS where the sidecar is private.
+- Reject HTTP for every External deployment, require mTLS, and reject
+  redirects.
 - Pin a native immutable chain identity, Registry locator, and schema hash.
 
 ## Compatibility
 
-- Existing EVM deployments must continue working without configuration changes.
-- New generic `RI_CHAIN_*` variables must take precedence when present.
-- Existing SQLite schema and consumers remain readable.
-- Registry references use explicit adapter/chain/locator/schema fields.
-  Optional EVM compatibility fields are emitted only by the EVM adapter.
+- Existing EVM environment names remain compatibility aliases.
+- New deployment examples use only generic `RI_CHAIN_*` variables.
+- If a new variable and its legacy EVM alias are both set, their values must
+  be equal; conflicts fail startup.
+- SQLite schema v2 EVM rows migrate in place to schema v3 without deletion.
+- Registry references use explicit adapter/chain/locator/schema/checkpoint/
+  finality fields plus typed adapter metadata. EVM, Norn, and External
+  metadata cannot be substituted for one another.
 
 ## Failure conditions
 
@@ -69,8 +74,8 @@ The sync process must not update SQLite when:
 
 - the adapter is unknown;
 - production RPC transport is not TLS;
-- fewer than two Norn RPC endpoints are configured in production;
-- fewer than two external sidecar endpoints are configured in production;
+- fewer than two independent Norn RPC endpoints are configured;
+- fewer than two independent external sidecar endpoints are configured;
 - a configured pin is zero, malformed, or does not match the chain;
 - independent Norn nodes disagree;
 - the signed snapshot is expired, not active, or signed by an untrusted key;
@@ -79,6 +84,15 @@ The sync process must not update SQLite when:
 - any signed identity, Resolver anchor, Root, or Endpoint binding differs;
 - the stored finalized checkpoint is no longer canonical.
 - external sidecars disagree on the snapshot or historical block hash.
+- a selected adapter fails, even if another adapter is fully configured.
+
+## Process boundary
+
+- Registry Sync is the only runtime component allowed to load a chain adapter
+  or contact chain/sidecar RPC endpoints.
+- Agent and Wrapper read only the last trusted local SQLite snapshot.
+- A failed reconciliation does not change Registry rows, checkpoint high-water
+  metadata, last-success time, or cache generation.
 
 ## Non-goals
 

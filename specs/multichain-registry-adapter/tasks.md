@@ -30,3 +30,14 @@
 - [x] Audit the complete branch diff and acceptance evidence for private keys,
   credentials, databases, TLS private material, RPC credentials, and runtime
   files before delivery.
+- [x] Split common Registry fields from typed EVM, Norn, and External metadata.
+- [x] Add an in-place schema-v2 to schema-v3 EVM migration.
+- [x] Reject typed metadata confusion and conflicting compatibility variables.
+- [x] Require two independent HTTPS+mTLS External endpoints in every mode.
+- [x] Add pinned toolchain CI and a required release-candidate gate.
+- [x] Consolidate the runbook, security boundary, troubleshooting, OpenAPI, and
+  JSON Schema delivery structure.
+- [ ] Complete the new fresh-clone Norn acceptance run and regenerate
+  `acceptance.json`.
+- [ ] Audit all reachable branch history and push the evidence commits to Draft
+  PR #1.
