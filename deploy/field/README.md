@@ -1,39 +1,31 @@
-# Domain-center field deployment assets
+# Go-Norn field delivery templates
 
-This directory contains non-secret templates for the star-topology deployment.
-The link runtime remains `deploy/link/docker-compose.yml`.
+This directory is the non-secret source for three field packages:
 
-Never put a real site inventory, rendered bundle, RPC credential, private key,
-token, or TLS private key in this directory. Use:
+- `management`: offline identity/snapshot tooling and controlled Norn publication;
+- `norn-node`: one Go-Norn node plus an mTLS read-only proxy;
+- `resolver-link`: `first-hop` or `upstream` Rust data-plane units.
 
-```text
-deployments/field/private/
-```
+`inventory.example.yaml` uses JSON syntax, which is valid YAML 1.2. The renderer
+uses the Python standard library and therefore intentionally accepts this
+restricted, duplicate-key-safe YAML subset.
 
-The center management host validates a private inventory and renders one
-independent bundle per link unit:
+Render a release without secrets:
 
 ```bash
-python3 tools/manage_field_deployment.py validate \
-  --inventory /secure/field/site-inventory.json
+python3 tools/manage_norn_field_delivery.py validate \
+  --inventory deploy/field/inventory.example.yaml --template
 
-scripts/field/01-render-bundles.sh \
-  /secure/field/site-inventory.json \
-  deployments/field/private
+python3 tools/manage_norn_field_delivery.py render \
+  --inventory /secure/inventory.yaml \
+  --output-root artifacts/field-deployment
 ```
 
-The inventory pins two independent HTTPS RPC providers and four non-secret
-Registry evidence files: finalized bytecode verification, role separation,
-the immutable publication plan, and all five publication phases. Rendering is
-refused when these artifacts disagree with the signed identities or when the
-Agent private key does not derive the public key in its identity.
+Generated packages contain no private key, password, token, certificate or
+database. Each target host mounts its private material from a separately
+controlled directory described in `secret-requirements.json`.
 
-The currently verified Sepolia Registry is
-`0x519c70babf33771b8e87c22fd3e2e1b1092e1e2a`, with runtime code hash
-`0x3ff1c0bc964b2751a4006fa9bc54f8a1e1bb04872f62fabaf3eef52132e0a2d3`.
-Root, Resolver identity, and Endpoint publication remain required before a
-field bundle can pass the production validator.
-
-Prometheus templates are under `prometheus/`. Replace all placeholders and use a
-different Agent metrics client certificate for each link. HTTP metrics ports
-must only be reachable from the operations management network.
+The current repository has a production Trace consumer and verification data
+model, but it does not include a production BIND, Unbound, Knot Resolver or
+PowerDNS Recursor Trace producer. Every generated manifest therefore sets
+`production_trace_ready=false` and records a P0 cutover blocker.
