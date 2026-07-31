@@ -259,7 +259,21 @@ class Lab:
         if python_match is None:
             raise AcceptanceError("could not derive Python test count")
         self.test_counts["python_passed"] = int(python_match.group(1))
-        self.test_counts["field_delivery_passed"] = 13
+        field_collected = self.run(
+            "field-delivery-test-collection",
+            [
+                "python3",
+                "-m",
+                "pytest",
+                "--collect-only",
+                "-q",
+                "tests/unit/test_norn_field_delivery.py",
+            ],
+        )
+        field_match = re.search(r"([0-9]+) tests collected", field_collected.stdout)
+        if field_match is None:
+            raise AcceptanceError("could not derive field delivery test count")
+        self.test_counts["field_delivery_passed"] = int(field_match.group(1))
         self.run("forge-fmt", ["forge", "fmt", "--check"], cwd=REPO_ROOT / "contracts")
         self.run("forge-build", ["forge", "build"], cwd=REPO_ROOT / "contracts")
         forge_test = self.run(
@@ -984,6 +998,14 @@ class Lab:
             time.sleep(1)
         raise AcceptanceError(f"timed out waiting for {label}: {last_error}")
 
+    @staticmethod
+    def _peer_id_from_logs(logs: str) -> str | None:
+        matches = re.findall(
+            r'Node address: [^"]*/p2p/([^"\s]+)',
+            logs,
+        )
+        return matches[-1] if matches else None
+
     def start_norn(self) -> tuple[str, str, str]:
         self.run("create-field-network", ["docker", "network", "create", self.field_network])
         node_a, node_b = self.inventory["norn"]["nodes"]
@@ -1015,8 +1037,7 @@ class Lab:
                 "norn-node",
                 name="probe-peer-a",
             ).stdout
-            match = re.findall(r"/p2p/([^\"\\s]+)", logs)
-            return match[-1] if match else None
+            return self._peer_id_from_logs(logs)
 
         peer_id_a = self._wait_for("Node A peer ID", peer_a)
         self.bootstrap = f"/dns4/{node_a['host']}/tcp/31258/p2p/{peer_id_a}"
@@ -1046,8 +1067,7 @@ class Lab:
                 overrides={"RI_NORN_BOOTSTRAP": self.bootstrap},
                 name="probe-peer-b",
             ).stdout
-            match = re.findall(r"/p2p/([^\"\\s]+)", logs)
-            return match[-1] if match else None
+            return self._peer_id_from_logs(logs)
 
         peer_id_b = self._wait_for("Node B peer ID", peer_b)
         if peer_id_a == peer_id_b:

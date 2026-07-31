@@ -19,6 +19,14 @@ assert SPEC and SPEC.loader
 field = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(field)
 
+ACCEPTANCE_SPEC = importlib.util.spec_from_file_location(
+    "run_norn_field_acceptance",
+    REPO_ROOT / "tools" / "run_norn_field_acceptance.py",
+)
+assert ACCEPTANCE_SPEC and ACCEPTANCE_SPEC.loader
+acceptance = importlib.util.module_from_spec(ACCEPTANCE_SPEC)
+ACCEPTANCE_SPEC.loader.exec_module(acceptance)
+
 
 def _inventory(tmp_path: Path, version: str = "0.3.0-test") -> dict:
     inventory = field.load_inventory(REPO_ROOT / "deploy" / "field" / "inventory.example.yaml")
@@ -72,6 +80,15 @@ def test_example_is_valid_restricted_yaml_template():
     field.validate_inventory(inventory, template=True)
     with pytest.raises(field.DeliveryError, match="placeholder"):
         field.validate_inventory(inventory)
+
+
+def test_peer_id_parser_ignores_bootstrap_errors_and_keeps_full_multihash():
+    peer_id = "QmXTgjTK8n9yiNWY2LmRqiJMphKZB9X8jgWD2PuRK11sAh"
+    logs = (
+        f'level=info msg="Node address: /ip4/127.0.0.1/tcp/31258/p2p/{peer_id}"\n'
+        'level=error msg="bootstrap /p2p/QmWrongAddress"\n'
+    )
+    assert acceptance.Lab._peer_id_from_logs(logs) == peer_id
 
 
 @pytest.mark.parametrize(
