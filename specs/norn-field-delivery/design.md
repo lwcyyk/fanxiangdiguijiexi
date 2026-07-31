@@ -18,6 +18,11 @@ allows only:
 Every other method, including `SendTransactionWithData`, returns 403. Node A
 and B use separate hosts, data, consensus keys and TLS profiles.
 
+Go-Norn is operated as a controlled single-producer network for this delivery:
+Node A owns the authenticated publication path and uses the block-generation
+flag; Node B uses an independent node identity and data directory as a read
+replica, bootstraps from A and does not generate a competing chain.
+
 The resolver package runs Registry Sync, Agent and Trace Adapter on every
 resolver. Wrapper uses a `first-hop` Compose profile and is not enabled for
 upstream R2/R3. Only Registry Sync has Norn adapter variables and network

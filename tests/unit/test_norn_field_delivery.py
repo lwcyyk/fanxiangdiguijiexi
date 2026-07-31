@@ -223,6 +223,13 @@ def test_adapter_access_and_role_boundaries_are_encoded_in_compose():
     assert "RI_NORN_NODE_HOSTNAME:" in node_compose
     assert "start-read-proxy.sh" in node_compose
 
+    node_start = (
+        REPO_ROOT / "deploy" / "field" / "norn-node" / "start-norn.sh"
+    ).read_text(encoding="utf-8")
+    assert 'if [[ "${RI_NORN_ROLE:?}" == "node-a" ]]' in node_start
+    assert "arguments+=(-g)" in node_start
+    assert 'elif [[ "${RI_NORN_ROLE}" == "node-b" ]]' in node_start
+
 
 @pytest.mark.parametrize(
     ("kind", "host"),
