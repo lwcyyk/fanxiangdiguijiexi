@@ -37,7 +37,7 @@
 - [x] Add pinned toolchain CI and a required release-candidate gate.
 - [x] Consolidate the runbook, security boundary, troubleshooting, OpenAPI, and
   JSON Schema delivery structure.
-- [ ] Complete the new fresh-clone Norn acceptance run and regenerate
+- [x] Complete the new fresh-clone Norn acceptance run and regenerate
   `acceptance.json`.
-- [ ] Audit all reachable branch history and push the evidence commits to Draft
+- [x] Audit all reachable branch history and push the evidence commits to Draft
   PR #1.

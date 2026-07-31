@@ -1,26 +1,31 @@
 {
-  "generated_at": "2026-07-31T01:12:15Z",
-  "git_commit": "fe4ca3fbdbb4254dd727f7509681a37c43fab0cf",
+  "schema_version": "resolver-identity-multichain-acceptance-v1",
+  "generated_at": "2026-07-31T02:32:11Z",
+  "pr_number": 1,
+  "branch": "multichain-registry-adapter",
+  "source_commit": "f2b6d3bd63ef3dbb5c0d3a6a06ce98bd506053ab",
+  "acceptance_commit": "f2b6d3bd63ef3dbb5c0d3a6a06ce98bd506053ab",
   "adapter": "norn",
-  "transaction_hash": "f9f404f844bcd02244b2977e50dcd36ab64186261e015d4eacf29af5d7302243",
+  "go_norn_upstream_commit": "a7be734ac2e829e2076d06d45719d2716abd3d72",
+  "transaction_hash": "dc041d2b9b71294564a1d9408b7a56139c48e0e5d79667e2077f8a982a3b3342",
   "image_digests": {
-    "go_norn": "sha256:3ec52a631dbbe76adfa21618ae8545fa55d5cfe5b0088dc5599787ed771653fe",
-    "registry_sync": "sha256:b66215386564d008eae345f061c1aef32ae6eb846bfa8cc136d6259764ee78f7"
+    "go_norn": "sha256:f6518a66b3e5d75b6f0fe7d3de3527a017a08c32a701633189b0080327de36ba",
+    "registry_sync": "sha256:f01bf7b8638f7baef03c398ee713e93ce88066f27774f906b65eea579b23d35e"
   },
-  "genesis_block_hash": "0xf8431ea77f854f72d29113e0505ba7355cf838927dcdbf037b15267b101fc67c",
+  "genesis_block_hash": "0xdcaf726b6c3641ec7a2f59a039eafb3d5f2fba5a5a0d643b86da927c19b3c843",
   "registry": {
     "address": "0x1000000000000000000000000000000000000001",
     "key": "resolver-identity-registry-v2",
     "schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499"
   },
-  "plan_hash": "0x8459f167387c068e47a77bb66969a55eef3a027f602f2fda241d52ad3f2fac52",
+  "plan_hash": "0xa2e0670fb69b43426ecb22c1ac2c699554154171f02e6abe954ab32dcdd0212e",
   "signed_checkpoint": {
-    "height": 4,
-    "hash": "0xb1864944260c10d717ca64ccfa6e42a0e0cbb6b7608e87c0e622d7dcd6e1bd35"
+    "height": 11,
+    "hash": "0x91220ba3d04f1acdc1863dfb9617d72bd9b7395ae3ee686cb7652839640569b2"
   },
   "registry_sync": {
-    "checkpoint_height": 27,
-    "checkpoint_hash": "0x1a652f8e0a8afd2af5a2e5332c13f937c99748a3a632cbe549c013fec078321c",
+    "checkpoint_height": 35,
+    "checkpoint_hash": "0x8201a0fed0bfc5b6b2c7a069e5e299c8a737573a011d5cd32a31ee0c5a05e531",
     "identity_count": 1,
     "sqlite_integrity": "ok"
   },
@@ -28,8 +33,8 @@
     "independent_data_directories": true,
     "distinct_node_keys": true,
     "peer_id_sha256": [
-      "1ec22e233c4fff728b3e046a9e128d9bdae23613ae5a5718c21c7c17c04282d7",
-      "d34226dd895c246db4511555c2e74284010916ce6943adae48eb6a54d17e29ad"
+      "bb5138baf2ae1e0edd6157e142d76333ba99f18f3508477be01d0812591d157c",
+      "110ac8067fb8192e71ff7ef7f50bdf2041976d2271b61d7a796a8f1ca19f2eec"
     ]
   },
   "mtls_read_endpoints": [
@@ -42,48 +47,137 @@
     "signer_pin": "passed",
     "finalized_inclusion": "passed",
     "atomic_sqlite_sync": "passed",
+    "non_evm_legacy_columns_empty": "passed",
     "mtls_read": "passed",
     "write_proxy_denied": "passed"
   },
+  "temporary_resources_cleaned": true,
   "result": "passed",
+  "implementation_scope": "通过标准 Sidecar 协议扩展新的链适配器",
+  "test_commands": [
+    {
+      "command": "cd rust && cargo fmt --all --check",
+      "exit_code": 0
+    },
+    {
+      "command": "cd rust && cargo test --workspace --locked",
+      "exit_code": 0
+    },
+    {
+      "command": "cd rust && cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "exit_code": 0
+    },
+    {
+      "command": "python3 -m pytest -q",
+      "exit_code": 0
+    },
+    {
+      "command": "cd contracts && forge fmt --check",
+      "exit_code": 0
+    },
+    {
+      "command": "cd contracts && forge build",
+      "exit_code": 0
+    },
+    {
+      "command": "cd contracts && forge test -vvv",
+      "exit_code": 0
+    },
+    {
+      "command": "docker compose --env-file deploy/link/.env.example -f deploy/link/docker-compose.yml config --quiet",
+      "exit_code": 0
+    },
+    {
+      "command": "docker compose --env-file deploy/link/.env.norn.example -f deploy/link/docker-compose.yml config --quiet",
+      "exit_code": 0
+    },
+    {
+      "command": "docker compose --env-file deploy/link/.env.external.example -f deploy/link/docker-compose.yml config --quiet",
+      "exit_code": 0
+    }
+  ],
+  "test_counts": {
+    "rust_passed": 74,
+    "rust_ignored": 1,
+    "python_passed": 154,
+    "foundry_passed": 14,
+    "norn_positive_scenarios": 8,
+    "negative_scenarios": 25
+  },
+  "compose_results": {
+    "evm": "passed",
+    "norn": "passed",
+    "external": "passed"
+  },
   "negative_tests": [
     {
       "test": "low-height-replay",
       "result": "failed-closed",
+      "automated_test_source": "ri-store::registry_snapshot_rejects_finalized_chain_rollback_atomically",
       "snapshot_unchanged": true,
-      "success_heartbeat_unchanged": true
+      "success_heartbeat_unchanged": true,
+      "cache_generation_unchanged": true
     },
     {
       "test": "same-height-different-hash",
       "result": "failed-closed",
+      "automated_test_source": "ri-store::registry_snapshot_rejects_finalized_chain_rollback_atomically",
       "snapshot_unchanged": true,
-      "success_heartbeat_unchanged": true
+      "success_heartbeat_unchanged": true,
+      "cache_generation_unchanged": true
     },
     {
       "test": "old-generation-replay",
       "result": "failed-closed",
+      "automated_test_source": "ri-store::registry_snapshot_rejects_finalized_chain_rollback_atomically",
       "snapshot_unchanged": true,
-      "success_heartbeat_unchanged": true
+      "success_heartbeat_unchanged": true,
+      "cache_generation_unchanged": true
     },
     {
-      "test": "snapshot-signature-and-signer-pin",
-      "result": "failed-closed"
+      "test": "snapshot-payload-signature-tamper",
+      "result": "failed-closed",
+      "automated_test_source": "cargo test --locked --package ri-chain-adapter"
+    },
+    {
+      "test": "dual-node-genesis-and-checkpoint-disagreement",
+      "result": "failed-closed",
+      "automated_test_source": "cargo test --locked --package ri-chain-adapter"
+    },
+    {
+      "test": "snapshot-ahead-of-confirmed-height",
+      "result": "failed-closed",
+      "automated_test_source": "cargo test --locked --package ri-chain-adapter"
     },
     {
       "test": "snapshot-expiration-and-key-rotation",
-      "result": "failed-closed"
+      "result": "failed-closed",
+      "automated_test_source": "cargo test --locked --package ri-chain-adapter"
     },
     {
       "test": "external-redirect-denied",
-      "result": "failed-closed"
+      "result": "failed-closed",
+      "automated_test_source": "cargo test --locked --package ri-chain-adapter"
     },
     {
       "test": "external-dynamic-upstream-denied",
-      "result": "failed-closed"
+      "result": "failed-closed",
+      "automated_test_source": "cargo test --locked --package ri-chain-adapter"
+    },
+    {
+      "test": "external-dual-endpoint-disagreement",
+      "result": "failed-closed",
+      "automated_test_source": "cargo test --locked --package ri-chain-adapter"
+    },
+    {
+      "test": "external-chain-registry-schema-pins",
+      "result": "failed-closed",
+      "automated_test_source": "cargo test --locked --package ri-chain-adapter"
     },
     {
       "test": "non-evm-reference-has-no-evm-fields",
-      "result": "failed-closed"
+      "result": "failed-closed",
+      "automated_test_source": "cargo test --locked --package ri-chain-adapter"
     },
     {
       "test": "wrong-genesis",
@@ -91,7 +185,12 @@
       "registry_rows_written": 0
     },
     {
-      "test": "wrong-registry-id",
+      "test": "wrong-registry-address",
+      "result": "failed-closed",
+      "registry_rows_written": 0
+    },
+    {
+      "test": "wrong-registry-key",
       "result": "failed-closed",
       "registry_rows_written": 0
     },
@@ -116,6 +215,21 @@
       "registry_rows_written": 0
     },
     {
+      "test": "insufficient-confirmations",
+      "result": "failed-closed",
+      "registry_rows_written": 0
+    },
+    {
+      "test": "scan-range-insufficient",
+      "result": "failed-closed",
+      "registry_rows_written": 0
+    },
+    {
+      "test": "rpc-response-size-limit",
+      "result": "failed-closed",
+      "registry_rows_written": 0
+    },
+    {
       "test": "unknown-adapter",
       "result": "failed-closed",
       "registry_rows_written": 0
@@ -126,21 +240,28 @@
       "registry_rows_written": 0
     },
     {
-      "test": "failed-update-preserves-sqlite-and-heartbeat",
+      "test": "failed-update-preserves-sqlite-heartbeat-and-generation",
       "result": "failed-closed",
       "snapshot_unchanged": true,
-      "success_heartbeat_unchanged": true
+      "success_heartbeat_unchanged": true,
+      "cache_generation_unchanged": true
     }
   ],
-  "implementation_scope": "通过标准 Sidecar 协议扩展新的链适配器",
+  "secret_audit": {
+    "result": "passed",
+    "reachable_commits_scanned": 31,
+    "high_confidence_findings": 0
+  },
+  "secrets_found": false,
   "security_assertions": {
     "no_adapter_fallback": true,
-    "non_evm_reference_has_no_evm_compatibility_fields": true,
+    "typed_adapter_metadata": true,
+    "non_evm_legacy_columns_empty": true,
     "signed_snapshot_and_signer_pin": true,
     "expiration_and_key_rotation": true,
     "replay_and_high_water_protection": true,
-    "failed_snapshot_preserves_sqlite_and_success_heartbeat": true,
-    "external_https_only_in_production": true,
+    "failed_snapshot_preserves_sqlite_heartbeat_and_generation": true,
+    "external_two_https_mtls_origins": true,
     "external_redirects_disabled": true,
     "external_dynamic_upstream_fields_rejected": true
   }
