@@ -218,7 +218,7 @@ def test_install_is_idempotent_for_each_package_kind(tmp_path, kind, host):
     release = field.render(inventory, tmp_path / "artifacts")
     package = _extract_package(release, kind, tmp_path / f"extract-{kind}")
     config = release / "hosts" / host / "config"
-    install_root = tmp_path / f"install-{kind}"
+    install_root = tmp_path / "new-server" / kind / "opt" / "resolver-identity"
     environment = _lifecycle_env(install_root)
 
     command = [

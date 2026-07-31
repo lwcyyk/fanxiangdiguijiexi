@@ -53,8 +53,12 @@ preflight() {
   docker compose version >/dev/null
   field_verify_package "${PACKAGE_ROOT}"
 
+  local disk_probe="${INSTALL_ROOT}"
+  while [[ ! -e "${disk_probe}" && "${disk_probe}" != "/" ]]; do
+    disk_probe="$(dirname "${disk_probe}")"
+  done
   local free_mb
-  free_mb="$(df -Pm "${INSTALL_ROOT%/*}" 2>/dev/null | awk 'NR==2 {print $4}')"
+  free_mb="$(df -Pm "${disk_probe}" | awk 'NR==2 {print $4}')"
   if [[ -n "${free_mb}" ]]; then
     ((free_mb >= ${RI_FIELD_MIN_FREE_MB:-2048})) ||
       field_die "insufficient free disk space"
