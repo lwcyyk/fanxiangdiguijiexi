@@ -35,6 +35,7 @@ def _inventory(tmp_path: Path, version: str = "0.3.0-test") -> dict:
     inventory["management"]["data_dir"] = str(tmp_path / "management-data")
     inventory["management"]["work_dir"] = str(tmp_path / "management-work")
     inventory["management"]["secret_dir"] = str(tmp_path / "management-secrets")
+    inventory["management"]["norn_tls_dir"] = str(tmp_path / "management-norn-tls")
     for index, node in enumerate(inventory["norn"]["nodes"]):
         node["data_dir"] = str(tmp_path / f"norn-data-{index}")
         node["config_dir"] = str(tmp_path / f"norn-config-{index}")
@@ -42,6 +43,9 @@ def _inventory(tmp_path: Path, version: str = "0.3.0-test") -> dict:
     for index, resolver in enumerate(inventory["resolvers"]):
         resolver["data_dir"] = str(tmp_path / f"resolver-data-{index}")
         resolver["trace_socket"] = str(tmp_path / f"trace-{index}")
+        resolver["secret_dir"] = str(tmp_path / f"resolver-secrets-{index}")
+        resolver["agent_tls_dir"] = str(tmp_path / f"resolver-agent-tls-{index}")
+        resolver["norn_tls_dir"] = str(tmp_path / f"resolver-norn-tls-{index}")
     return inventory
 
 

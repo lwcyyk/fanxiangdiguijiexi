@@ -15,14 +15,15 @@ REGISTRY_KEY="${3:?registry key is required}"
   exit 1
 }
 
-target="${RI_NORN_PUBLISH_TARGET:?fixed publication target is required}"
 if [[ "${RI_FIELD_SIMULATION:-false}" == "true" ]]; then
+  target="${RI_NORN_SIMULATION_PUBLISH_TARGET:?fixed simulation target is required}"
   [[ "${target}" != localhost:* && "${target}" != 127.0.0.1:* ]] || {
     printf 'simulation publication must use a cross-server hostname\n' >&2
     exit 1
   }
   network_args=(--network "${RI_FIELD_NETWORK:?}")
 else
+  target="${RI_NORN_PUBLISH_TARGET:?fixed publication target is required}"
   [[ "${RI_NORN_PUBLISH_MODE:?}" == "ssh-tunnel" ]] || {
     printf 'field publication requires the ssh-tunnel transport\n' >&2
     exit 1

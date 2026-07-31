@@ -178,6 +178,7 @@ def validate_inventory(data: dict[str, Any], *, template: bool = False) -> dict[
     _absolute(management.get("data_dir"), "management.data_dir")
     _absolute(management.get("work_dir"), "management.work_dir")
     _absolute(management.get("secret_dir"), "management.secret_dir")
+    _absolute(management.get("norn_tls_dir"), "management.norn_tls_dir")
 
     norn = _mapping(data.get("norn"), "norn")
     _integer(norn.get("chain_id"), "norn.chain_id", 1, 2**63 - 1)
@@ -243,6 +244,9 @@ def validate_inventory(data: dict[str, Any], *, template: bool = False) -> dict[
             "management_ip",
             "data_dir",
             "trace_socket",
+            "secret_dir",
+            "agent_tls_dir",
+            "norn_tls_dir",
             "secret_profile",
             "tls_profile",
         )
@@ -262,6 +266,10 @@ def validate_inventory(data: dict[str, Any], *, template: bool = False) -> dict[
         _ip(resolver.get("resolver_ip"), f"{label}.resolver_ip")
         resolver_unique["data_dir"].append(_absolute(resolver.get("data_dir"), f"{label}.data_dir"))
         resolver_unique["trace_socket"].append(_absolute(resolver.get("trace_socket"), f"{label}.trace_socket"))
+        for key in ("secret_dir", "agent_tls_dir", "norn_tls_dir"):
+            resolver_unique[key].append(
+                _absolute(resolver.get(key), f"{label}.{key}")
+            )
         resolver_unique["secret_profile"].append(_string(resolver.get("secret_profile"), f"{label}.secret_profile"))
         resolver_unique["tls_profile"].append(_string(resolver.get("tls_profile"), f"{label}.tls_profile"))
         _integer(resolver.get("trace_producer_uid"), f"{label}.trace_producer_uid", 1, 2**31 - 1)
@@ -392,6 +400,7 @@ def _render_host_configs(inventory: dict[str, Any], release_root: Path) -> None:
     norn = inventory["norn"]
     network = norn["field_network"]
     read_urls = ",".join(f"https://{node['read_hostname']}:8443" for node in norn["nodes"])
+    node_a = next(node for node in norn["nodes"] if node["role"] == "node-a")
 
     _host_config(
         release_root,
@@ -406,14 +415,14 @@ def _render_host_configs(inventory: dict[str, Any], release_root: Path) -> None:
             "RI_NORN_IMAGE": images["norn"],
             "RI_MANAGEMENT_WORK_DIR": management["work_dir"],
             "RI_MANAGEMENT_SECRET_DIR": management["secret_dir"],
-            "RI_NORNCTL_TLS_DIR": f"{management['data_dir']}/norn-read-tls",
+            "RI_NORNCTL_TLS_DIR": management["norn_tls_dir"],
             "RI_NORN_PUBLISH_MODE": "ssh-tunnel",
             "RI_NORN_PUBLISH_TARGET": "127.0.0.1:45555",
+            "RI_NORN_SIMULATION_PUBLISH_TARGET": f"{node_a['host']}:45555",
         },
         {"role": "management", "management_ip": management["management_ip"]},
     )
 
-    node_a = next(node for node in norn["nodes"] if node["role"] == "node-a")
     for node in norn["nodes"]:
         bootstrap = ""
         if node["role"] == "node-b":
@@ -481,9 +490,9 @@ def _render_host_configs(inventory: dict[str, Any], release_root: Path) -> None:
                 "RI_CHAIN_CONFIRMATIONS": norn["confirmations"],
                 "RI_NORN_REGISTRY_START_HEIGHT": norn["registry_start_height"],
                 "RI_NORN_MAX_SCAN_BLOCKS": norn["max_scan_blocks"],
-                "RI_NORN_CLIENT_TLS_DIR": f"/etc/resolver-identity/{resolver['host']}/norn-tls",
-                "RI_RESOLVER_SECRET_DIR": f"/etc/resolver-identity/{resolver['host']}/secrets",
-                "RI_AGENT_TLS_DIR": f"/etc/resolver-identity/{resolver['host']}/agent-tls",
+                "RI_NORN_CLIENT_TLS_DIR": resolver["norn_tls_dir"],
+                "RI_RESOLVER_SECRET_DIR": resolver["secret_dir"],
+                "RI_AGENT_TLS_DIR": resolver["agent_tls_dir"],
                 "RI_TRACE_SOCKET_HOST_DIR": resolver["trace_socket"],
                 "RI_TRACE_PRODUCER_UID": resolver["trace_producer_uid"],
                 "RI_TRACE_PRODUCER_GID": resolver["trace_producer_gid"],
