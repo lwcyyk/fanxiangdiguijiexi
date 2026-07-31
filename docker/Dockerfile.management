@@ -1,4 +1,11 @@
-FROM python:3.13.11-slim AS builder
+FROM rust:1.97.0-bookworm@sha256:8fa55b2f3ddf97471ab6a767bfa3f37e6bad0986ba823e75fea57e2a2a5c3073 AS nornctl-builder
+
+WORKDIR /build
+COPY rust/Cargo.toml rust/Cargo.lock ./
+COPY rust/crates ./crates
+RUN cargo build --locked --release --package ri-chain-adapter --bin ri-nornctl
+
+FROM python:3.13.11-slim AS python-builder
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
@@ -18,7 +25,8 @@ ENV PATH=/opt/venv/bin:$PATH \
 RUN groupadd --gid 10001 resolver \
     && useradd --uid 10001 --gid resolver --home-dir /nonexistent --no-create-home resolver
 WORKDIR /work
-COPY --from=builder /opt/venv /opt/venv
+COPY --from=python-builder /opt/venv /opt/venv
+COPY --from=nornctl-builder /build/target/release/ri-nornctl /usr/local/bin/ri-nornctl
 COPY --chown=resolver:resolver tools/manage_v2_registry.py /app/tools/manage_v2_registry.py
 COPY --chown=resolver:resolver contracts/out/ResolverIdentityRegistryV1.sol/ResolverIdentityRegistryV1.json \
     /app/contracts/out/ResolverIdentityRegistryV1.sol/ResolverIdentityRegistryV1.json

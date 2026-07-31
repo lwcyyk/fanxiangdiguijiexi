@@ -406,6 +406,7 @@ def _render_host_configs(inventory: dict[str, Any], release_root: Path) -> None:
             "RI_NORN_IMAGE": images["norn"],
             "RI_MANAGEMENT_WORK_DIR": management["work_dir"],
             "RI_MANAGEMENT_SECRET_DIR": management["secret_dir"],
+            "RI_NORNCTL_TLS_DIR": f"{management['data_dir']}/norn-read-tls",
             "RI_NORN_PUBLISH_MODE": "ssh-tunnel",
             "RI_NORN_PUBLISH_TARGET": "127.0.0.1:45555",
         },
