@@ -125,6 +125,7 @@ jobs:
         run: |
           python3 tools/manage_norn_field_delivery.py validate \
             --inventory deploy/field/inventory.example.yaml --template
+          python3 tools/run_norn_field_acceptance.py --help
           python3 -m pytest -q tests/unit/test_norn_field_delivery.py
           shellcheck \
             deploy/field/common/*.sh \

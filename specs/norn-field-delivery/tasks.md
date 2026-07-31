@@ -8,7 +8,7 @@
 - [x] Encode first-hop/upstream Wrapper separation.
 - [x] Add install, health, upgrade, rollback, backup and uninstall behavior.
 - [x] Add package, isolation, idempotency and data-retention unit tests.
-- [ ] Build final immutable images and render release artifacts.
-- [ ] Run six-server package-only simulation.
-- [ ] Generate `acceptance.json` from command results.
+- [x] Build immutable images and render release artifacts in the package-only lab.
+- [x] Run the six-server package-only deployment simulation.
+- [ ] Regenerate final `acceptance.json` with all language and contract gates enabled.
 - [ ] Complete history secret audit and create the Draft PR.

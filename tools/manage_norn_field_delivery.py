@@ -594,17 +594,18 @@ def _network_matrix(inventory: dict[str, Any]) -> dict[str, Any]:
 
 
 def _installation_order(inventory: dict[str, Any]) -> str:
-    node_hosts = ", ".join(node["host"] for node in inventory["norn"]["nodes"])
     resolver_hosts = ", ".join(resolver["host"] for resolver in inventory["resolvers"])
     return f"""# Installation order
 
 1. Install `{inventory['management']['host']}` and verify offline identity/snapshot tooling.
-2. Install independent Norn nodes `{node_hosts}`; generate node keys and mTLS outside the package.
-3. Verify both read-only proxies reject every method except the three approved read RPCs.
-4. Generate and publish the signed snapshot through the authenticated SSH publication tunnel.
-5. Install resolver Registry Sync instances on `{resolver_hosts}` and verify independent SQLite files.
-6. Install Agent and Trace Adapter on every resolver host.
-7. Install Wrapper only on the `first-hop` host.
+2. Install Node A, generate its unique node key and mTLS material, then wait for genesis.
+3. Record Node A's peer ID; install Node B as an independent read replica without `-g`.
+4. Verify both read-only proxies reject every method except the three approved read RPCs.
+5. Pin the observed genesis in Inventory and re-render resolver configuration.
+6. Generate and publish the signed snapshot through the authenticated SSH publication tunnel.
+7. Install resolver Registry Sync instances on `{resolver_hosts}` and verify independent SQLite files.
+8. Install Agent and Trace Adapter on every resolver host.
+9. Install Wrapper only on the `first-hop` host.
 
 Do not cut DNS traffic. `production_trace_ready=false` is a P0 blocker until a
 resolver-internal Trace producer is implemented and field-qualified.

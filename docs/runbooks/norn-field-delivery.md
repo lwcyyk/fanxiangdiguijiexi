@@ -31,10 +31,16 @@ python3 tools/manage_norn_field_delivery.py render \
 
 python3 tools/manage_norn_field_delivery.py verify \
   --release artifacts/field-deployment/<version>
+
+# 制品机上的六服务器隔离验收；最终证据不允许使用 --skip-full-tests
+scripts/field-delivery/run-acceptance.sh
 ```
 
 Inventory 只记录镜像 digest、主机、网络、Registry 固定值和秘密配置档案名。
 渲染器不会创建、读取或复制任何秘密。
+
+验收脚本只在一次性实验目录生成密钥、证书和数据库；`acceptance.json` 仅保存哈希、
+检查点、退出码和非敏感结论。正式验收结束会删除临时目录、容器和网络。
 
 ## 3. 安装顺序
 
