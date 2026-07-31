@@ -10,7 +10,8 @@ RUN git init \
 RUN go mod download
 COPY patches /tmp/norn-patches
 RUN git apply --check /tmp/norn-patches/0001-rpc-dynamic-data-writer.patch \
-    && git apply /tmp/norn-patches/0001-rpc-dynamic-data-writer.patch
+    && git apply /tmp/norn-patches/0001-rpc-dynamic-data-writer.patch \
+    && go test ./utils
 COPY publisher/main.go /src/cmd/ri-local-publisher/main.go
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/norn ./cmd/norn \
     && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/norn-generate ./cmd/generate \

@@ -36,8 +36,12 @@ data around a valid large-value publication. The Norn adapter treats
 undecodable transactions as non-publications and continues scanning, but once
 it decodes the configured Registry key it requires the operation and value to
 match exactly. This avoids a trivial malformed-transaction denial of service
-without accepting malformed state. The local compatibility patch is not a
-general audit or repair of Go-Norn consensus and serialization.
+without accepting malformed state. The local compatibility patch closes the
+fixed 1024-byte RPC, transaction, block, peer-message and UDP receive paths
+used by this preproduction network. Because the upstream transaction gossip
+transport is UDP, a Registry value is capped at 48 KiB and the receiver buffer
+at 64 KiB; a larger snapshot must be rejected before publication. This patch
+is not a general audit or repair of Go-Norn consensus and serialization.
 
 ## Key separation
 

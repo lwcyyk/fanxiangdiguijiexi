@@ -11,10 +11,13 @@ either truncates Registry values larger than roughly 1 KiB, strips the data on
 the receiving node, or lets the transaction enter a proposed block before
 verification removes it.
 Upstream also starts a restarted block syncer at height `-1` instead of the
-persisted chain height. The combined patch adds a 4 MiB limit, matching dynamic
-allocation across the write, gossip, verification, and persistence paths,
-explicit serialization error handling, and restart-safe synchronization
-without changing the transaction or state format.
+persisted chain height. The combined patch caps a Registry value at 48 KiB so
+the complete transaction fits Go-Norn's UDP gossip transport, expands the UDP
+receive buffer to 64 KiB, and uses payload-sized allocation across transaction,
+block, peer-message, verification, and persistence paths. The image build runs
+a large-payload transaction and block round-trip test. The patch also adds
+explicit serialization error handling and restart-safe synchronization without
+changing the transaction or state format.
 
 - Native gRPC write endpoints bind only to `127.0.0.1:45555` and `:45556`.
 - Registry Sync reads through mTLS method-filtering proxies at

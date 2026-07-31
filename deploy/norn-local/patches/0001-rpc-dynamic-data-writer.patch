@@ -1,5 +1,79 @@
+diff --git a/common/transaction.go b/common/transaction.go
+index b257f5f..1225110 100644
+--- a/common/transaction.go
++++ b/common/transaction.go
+@@ -21,7 +21,12 @@ func (tx *Transaction) Verify() bool {
+ 	//defer writer.Reset()
+ 	// 初始化交易序列化的 writer
+ 	verifyStart := time.Now()
+-	writer := karmem.NewWriter(1024)
++	if len(tx.Body.Data) > 64*1024 {
++		log.WithField("size", len(tx.Body.Data)).Debugln("Transaction data is too large.")
++		return false
++	}
++
++	writer := karmem.NewWriter(len(tx.Body.Data) + 1024)
+ 
+ 	txBody := tx.Body
+ 	byteSignature := make([]byte, len(txBody.Signature))
+diff --git a/core/blockchain.go b/core/blockchain.go
+index 0cee3f2..d9b402b 100644
+--- a/core/blockchain.go
++++ b/core/blockchain.go
+@@ -506,7 +506,7 @@ func (bc *BlockChain) insertBlock(block *common.Block) {
+ 
+ 		// 从交易池中移除某个交易
+ 		pool.RemoveTx(tx.Body.Hash)
+-		txWriter := karmem.NewWriter(1024)
++		txWriter := karmem.NewWriter(len(tx.Body.Data) + 1024)
+ 		// 交易的索引：tx#{hash}
+ 		keys[idx+transactionStartIndex] = append([]byte("tx#"), tx.Body.Hash[:]...)
+ 		_, err := tx.WriteAsRoot(txWriter) // 序列化及处理逻辑
+diff --git a/node/block_syncer.go b/node/block_syncer.go
+index 8299e68..533acf6 100644
+--- a/node/block_syncer.go
++++ b/node/block_syncer.go
+@@ -60,7 +60,7 @@ func NewBlockSyncer(config *BlockSyncerConfig) *BlockSyncer {
+ 
+ 		remoteHeight:     -3,
+ 		targetHeight:     -2,
+-		knownHeight:      -1,
++		knownHeight:      config.Chain.Height(),
+ 		requestTimestamp: make(map[int64]time.Time),
+ 		blockMap:         make(map[int64]*common.Block),
+ 		peerReqTime:      make(map[peer.ID]time.Time),
+diff --git a/node/manager.go b/node/manager.go
+index 6834356..42a41a2 100644
+--- a/node/manager.go
++++ b/node/manager.go
+@@ -58,9 +58,9 @@ const (
+ 	maxKnownTransaction    = 32768 // 最大已知交易的 LRU 缓存大小
+ 	maxSyncerStatusChannel = 512   // 同步器 syncer 的最大状态 channel 限制
+ 
+-	packageBlockInterval = 2       // 区块打包间隔
+-	gossipNodes          = 8       // UDP Gossip 广播节点数量
+-	udpBufferSize        = 1024    // UDP 缓冲大小 = 1M
++	packageBlockInterval = 2 // 区块打包间隔
++	gossipNodes          = 8 // UDP Gossip 广播节点数量
++	udpBufferSize        = 64 * 1024
+ 	pubsubMaxSize        = 1 << 22 // 4 MB
+ 
+ 	NetworkRendezvous = "chronos"
+diff --git a/p2p/peer.go b/p2p/peer.go
+index 1f3c953..ef40f46 100644
+--- a/p2p/peer.go
++++ b/p2p/peer.go
+@@ -177,7 +177,7 @@ func (p *Peer) writeLoop() {
+ 
+ 		select {
+ 		case msg := <-p.sendQueue:
+-			msgWriter := karmem.NewWriter(1024)
++			msgWriter := karmem.NewWriter(len(msg.Payload) + 1024)
+ 
+ 			if _, err := msg.WriteAsRoot(msgWriter); err != nil {
+ 				log.WithField("error", err).Errorln("Encode data failed.")
 diff --git a/rpc/blockchain.go b/rpc/blockchain.go
-index 78c6661..477de10 100644
+index 78c6661..b967970 100644
 --- a/rpc/blockchain.go
 +++ b/rpc/blockchain.go
 @@ -297,20 +297,30 @@ func (s *blockchainService) SendTransactionWithData(ctx context.
@@ -9,7 +83,7 @@ index 78c6661..477de10 100644
 +		if len(*in.Key) == 0 || len(*in.Key) > 256 {
 +			return nil, fmt.Errorf("transaction key length is invalid")
 +		}
-+		if len(*in.Value) == 0 || len(*in.Value) > 4*1024*1024 {
++		if len(*in.Value) == 0 || len(*in.Value) > 48*1024 {
 +			return nil, fmt.Errorf("transaction value length is invalid")
 +		}
  		dataCmd := common.DataCommand{
@@ -37,42 +111,24 @@ index 78c6661..477de10 100644
  	txBodyBytes := writer.Bytes()
  
  	hash := sha256.New()
-diff --git a/common/transaction.go b/common/transaction.go
-index 6bd2701..8fd8ab3 100644
---- a/common/transaction.go
-+++ b/common/transaction.go
-@@ -21,7 +21,12 @@ func (tx *Transaction) Verify() bool {
- 	//defer writer.Reset()
- 	// 初始化交易序列化的 writer
- 	verifyStart := time.Now()
--	writer := karmem.NewWriter(1024)
-+	if len(tx.Body.Data) > 4*1024*1024+512 {
-+		log.WithField("size", len(tx.Body.Data)).Debugln("Transaction data is too large.")
-+		return false
-+	}
-+
-+	writer := karmem.NewWriter(len(tx.Body.Data) + 1024)
- 
- 	txBody := tx.Body
- 	byteSignature := make([]byte, len(txBody.Signature))
-diff --git a/core/blockchain.go b/core/blockchain.go
-index 69930db..cdfe1db 100644
---- a/core/blockchain.go
-+++ b/core/blockchain.go
-@@ -506,7 +506,7 @@ func (bc *BlockChain) insertBlock(block *common.Block) {
- 
- 		// 从交易池中移除某个交易
- 		pool.RemoveTx(tx.Body.Hash)
--		txWriter := karmem.NewWriter(1024)
-+		txWriter := karmem.NewWriter(len(tx.Body.Data) + 1024)
- 		// 交易的索引：tx#{hash}
- 		keys[idx+transactionStartIndex] = append([]byte("tx#"), tx.Body.Hash[:]...)
- 		_, err := tx.WriteAsRoot(txWriter) // 序列化及处理逻辑
 diff --git a/utils/serializer.go b/utils/serializer.go
-index e2d83c4..129ceaf 100644
+index 05ad9cb..1464be6 100644
 --- a/utils/serializer.go
 +++ b/utils/serializer.go
-@@ -44,7 +44,7 @@ func SerializeBlock(block *common.Block) ([]byte, error) {
+@@ -30,7 +30,11 @@ import (
+ //type KarmemType[T KarmemTypesInterface] struct{}
+ 
+ func SerializeBlock(block *common.Block) ([]byte, error) {
+-	writer := karmem.NewWriter(KARMEM_CAP)
++	capacity := KARMEM_CAP
++	for idx := range block.Transactions {
++		capacity += len(block.Transactions[idx].Body.Data) + KARMEM_CAP
++	}
++	writer := karmem.NewWriter(capacity)
+ 
+ 	_, err := block.WriteAsRoot(writer)
+ 	if err != nil {
+@@ -44,7 +48,7 @@ func SerializeBlock(block *common.Block) ([]byte, error) {
  }
  
  func SerializeTransaction(transaction *common.Transaction) ([]byte, error) {
@@ -81,16 +137,73 @@ index e2d83c4..129ceaf 100644
  
  	_, err := transaction.WriteAsRoot(writer)
  	if err != nil {
-diff --git a/node/block_syncer.go b/node/block_syncer.go
-index a3131d5..4fd2997 100644
---- a/node/block_syncer.go
-+++ b/node/block_syncer.go
-@@ -60,7 +60,7 @@ func NewBlockSyncer(config *BlockSyncerConfig) *BlockSyncer {
+@@ -125,7 +129,7 @@ func SerializeTimeSyncMsg(msg *p2p.TimeSyncMsg) ([]byte, error) {
+ }
  
- 		remoteHeight:     -3,
- 		targetHeight:     -2,
--		knownHeight:      -1,
-+		knownHeight:      config.Chain.Height(),
- 		requestTimestamp: make(map[int64]time.Time),
- 		blockMap:         make(map[int64]*common.Block),
- 		peerReqTime:      make(map[peer.ID]time.Time),
+ func SerializeDataCommand(dc *common.DataCommand) ([]byte, error) {
+-	writer := karmem.NewWriter(KARMEM_CAP)
++	writer := karmem.NewWriter(len(dc.Opt) + len(dc.Key) + len(dc.Value) + KARMEM_CAP)
+ 
+ 	_, err := dc.WriteAsRoot(writer)
+ 	if err != nil {
+@@ -138,7 +142,7 @@ func SerializeDataCommand(dc *common.DataCommand) ([]byte, error) {
+ }
+ 
+ func SerializeBroadcastMessage(msg *p2p.BroadcastMessage) ([]byte, error) {
+-	writer := karmem.NewWriter(KARMEM_CAP)
++	writer := karmem.NewWriter(len(msg.ID) + len(msg.Data) + KARMEM_CAP)
+ 
+ 	_, err := msg.WriteAsRoot(writer)
+ 	if err != nil {
+diff --git a/utils/serializer_test.go b/utils/serializer_test.go
+index ccbc771..e85bd61 100644
+--- a/utils/serializer_test.go
++++ b/utils/serializer_test.go
+@@ -1,6 +1,7 @@
+ package utils
+ 
+ import (
++	"bytes"
+ 	"crypto/ecdsa"
+ 	"crypto/elliptic"
+ 	"crypto/rand"
+@@ -75,3 +76,39 @@ func TestSerializeTransaction(t *testing.T) {
+ 		t.Fatal("Verify transaction failed.")
+ 	}
+ }
++
++func TestSerializeLargeTransactionAndBlock(t *testing.T) {
++	prv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
++	if err != nil {
++		t.Fatal("Generate keypair failed.")
++	}
++
++	tx := buildTransaction(prv)
++	tx.Body.Data = bytes.Repeat([]byte("r"), 2048)
++
++	txByteData, err := SerializeTransaction(tx)
++	if err != nil {
++		t.Fatal(err)
++	}
++	decodedTx, err := DeserializeTransaction(txByteData)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if !bytes.Equal(decodedTx.Body.Data, tx.Body.Data) {
++		t.Fatal("large transaction data did not survive serialization")
++	}
++
++	block := &common.Block{Transactions: []common.Transaction{*tx}}
++	blockByteData, err := SerializeBlock(block)
++	if err != nil {
++		t.Fatal(err)
++	}
++	decodedBlock, err := DeserializeBlock(blockByteData)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(decodedBlock.Transactions) != 1 ||
++		!bytes.Equal(decodedBlock.Transactions[0].Body.Data, tx.Body.Data) {
++		t.Fatal("large transaction data did not survive block serialization")
++	}
++}

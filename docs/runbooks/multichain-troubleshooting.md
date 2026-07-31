@@ -41,6 +41,10 @@ Norn 没有原生 finalized 标签。检查两个 mTLS 代理分别可达，最�
 确认数后仍大于 0，扫描范围覆盖最近一次 Registry `set` 交易。单节点可用不算
 成功；第二节点不可用或结果不同都应失败。
 
+本地受控预发布补丁把单个 Registry value 限制为 48 KiB，并使用 64 KiB UDP
+接收缓冲。发布前检查签名快照大小；超过限制时应拆分身份批次或重新设计
+Norn 原生发布格式，不能放宽限制后继续使用 UDP gossip。
+
 原生 gRPC 没有 TLS/鉴权。若代理允许
 `/Blockchain/SendTransactionWithData`，立即停止验收并隔离端口。
 
