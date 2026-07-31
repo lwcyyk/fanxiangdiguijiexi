@@ -32,6 +32,9 @@ services:
     image: ${RI_NGINX_IMAGE:?pin nginx image digest}
     hostname: ${RI_NORN_READ_HOSTNAME:?required}
     user: "${RI_NORN_UID:-10003}:${RI_NORN_GID:-10003}"
+    entrypoint: ["/field/start-read-proxy.sh"]
+    environment:
+      RI_NORN_NODE_HOSTNAME: ${RI_NORN_NODE_HOSTNAME:?required}
     depends_on: [norn-node]
     read_only: true
     cap_drop: [ALL]
@@ -39,7 +42,8 @@ services:
     restart: unless-stopped
     tmpfs: [/var/cache/nginx, /var/run, /tmp]
     volumes:
-      - ./nginx-readonly.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx-readonly.conf:/field/nginx-readonly.conf:ro
+      - ./start-read-proxy.sh:/field/start-read-proxy.sh:ro
       - ${RI_NORN_TLS_DIR:?required}:/tls:ro
     ports:
       - "${RI_NORN_READ_BIND_ADDRESS:?required}:${RI_NORN_READ_PORT:-8443}:8443/tcp"

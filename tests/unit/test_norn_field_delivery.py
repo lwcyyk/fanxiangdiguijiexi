@@ -192,6 +192,13 @@ def test_adapter_access_and_role_boundaries_are_encoded_in_compose():
     assert "GetBlockNumber" in proxy
     assert "SendTransactionWithData" not in proxy
     assert "return 403" in proxy
+    assert "@@NORN_NODE_HOSTNAME@@" in proxy
+
+    node_compose = (
+        REPO_ROOT / "deploy" / "field" / "norn-node" / "docker-compose.yml"
+    ).read_text(encoding="utf-8")
+    assert "RI_NORN_NODE_HOSTNAME:" in node_compose
+    assert "start-read-proxy.sh" in node_compose
 
 
 @pytest.mark.parametrize(
