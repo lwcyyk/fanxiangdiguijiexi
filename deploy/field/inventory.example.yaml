@@ -6,6 +6,7 @@
     "images": {
       "management": "registry.dns-center.internal/resolver-identity-management@sha256:0000000000000000000000000000000000000000000000000000000000000000",
       "rust": "registry.dns-center.internal/resolver-identity-rust@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "knot": "registry.dns-center.internal/resolver-identity-knot-trace@sha256:0000000000000000000000000000000000000000000000000000000000000000",
       "norn": "registry.dns-center.internal/resolver-identity-go-norn@sha256:0000000000000000000000000000000000000000000000000000000000000000",
       "nginx": "nginx@sha256:6784fb0834aa7dbbe12e3d7471e69c290df3e6ba810dc38b34ae33d3c1c05f7d"
     }
@@ -71,6 +72,7 @@
       "management_ip": "10.70.0.21",
       "dns_ip": "10.70.30.10",
       "resolver_ip": "10.70.30.11",
+      "existing_resolver_config": "/etc/knot-resolver/kresd.conf",
       "data_dir": "/var/lib/resolver-identity/resolver-L01-r1",
       "trace_socket": "/run/resolver-identity/L01-r1",
       "secret_dir": "/etc/resolver-identity/resolver-L01-r1/secrets",
@@ -81,7 +83,6 @@
       "trace_producer_uid": 10002,
       "trace_producer_gid": 10002,
       "wrapper_upstreams": [
-        "udp://10.70.30.11:53",
         "tcp://10.70.30.11:53"
       ]
     },
@@ -94,6 +95,7 @@
       "management_ip": "10.70.0.22",
       "dns_ip": "10.70.30.12",
       "resolver_ip": "10.70.30.12",
+      "existing_resolver_config": "/etc/knot-resolver/kresd.conf",
       "data_dir": "/var/lib/resolver-identity/resolver-L01-r2",
       "trace_socket": "/run/resolver-identity/L01-r2",
       "secret_dir": "/etc/resolver-identity/resolver-L01-r2/secrets",
@@ -114,6 +116,7 @@
       "management_ip": "10.70.0.23",
       "dns_ip": "10.70.30.13",
       "resolver_ip": "10.70.30.13",
+      "existing_resolver_config": "/etc/knot-resolver/kresd.conf",
       "data_dir": "/var/lib/resolver-identity/resolver-L01-r3",
       "trace_socket": "/run/resolver-identity/L01-r3",
       "secret_dir": "/etc/resolver-identity/resolver-L01-r3/secrets",

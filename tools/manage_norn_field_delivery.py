@@ -21,7 +21,11 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIELD_ROOT = REPO_ROOT / "deploy" / "field"
 PACKAGE_KINDS = ("management", "norn-node", "resolver-link")
-IMAGE_KEYS = ("management", "rust", "norn", "nginx")
+IMAGE_KEYS = ("management", "rust", "knot", "norn", "nginx")
+TRACE_ACCEPTANCE_SCHEMA = "resolver-identity-production-trace-acceptance-v1"
+TRACE_RESOLVER_NAME = "Knot Resolver"
+TRACE_RESOLVER_VERSION = "6.3.0"
+TRACE_RESOLVER_COMMIT = "124d9357dc1c7c1b87f9eb40b4d1b225c3d1132e"
 HASH_RE = re.compile(r"^0x[0-9a-f]{64}$")
 ADDRESS_RE = re.compile(r"^0x[0-9a-f]{40}$")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -55,9 +59,35 @@ FORBIDDEN_SUFFIXES = (
     ".jks",
 )
 TRACE_BLOCKER = (
-    "P0: repository does not contain a production resolver-internal Trace producer "
-    "for BIND, Unbound, Knot Resolver, or PowerDNS Recursor"
+    "P0: no script-generated all-passed Knot Resolver 6.3.0 production Trace acceptance "
+    "evidence was supplied for this exact source commit"
 )
+TRACE_REQUIRED_RESULTS = {
+    "real_resolver",
+    "udp_query",
+    "tcp_query",
+    "same_qname_concurrency",
+    "transaction_id_reuse",
+    "cache_hit",
+    "cname_resolution",
+    "udp_to_tcp_fallback",
+    "udp_timeout_retry",
+    "multi_upstream_failover",
+    "strict_context_binding",
+    "modified_trace_rejected",
+    "agent_unavailable_fail_closed",
+    "stale_registry_fail_closed",
+    "invalid_identity_fail_closed",
+    "orphan_cache_trace_fail_closed",
+    "trace_queue_full_fail_closed",
+    "producer_crash_fail_closed",
+    "resolver_restart",
+    "resolver_link_install",
+    "resolver_link_upgrade",
+    "resolver_link_rollback",
+    "fail_closed",
+    "sqlite_integrity",
+}
 
 
 class DeliveryError(ValueError):
@@ -262,6 +292,10 @@ def validate_inventory(data: dict[str, Any], *, template: bool = False) -> dict[
             if key in resolver_unique:
                 resolver_unique[key].append(value)
         resolver_unique["management_ip"].append(_ip(resolver.get("management_ip"), f"{label}.management_ip"))
+        _absolute(
+            resolver.get("existing_resolver_config"),
+            f"{label}.existing_resolver_config",
+        )
         _ip(resolver.get("dns_ip"), f"{label}.dns_ip")
         _ip(resolver.get("resolver_ip"), f"{label}.resolver_ip")
         resolver_unique["data_dir"].append(_absolute(resolver.get("data_dir"), f"{label}.data_dir"))
@@ -276,8 +310,12 @@ def validate_inventory(data: dict[str, Any], *, template: bool = False) -> dict[
         _integer(resolver.get("trace_producer_gid"), f"{label}.trace_producer_gid", 1, 2**31 - 1)
         upstreams = _array(resolver.get("wrapper_upstreams"), f"{label}.wrapper_upstreams")
         if role == "first-hop":
-            if len(upstreams) < 1 or any(not isinstance(item, str) or not re.fullmatch(r"(?:udp|tcp)://[^:]+:[0-9]+", item) for item in upstreams):
-                raise DeliveryError("first-hop wrapper_upstreams are invalid")
+            expected_upstream = f"tcp://{resolver['resolver_ip']}:53"
+            if upstreams != [expected_upstream]:
+                raise DeliveryError(
+                    "first-hop wrapper_upstreams must contain only the local "
+                    f"Knot TCP endpoint {expected_upstream}"
+                )
         elif upstreams:
             raise DeliveryError("upstream resolvers must not configure Wrapper upstreams")
     for key, values in resolver_unique.items():
@@ -313,6 +351,7 @@ def _host_config(root: Path, host: str, kind: str, values: dict[str, Any], metad
     if kind == "resolver-link":
         (config / "identities-v2.json").write_text('{"identities":[]}\n', encoding="utf-8")
         (config / "issuer-keys.json").write_text('{"keys":[]}\n', encoding="utf-8")
+        shutil.copyfile(FIELD_ROOT / "resolver-link" / "kresd.conf", config / "kresd.conf")
 
 
 def _sha256(path: Path) -> str:
@@ -342,7 +381,13 @@ def _scan_package(root: Path) -> None:
             raise DeliveryError(f"package contains a latest image reference: {relative}")
 
 
-def _copy_package_source(kind: str, destination: Path, version: str, commit: str) -> None:
+def _copy_package_source(
+    kind: str,
+    destination: Path,
+    version: str,
+    commit: str,
+    production_trace_ready: bool,
+) -> None:
     shutil.copytree(FIELD_ROOT / kind, destination)
     shutil.copytree(FIELD_ROOT / "common", destination / "common")
     for script in destination.rglob("*.sh"):
@@ -356,8 +401,8 @@ def _copy_package_source(kind: str, destination: Path, version: str, commit: str
                 "package_kind": kind,
                 "version": version,
                 "git_commit": commit,
-                "production_trace_ready": False,
-                "p0_blockers": [TRACE_BLOCKER],
+                "production_trace_ready": production_trace_ready,
+                "p0_blockers": [] if production_trace_ready else [TRACE_BLOCKER],
             },
             indent=2,
             sort_keys=True,
@@ -473,7 +518,9 @@ def _render_host_configs(inventory: dict[str, Any], release_root: Path) -> None:
                 "RI_FIELD_COMPOSE_PROJECT": f"ri-{resolver['host'].lower()}",
                 "RI_FIELD_NETWORK": network,
                 "RI_FIELD_DATA_DIR": resolver["data_dir"],
+                "RI_MANAGEMENT_BIND_ADDRESS": resolver["management_ip"],
                 "RI_IMAGE": images["rust"],
+                "RI_KNOT_IMAGE": images["knot"],
                 "RI_RESOLVER_ROLE": resolver["role"],
                 "RI_VERIFICATION_MODE": "controlled-strict",
                 "RI_AGENT_SERVER_ID": resolver["server_id"],
@@ -496,6 +543,14 @@ def _render_host_configs(inventory: dict[str, Any], release_root: Path) -> None:
                 "RI_TRACE_SOCKET_HOST_DIR": resolver["trace_socket"],
                 "RI_TRACE_PRODUCER_UID": resolver["trace_producer_uid"],
                 "RI_TRACE_PRODUCER_GID": resolver["trace_producer_gid"],
+                "RI_KNOT_RESOLVER_UID": 10003,
+                "RI_EXISTING_RESOLVER_CONFIG_PATH": resolver[
+                    "existing_resolver_config"
+                ],
+                "RI_RESOLVER_BIND_ADDRESS": resolver["resolver_ip"],
+                "RI_TRACE_MAX_CONTEXTS": 65536,
+                "RI_TRACE_ACK_TIMEOUT_MS": 100,
+                "RI_TRACE_CACHE_PROVENANCE_WAIT_MS": 2000,
                 "RI_WRAPPER_UPSTREAMS": upstreams,
                 "DNS_BIND_ADDRESS": resolver["dns_ip"],
                 "DNS_PORT": 53,
@@ -509,7 +564,8 @@ def _render_host_configs(inventory: dict[str, Any], release_root: Path) -> None:
                 "resolver_ip": resolver["resolver_ip"],
                 "secret_profile": resolver["secret_profile"],
                 "tls_profile": resolver["tls_profile"],
-                "production_trace_ready": False,
+                "resolver": TRACE_RESOLVER_NAME,
+                "resolver_version": TRACE_RESOLVER_VERSION,
             },
         )
 
@@ -607,12 +663,56 @@ def _installation_order(inventory: dict[str, Any]) -> str:
 8. Install Agent and Trace Adapter on every resolver host.
 9. Install Wrapper only on the `first-hop` host.
 
-Do not cut DNS traffic. `production_trace_ready=false` is a P0 blocker until a
-resolver-internal Trace producer is implemented and field-qualified.
+Do not cut DNS traffic until the release manifest records a script-generated,
+successful production Resolver Trace acceptance result.
 """
 
 
-def render(inventory: dict[str, Any], output_root: Path, *, force: bool = False, offline_image_dir: Path | None = None) -> Path:
+def _trace_acceptance_ready(path: Path | None, commit: str) -> bool:
+    if path is None:
+        return False
+    try:
+        evidence = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise DeliveryError(f"cannot read Trace acceptance evidence: {error}") from error
+    expected = {
+        "schema_version": TRACE_ACCEPTANCE_SCHEMA,
+        "source_commit": commit,
+        "resolver_name": TRACE_RESOLVER_NAME,
+        "resolver_version": TRACE_RESOLVER_VERSION,
+        "resolver_upstream_commit": TRACE_RESOLVER_COMMIT,
+        "production_trace_ready": True,
+        "generated_by": "tools/run_production_trace_acceptance.py",
+        "secret_scan_clean": True,
+    }
+    for key, value in expected.items():
+        if evidence.get(key) != value:
+            raise DeliveryError(f"Trace acceptance field {key} is not approved")
+    results = evidence.get("results")
+    if (
+        not isinstance(results, dict)
+        or not results
+        or not TRACE_REQUIRED_RESULTS.issubset(results)
+        or any(value != "passed" for value in results.values())
+    ):
+        raise DeliveryError("Trace acceptance does not contain an all-passed result set")
+    if evidence.get("cross_talk_count") != 0:
+        raise DeliveryError("Trace acceptance detected cross-talk")
+    if evidence.get("time_window_matching") is not False:
+        raise DeliveryError("Trace acceptance did not disable time-window matching")
+    if evidence.get("failure_closed") is not True:
+        raise DeliveryError("Trace acceptance did not prove failure-closed behavior")
+    return True
+
+
+def render(
+    inventory: dict[str, Any],
+    output_root: Path,
+    *,
+    force: bool = False,
+    offline_image_dir: Path | None = None,
+    trace_acceptance: Path | None = None,
+) -> Path:
     validate_inventory(inventory)
     version = inventory["release"]["version"]
     commit = inventory["release"]["git_commit"]
@@ -622,6 +722,7 @@ def render(inventory: dict[str, Any], output_root: Path, *, force: bool = False,
         raise DeliveryError(f"cannot determine repository commit: {error}") from error
     if actual_commit != commit:
         raise DeliveryError(f"inventory commit {commit} does not match source {actual_commit}")
+    production_trace_ready = _trace_acceptance_ready(trace_acceptance, commit)
 
     release_root = output_root.resolve() / version
     if release_root.exists():
@@ -637,7 +738,7 @@ def render(inventory: dict[str, Any], output_root: Path, *, force: bool = False,
         for kind in PACKAGE_KINDS:
             package_name = f"resolver-identity-{kind}-{version}"
             source = build_root / package_name
-            _copy_package_source(kind, source, version, commit)
+            _copy_package_source(kind, source, version, commit, production_trace_ready)
             tar_path = release_root / f"{package_name}.tar.gz"
             _tar_reproducible(source, tar_path)
             package_records.append(
@@ -682,8 +783,13 @@ def render(inventory: dict[str, Any], output_root: Path, *, force: bool = False,
             "offline_archives_included": offline_image_dir is not None,
         },
         "simulated_server_count": 1 + len(inventory["norn"]["nodes"]) + len(inventory["resolvers"]),
-        "production_trace_ready": False,
-        "p0_blockers": [TRACE_BLOCKER],
+        "resolver_trace": {
+            "resolver": TRACE_RESOLVER_NAME,
+            "version": TRACE_RESOLVER_VERSION,
+            "upstream_commit": TRACE_RESOLVER_COMMIT,
+        },
+        "production_trace_ready": production_trace_ready,
+        "p0_blockers": [] if production_trace_ready else [TRACE_BLOCKER],
         "deployment_status": "field-delivery-candidate-not-production-deployed",
     }
     (release_root / "release-manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -712,8 +818,12 @@ def verify_release(path: Path) -> dict[str, Any]:
         raise DeliveryError("release manifest or SHA256SUMS is missing")
     subprocess.run(["sha256sum", "--check", "--strict", str(checksums)], cwd=root, check=True, stdout=subprocess.DEVNULL)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if manifest.get("production_trace_ready") is not False:
-        raise DeliveryError("release must preserve the production Trace blocker")
+    trace_ready = manifest.get("production_trace_ready")
+    blockers = manifest.get("p0_blockers")
+    if not isinstance(trace_ready, bool) or not isinstance(blockers, list):
+        raise DeliveryError("release Trace readiness metadata is malformed")
+    if trace_ready == bool(blockers):
+        raise DeliveryError("release Trace readiness and blockers are inconsistent")
     expected = {record["filename"] for record in manifest.get("packages", [])}
     actual = {path.name for path in root.glob("resolver-identity-*.tar.gz")}
     if expected != actual or len(expected) != 3:
@@ -741,6 +851,7 @@ def _main() -> int:
     render_parser.add_argument("--output-root", type=Path, default=REPO_ROOT / "artifacts" / "field-deployment")
     render_parser.add_argument("--force", action="store_true")
     render_parser.add_argument("--offline-image-dir", type=Path)
+    render_parser.add_argument("--trace-acceptance", type=Path)
     verify_parser = subparsers.add_parser("verify")
     verify_parser.add_argument("--release", type=Path, required=True)
     args = parser.parse_args()
@@ -754,6 +865,7 @@ def _main() -> int:
                 args.output_root,
                 force=args.force,
                 offline_image_dir=args.offline_image_dir,
+                trace_acceptance=args.trace_acceptance,
             )
             print(output)
         else:

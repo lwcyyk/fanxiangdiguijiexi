@@ -85,6 +85,51 @@ field_data_marker() {
   : >"${data_dir}/.ri-field-owned-data"
 }
 
+field_prepare_resolver_runtime_dirs() {
+  local data_dir="${RI_FIELD_DATA_DIR:?}"
+  local trace_dir="${RI_TRACE_SOCKET_HOST_DIR:?}"
+  local producer_uid="${RI_TRACE_PRODUCER_UID:?}"
+  local producer_gid="${RI_TRACE_PRODUCER_GID:?}"
+  local resolver_uid="${RI_KNOT_RESOLVER_UID:?}"
+  if [[ "${RI_FIELD_SIMULATION:-false}" == "true" ]]; then
+    mkdir -p "${data_dir}/knot-cache" "${trace_dir}"
+    chmod 2770 "${trace_dir}"
+    return
+  fi
+  [[ "${EUID}" == "0" ]] ||
+    field_die "resolver-link installation must run as root"
+  install -d -o "${producer_uid}" -g "${producer_gid}" -m 0750 "${data_dir}"
+  install -d -o "${resolver_uid}" -g "${resolver_uid}" -m 0750 \
+    "${data_dir}/knot-cache"
+  install -d -o "${producer_uid}" -g "${producer_gid}" -m 2770 "${trace_dir}"
+}
+
+field_backup_resolver_config() {
+  local install_root="$1"
+  local source_path="$2"
+  [[ "${source_path}" == /* && "${source_path}" != *"/../"* ]] ||
+    field_die "RI_EXISTING_RESOLVER_CONFIG_PATH must be an absolute normalized path"
+  local backup_root="${install_root}/state/resolver-config"
+  mkdir -p "${backup_root}"
+  chmod 0700 "${backup_root}"
+  if [[ -f "${backup_root}/source-path" ]]; then
+    [[ "$(<"${backup_root}/source-path")" == "${source_path}" ]] ||
+      field_die "recorded Resolver configuration path differs from this release"
+    return
+  fi
+  printf '%s\n' "${source_path}" >"${backup_root}/source-path"
+  if [[ -f "${source_path}" ]]; then
+    cp -a -- "${source_path}" "${backup_root}/original.conf"
+    sha256sum "${backup_root}/original.conf" >"${backup_root}/original.conf.sha256"
+    chmod 0600 "${backup_root}/original.conf" "${backup_root}/original.conf.sha256"
+    field_log "backed up existing Resolver configuration without modifying it"
+  else
+    : >"${backup_root}/source-was-absent"
+    chmod 0600 "${backup_root}/source-was-absent"
+    field_log "recorded that no existing Resolver configuration was present"
+  fi
+}
+
 field_static_health() {
   local release_root="$1"
   local kind="$2"
@@ -107,6 +152,7 @@ field_static_health() {
       ;;
     resolver-link)
       field_require_digest RI_IMAGE "${RI_IMAGE:?}"
+      field_require_digest RI_KNOT_IMAGE "${RI_KNOT_IMAGE:?}"
       [[ "${RI_RESOLVER_ROLE:?}" == "first-hop" || "${RI_RESOLVER_ROLE}" == "upstream" ]] ||
         field_die "RI_RESOLVER_ROLE must be first-hop or upstream"
       [[ "${RI_CHAIN_ADAPTER:?}" == "norn" ]] ||
@@ -115,6 +161,18 @@ field_static_health() {
         field_die "two HTTPS Norn read endpoints are required"
       [[ "${RI_CHAIN_RPC_URLS}" != *"localhost"* && "${RI_CHAIN_RPC_URLS}" != *"127.0.0.1"* ]] ||
         field_die "cross-server Norn endpoints must not use localhost"
+      [[ "${RI_MANAGEMENT_BIND_ADDRESS:?}" != "0.0.0.0" &&
+        "${RI_MANAGEMENT_BIND_ADDRESS}" != "::" &&
+        "${RI_MANAGEMENT_BIND_ADDRESS}" != "127.0.0.1" ]] ||
+        field_die "management services must bind a dedicated non-loopback address"
+      [[ "${RI_TRACE_PRODUCER_UID:?}" != "${RI_KNOT_RESOLVER_UID:?}" ]] ||
+        field_die "Knot Resolver and Trace Producer must use different UIDs"
+      [[ -f "${release_root}/config/kresd.conf" ]] ||
+        field_die "generated Knot Resolver configuration is missing"
+      cmp --silent "${release_root}/kresd.conf" "${release_root}/config/kresd.conf" ||
+        field_die "Knot Resolver configuration differs from the approved generated template"
+      [[ "${RI_EXISTING_RESOLVER_CONFIG_PATH:?}" == /* ]] ||
+        field_die "existing Resolver configuration path must be absolute"
       ;;
     *)
       field_die "unknown package kind: ${kind}"

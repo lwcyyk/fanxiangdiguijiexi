@@ -5,15 +5,18 @@
 本交付包含中心管理服务器、两个独立 Go-Norn 节点和递归解析器链路服务器的软件包。
 它只完成预发布安装和模拟验收，不连接真实生产服务器，不切换 DNS 流量。
 
-当前仓库没有 BIND、Unbound、Knot Resolver 或 PowerDNS Recursor 的生产级内部
-Trace 插件。`ri-trace-adapter` 是事件接收和可靠传输组件，不是 Resolver 插件。
-因此 Release Manifest 固定为：
+当前仓库只实现 Knot Resolver 6.3.0 的生产级内部 Trace，不支持 BIND、Unbound 或
+PowerDNS Recursor。`ri-trace-adapter` 是事件持久化和传输组件，Knot Hook 与
+`ri-knot-trace-producer` 才是生产者。未提供与 Release Commit 完全一致且由验收脚本
+生成的证据时，Release Manifest 保持：
 
 ```json
 {"production_trace_ready": false}
 ```
 
-在真实插件通过并发、缓存、重试和关联 ID 验收前，这是 P0 切流阻断项。
+只有执行 `tools/run_production_trace_acceptance.py` 并通过真实 Resolver、并发、缓存、
+重试、故障关闭和安装生命周期测试后，渲染时传入 `--trace-acceptance` 才可关闭该
+代码级 P0。现场 TLS、Registry、容量和网络验收仍是独立上线门禁。
 
 ## 2. 生成交付包
 
@@ -133,7 +136,7 @@ python3 tools/manage_norn_field_delivery.py render \
 
 ## 8. 不得上线的情况
 
-- `production_trace_ready=false`；
+- `production_trace_ready=false`，或 acceptance 的 Commit 与 Release 不一致；
 - Node A/B 共用节点密钥、证书、目录或 Volume；
 - 任一镜像不是完整 digest；
 - mTLS Read 代理接受写方法；

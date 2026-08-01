@@ -25,7 +25,8 @@ Generated packages contain no private key, password, token, certificate or
 database. Each target host mounts its private material from a separately
 controlled directory described in `secret-requirements.json`.
 
-The current repository has a production Trace consumer and verification data
-model, but it does not include a production BIND, Unbound, Knot Resolver or
-PowerDNS Recursor Trace producer. Every generated manifest therefore sets
-`production_trace_ready=false` and records a P0 cutover blocker.
+The repository includes one production Trace integration: Knot Resolver 6.3.0
+at pinned upstream commit `124d9357dc1c7c1b87f9eb40b4d1b225c3d1132e`.
+The renderer sets `production_trace_ready=true` only when it receives the
+script-generated acceptance file for the exact release commit. Without that
+evidence it keeps `production_trace_ready=false` and records a P0 blocker.
