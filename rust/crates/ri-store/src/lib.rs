@@ -9,6 +9,8 @@ use ri_core::{
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
 use thiserror::Error;
 
+const DATABASE_BUSY_TIMEOUT: Duration = Duration::from_secs(30);
+
 const SCHEMA: &str = r#"
 CREATE TABLE IF NOT EXISTS ri_v2_meta (
   meta_key TEXT PRIMARY KEY,
@@ -1231,7 +1233,9 @@ impl EvidenceStore {
 
     fn connect(&self) -> Result<Connection, StoreError> {
         let connection = Connection::open(&self.path)?;
-        connection.busy_timeout(Duration::from_secs(5))?;
+        // Trace ingestion and Registry reconciliation use independent processes.
+        // Wait through a bounded WAL writer burst instead of dropping evidence.
+        connection.busy_timeout(DATABASE_BUSY_TIMEOUT)?;
         connection.pragma_update(None, "foreign_keys", "ON")?;
         Ok(connection)
     }
