@@ -124,16 +124,39 @@ class Lab:
             self.stop(name)
 
 
+class EndpointFailureGate:
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._armed = False
+        self._failed_bind: tuple[str, int] | None = None
+        self.triggered = threading.Event()
+
+    def arm(self) -> None:
+        with self._lock:
+            self._armed = True
+
+    def should_drop(self, bind: tuple[str, int]) -> bool:
+        with self._lock:
+            if not self._armed:
+                return False
+            if self._failed_bind is None:
+                self._failed_bind = bind
+                self.triggered.set()
+            return self._failed_bind == bind
+
+
 class UdpDnsProxy:
     def __init__(
         self,
         bind: tuple[str, int],
         upstream: tuple[str, int],
         response_delay: float = 0.0,
+        failure_gate: EndpointFailureGate | None = None,
     ) -> None:
         self.bind = bind
         self.upstream = upstream
         self.response_delay = response_delay
+        self.failure_gate = failure_gate
         self.stopping = threading.Event()
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.settimeout(0.1)
@@ -153,6 +176,8 @@ class UdpDnsProxy:
             try:
                 query, client = self.socket.recvfrom(65_535)
             except (OSError, TimeoutError):
+                continue
+            if self.failure_gate is not None and self.failure_gate.should_drop(self.bind):
                 continue
             try:
                 response = exchange_udp(self.upstream, query, timeout=2)
@@ -656,10 +681,18 @@ def test_multi_upstream_failover(
     trust_anchor: str,
     resolver_environment: dict[str, str],
 ) -> dict[str, str]:
+    failure_gate = EndpointFailureGate()
     proxies = {
-        "127.0.0.3": UdpDnsProxy(("127.0.0.3", 15353), ("127.0.0.2", 15353)),
+        "127.0.0.3": UdpDnsProxy(
+            ("127.0.0.3", 15353),
+            ("127.0.0.2", 15353),
+            failure_gate=failure_gate,
+        ),
         "127.0.0.4": UdpDnsProxy(
-            ("127.0.0.4", 15353), ("127.0.0.2", 15353), response_delay=0.03
+            ("127.0.0.4", 15353),
+            ("127.0.0.2", 15353),
+            response_delay=0.03,
+            failure_gate=failure_gate,
         ),
     }
     for proxy in proxies.values():
@@ -686,17 +719,6 @@ def test_multi_upstream_failover(
             ("127.0.0.1", 15355), dns_query("warm.failover.trace.ri", 0x4101), timeout=15
         )
         check_success(warm, "multi-upstream warm query")
-        with sqlite3.connect(database) as connection:
-            selected = connection.execute(
-                """SELECT json_extract(event_json,'$.target_endpoint.ip')
-                   FROM ri_v2_trace_events
-                   WHERE json_extract(event_json,'$.kind')='UPSTREAM_RESPONSE'
-                     AND json_extract(event_json,'$.target_endpoint.ip') IN ('127.0.0.3','127.0.0.4')
-                   ORDER BY rowid DESC LIMIT 1"""
-            ).fetchone()
-        if selected is None:
-            raise AcceptanceError("Knot did not use either configured failover endpoint")
-        selected_ip = str(selected[0])
         timeouts_before = sqlite_value(
             database,
             "SELECT COUNT(*) FROM ri_v2_trace_events WHERE json_extract(event_json,'$.kind')='UPSTREAM_TIMEOUT'",
@@ -705,14 +727,19 @@ def test_multi_upstream_failover(
             database,
             "SELECT COUNT(*) FROM ri_v2_trace_events WHERE json_extract(event_json,'$.kind')='TRANSPORT_SWITCH'",
         )
-        proxies[selected_ip].stop()
-        del proxies[selected_ip]
+        # Whichever endpoint Knot selects first is disabled from its first packet
+        # onward. The other endpoint remains healthy, so a successful answer
+        # proves an actual timeout and cross-endpoint retry rather than relying on
+        # probabilistic resolver selection from the warm-up request.
+        failure_gate.arm()
         switched = exchange_udp(
             ("127.0.0.1", 15355),
             dns_query("switch.failover.trace.ri", 0x4102),
             timeout=30,
         )
         check_success(switched, "multi-upstream failover query")
+        if not failure_gate.triggered.wait(timeout=1):
+            raise AcceptanceError("deterministic upstream failure gate was not exercised")
         wait_for(
             lambda: sqlite_value(
                 database,
