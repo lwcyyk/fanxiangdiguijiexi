@@ -37,6 +37,7 @@ REPO = Path(__file__).resolve().parents[1]
 RUST = REPO / "rust"
 TARGET = RUST / "target" / "debug"
 SCHEMA_VERSION = "resolver-identity-production-trace-acceptance-v1"
+RELEASE_VERSION = "0.3.0-norn-knot-rc1"
 RESOLVER_NAME = "Knot Resolver"
 RESOLVER_VERSION = "6.3.0"
 RESOLVER_COMMIT = "124d9357dc1c7c1b87f9eb40b4d1b225c3d1132e"
@@ -1143,6 +1144,7 @@ def main() -> int:
             "generated_by": "tools/run_production_trace_acceptance.py",
             "branch": run(["git", "branch", "--show-current"]).strip(),
             "source_commit": source_commit,
+            "release_version": RELEASE_VERSION,
             "resolver_name": RESOLVER_NAME,
             "resolver_version": RESOLVER_VERSION,
             "resolver_upstream_commit": RESOLVER_COMMIT,

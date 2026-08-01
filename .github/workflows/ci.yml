@@ -233,11 +233,34 @@ jobs:
           docker run --rm --entrypoint /bin/sh resolver-identity-management:ci \
             -c 'test ! -e /run/field-secrets && test ! -e /root/.ssh'
 
+  integration-evidence:
+    runs-on: ubuntu-24.04
+    needs: [python, field-delivery, production-trace-evidence]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - name: Verify integrated RC evidence boundary
+        run: |
+          source_commit="$(jq -r .source_commit specs/norn-knot-rc1/test-summary.json)"
+          git cat-file -e "${source_commit}^{commit}"
+          python3 tools/finalize_norn_knot_rc.py verify-evidence-diff \
+            --source-commit "$source_commit" \
+            --evidence-commit HEAD
+          jq -e '
+            .release_version == "0.3.0-norn-knot-rc1" and
+            .deployment.production_trace_ready == true and
+            .deployment.field_package_ready == true and
+            .deployment.real_server_deployed == false and
+            .deployment.production_traffic_enabled == false and
+            .security_audit.secrets_found == false
+          ' specs/norn-knot-rc1/test-summary.json >/dev/null
+
   release-candidate-gate:
     name: release candidate gate
     runs-on: ubuntu-24.04
     if: always()
-    needs: [rust, python, solidity, compose, field-delivery, legacy-python-image, rust-production-image, knot-trace-image, production-trace-evidence, management-image]
+    needs: [rust, python, solidity, compose, field-delivery, legacy-python-image, rust-production-image, knot-trace-image, production-trace-evidence, management-image, integration-evidence]
     steps:
       - name: Require every release-candidate check
         env:
@@ -251,10 +274,12 @@ jobs:
           KNOT_IMAGE_RESULT: ${{ needs.knot-trace-image.result }}
           TRACE_EVIDENCE_RESULT: ${{ needs.production-trace-evidence.result }}
           MANAGEMENT_IMAGE_RESULT: ${{ needs.management-image.result }}
+          INTEGRATION_EVIDENCE_RESULT: ${{ needs.integration-evidence.result }}
         run: |
           for result in \
             "$RUST_RESULT" "$PYTHON_RESULT" "$SOLIDITY_RESULT" "$COMPOSE_RESULT" \
             "$FIELD_RESULT" "$LEGACY_IMAGE_RESULT" "$RUST_IMAGE_RESULT" \
-            "$KNOT_IMAGE_RESULT" "$TRACE_EVIDENCE_RESULT" "$MANAGEMENT_IMAGE_RESULT"; do
+            "$KNOT_IMAGE_RESULT" "$TRACE_EVIDENCE_RESULT" "$MANAGEMENT_IMAGE_RESULT" \
+            "$INTEGRATION_EVIDENCE_RESULT"; do
             test "$result" = success
           done

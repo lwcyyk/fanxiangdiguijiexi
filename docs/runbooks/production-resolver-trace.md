@@ -1,5 +1,8 @@
 # Knot Resolver 生产 Trace 接入手册
 
+本组件纳入整体候选版本 `0.3.0-norn-knot-rc1`；Trace Producer 的独立组件版本
+仍为 `0.2.0`。
+
 ## 1. 适用范围
 
 本实现只适配 Knot Resolver 6.3.0，上游源码固定为 Commit

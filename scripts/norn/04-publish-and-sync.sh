@@ -163,6 +163,7 @@ jq -n \
   --arg branch "${branch}" \
   --arg source_commit "${git_commit}" \
   --arg acceptance_commit "${git_commit}" \
+  --arg release_version "${RI_RELEASE_VERSION}" \
   --arg go_norn_upstream_commit "${NORN_COMMIT}" \
   --arg transaction_hash "${transaction_hash}" \
   --arg norn_image_digest "${image_id}" \
@@ -185,6 +186,7 @@ jq -n \
     branch: $branch,
     source_commit: $source_commit,
     acceptance_commit: $acceptance_commit,
+    release_version: $release_version,
     adapter: "norn",
     go_norn_upstream_commit: $go_norn_upstream_commit,
     transaction_hash: $transaction_hash,

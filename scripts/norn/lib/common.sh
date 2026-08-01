@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-NORN_COMMIT="a7be734ac2e829e2076d06d45719d2716abd3d72"
+export NORN_COMMIT="a7be734ac2e829e2076d06d45719d2716abd3d72"
 NORN_IMAGE="${NORN_IMAGE:-resolver-identity-go-norn:a7be734}"
-RI_RUNTIME_IMAGE="${RI_RUNTIME_IMAGE:-resolver-identity-rust:multichain-acceptance}"
+RI_RELEASE_VERSION="${RI_RELEASE_VERSION:-0.3.0-norn-knot-rc1}"
+RI_RUNTIME_IMAGE="${RI_RUNTIME_IMAGE:-resolver-identity-rust:${RI_RELEASE_VERSION}}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 NORN_DEPLOY_DIR="${REPO_ROOT}/deploy/norn-local"
 NORN_COMPOSE_FILE="${NORN_DEPLOY_DIR}/docker-compose.yml"

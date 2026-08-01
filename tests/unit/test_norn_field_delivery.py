@@ -208,6 +208,7 @@ def test_release_trace_readiness_requires_script_generated_acceptance(tmp_path):
     evidence = {
         "schema_version": field.TRACE_ACCEPTANCE_SCHEMA,
         "source_commit": inventory["release"]["git_commit"],
+        "release_version": field.RELEASE_VERSION,
         "resolver_name": field.TRACE_RESOLVER_NAME,
         "resolver_version": field.TRACE_RESOLVER_VERSION,
         "resolver_upstream_commit": field.TRACE_RESOLVER_COMMIT,
@@ -215,8 +216,11 @@ def test_release_trace_readiness_requires_script_generated_acceptance(tmp_path):
         "generated_by": "tools/run_production_trace_acceptance.py",
         "secret_scan_clean": True,
         "cross_talk_count": 0,
+        "concurrency": 128,
         "time_window_matching": False,
         "failure_closed": True,
+        "sqlite_integrity": "ok",
+        "temporary_environment_cleaned": True,
         "results": {key: "passed" for key in field.TRACE_REQUIRED_RESULTS},
     }
     acceptance_file = tmp_path / "acceptance.json"
@@ -227,6 +231,10 @@ def test_release_trace_readiness_requires_script_generated_acceptance(tmp_path):
         trace_acceptance=acceptance_file,
     )
     assert field.verify_release(release)["production_trace_ready"] is True
+    manifest = field.verify_release(release)
+    assert manifest["field_package_ready"] is True
+    assert manifest["real_server_deployed"] is False
+    assert manifest["production_traffic_enabled"] is False
 
     evidence["cross_talk_count"] = 1
     acceptance_file.write_text(json.dumps(evidence), encoding="utf-8")

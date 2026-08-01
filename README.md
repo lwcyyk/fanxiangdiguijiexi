@@ -1,5 +1,9 @@
 # DNS 全路径服务身份认证
 
+当前集成候选版本为 `0.3.0-norn-knot-rc1`。它组合 Go-Norn 双节点 Registry、
+Knot Resolver 6.3.0 真实内部 Trace 和 Rust V2 数据面；该版本仍是现场 Shadow
+部署前的 Release Candidate，不表示已连接真实服务器或启用生产 DNS 流量。
+
 本项目在不修改客户端 DNS 报文格式的前提下，先验证一次查询实际使用的 DNS
 服务身份，再决定是否向客户端释放原始响应。验证范围包括 Recursive、Forwarder，
 以及可观测的 Root、TLD 和 Authoritative 服务。
@@ -119,6 +123,7 @@ PYTHONPATH=src python3 tools/manage_v2_registry.py --help
 - [多链适配器规格](specs/multichain-registry-adapter/requirements.md)
 - [Knot Resolver Trace 运行手册](docs/runbooks/production-resolver-trace.md)
 - [Knot Resolver Trace 规格](specs/production-resolver-trace/requirements.md)
+- [Go-Norn + Knot RC1 验收手册](docs/runbooks/norn-knot-rc1.md)
 - [生产就绪门禁](docs/production_readiness.md)
 - [安全边界](docs/security_boundary.md)
 - [V2 API](docs/api.md)

@@ -5,6 +5,7 @@
   "additionalProperties": false,
   "required": [
     "schema_version", "generated_at", "generated_by", "branch", "source_commit",
+    "release_version",
     "resolver_name", "resolver_version", "resolver_upstream_commit",
     "resolver_binary_sha256", "trace_producer_version", "context_id_mechanism",
     "time_window_matching", "concurrency", "cross_talk_count", "test_scenarios",
@@ -15,8 +16,9 @@
     "schema_version": {"const": "resolver-identity-production-trace-acceptance-v1"},
     "generated_at": {"type": "string", "format": "date-time"},
     "generated_by": {"const": "tools/run_production_trace_acceptance.py"},
-    "branch": {"const": "production-resolver-trace"},
+    "branch": {"const": "release/norn-knot-rc1"},
     "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "release_version": {"const": "0.3.0-norn-knot-rc1"},
     "resolver_name": {"const": "Knot Resolver"},
     "resolver_version": {"const": "6.3.0"},
     "resolver_upstream_commit": {"const": "124d9357dc1c7c1b87f9eb40b4d1b225c3d1132e"},
@@ -24,7 +26,7 @@
     "trace_producer_version": {"type": "string", "minLength": 1},
     "context_id_mechanism": {"type": "string", "minLength": 1},
     "time_window_matching": {"const": false},
-    "concurrency": {"type": "integer", "minimum": 32},
+    "concurrency": {"const": 128},
     "cross_talk_count": {"const": 0},
     "test_scenarios": {"type": "array", "minItems": 24, "uniqueItems": true},
     "results": {

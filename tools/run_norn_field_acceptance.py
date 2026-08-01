@@ -29,9 +29,9 @@ NORN_COMMIT = "a7be734ac2e829e2076d06d45719d2716abd3d72"
 SCHEMA_HASH = "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499"
 REGISTRY_ADDRESS = "0x1000000000000000000000000000000000000001"
 REGISTRY_KEY = "resolver-identity-registry-v2"
-VERSION = "0.3.0-norn-field-rc1"
-SECOND_VERSION = "0.3.0-norn-field-rc2"
-THIRD_VERSION = "0.3.0-norn-field-rc3"
+VERSION = "0.3.0-norn-knot-rc1"
+SECOND_VERSION = "0.3.0-norn-knot-rc2"
+THIRD_VERSION = "0.3.0-norn-knot-rc3"
 REGISTRY_HELPER = (
     "registry:2.8.3@"
     "sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373"
@@ -88,7 +88,13 @@ def _write_json(path: Path, value: Any, mode: int = 0o644) -> None:
 
 
 class Lab:
-    def __init__(self, *, keep_environment: bool, skip_full_tests: bool) -> None:
+    def __init__(
+        self,
+        *,
+        keep_environment: bool,
+        skip_full_tests: bool,
+        trace_acceptance: Path,
+    ) -> None:
         source_commit = subprocess.check_output(
             ["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
             text=True,
@@ -98,6 +104,7 @@ class Lab:
         self.prefix = f"ri-nfd-{self.short_commit}-{os.getpid()}"
         self.keep_environment = keep_environment
         self.skip_full_tests = skip_full_tests
+        self.trace_acceptance = trace_acceptance.resolve()
         self.temp_root = Path(tempfile.mkdtemp(prefix=self.prefix + "-"))
         self.logs = self.temp_root / "logs"
         self.logs.mkdir()
@@ -191,8 +198,10 @@ class Lab:
             ["git", "-C", str(REPO_ROOT), "branch", "--show-current"],
             text=True,
         ).strip()
-        if branch != "norn-field-delivery":
+        if branch != "release/norn-knot-rc1":
             raise AcceptanceError(f"unexpected branch: {branch}")
+        if not self.trace_acceptance.is_file():
+            raise AcceptanceError("production Trace acceptance evidence is missing")
         for command in (
             "cargo",
             "docker",
@@ -407,6 +416,7 @@ class Lab:
         local_tags = {
             "rust": f"{self.prefix}-rust:acceptance",
             "management": f"{self.prefix}-management:acceptance",
+            "knot": f"{self.prefix}-knot:acceptance",
             "norn": f"{self.prefix}-norn:acceptance",
         }
         self.local_image_tags = list(local_tags.values())
@@ -431,6 +441,18 @@ class Lab:
                 "docker/Dockerfile.management",
                 "--tag",
                 local_tags["management"],
+                ".",
+            ],
+        )
+        self.run(
+            "build-knot-image",
+            [
+                "docker",
+                "build",
+                "--file",
+                "docker/Dockerfile.knot-trace",
+                "--tag",
+                local_tags["knot"],
                 ".",
             ],
         )
@@ -471,7 +493,11 @@ class Lab:
         ).stdout.strip()
         if revision != NORN_COMMIT:
             raise AcceptanceError(f"Go-Norn revision mismatch: {revision}")
-        for key, expected_user in (("rust", "resolver-rust"), ("management", "resolver")):
+        for key, expected_user in (
+            ("rust", "resolver-rust"),
+            ("management", "resolver"),
+            ("knot", "10003:10003"),
+        ):
             actual_user = self.run(
                 f"verify-{key}-user",
                 [
@@ -485,6 +511,33 @@ class Lab:
             ).stdout.strip()
             if actual_user != expected_user:
                 raise AcceptanceError(f"{key} image user is {actual_user}")
+        knot_version = self.run(
+            "verify-knot-version",
+            [
+                "docker",
+                "run",
+                "--rm",
+                "--entrypoint",
+                "/usr/sbin/kresd",
+                self.image_refs["knot"],
+                "-V",
+            ],
+        ).stdout
+        if "Knot Resolver, version 6.3.0" not in knot_version:
+            raise AcceptanceError("Knot Resolver image version is not pinned to 6.3.0")
+        self.run(
+            "verify-knot-trace-hook",
+            [
+                "docker",
+                "run",
+                "--rm",
+                "--entrypoint",
+                "/bin/sh",
+                self.image_refs["knot"],
+                "-c",
+                "grep -a -q RI_KNOT_TRACE_HOOK_SOCKET /usr/sbin/kresd",
+            ],
+        )
 
     def _inventory(self) -> dict[str, Any]:
         inventory = field.load_inventory(REPO_ROOT / "deploy" / "field" / "inventory.example.yaml")
@@ -542,7 +595,12 @@ class Lab:
 
     def render_release(self) -> None:
         self.inventory = self._inventory()
-        release = field.render(self.inventory, self.artifact_root, force=True)
+        release = field.render(
+            self.inventory,
+            self.artifact_root,
+            force=True,
+            trace_acceptance=self.trace_acceptance,
+        )
         field.verify_release(release)
         self.release = release
         for kind in field.PACKAGE_KINDS:
@@ -1132,6 +1190,7 @@ class Lab:
             self.inventory,
             self.artifact_root,
             force=True,
+            trace_acceptance=self.trace_acceptance,
         )
         for resolver in self.inventory["resolvers"]:
             rendered = self.release / "hosts" / resolver["host"] / "config" / ".env"
@@ -1756,6 +1815,7 @@ class Lab:
                 inventory,
                 self.temp_root / f"upgrade-artifacts-{version}",
                 force=True,
+                trace_acceptance=self.trace_acceptance,
             )
             package_paths: dict[str, Path] = {}
             for kind in field.PACKAGE_KINDS:
@@ -2055,8 +2115,8 @@ class Lab:
         acceptance = {
             "schema_version": "resolver-identity-norn-field-acceptance-v1",
             "generated_at": _utc_now(),
-            "branch": "norn-field-delivery",
-            "base_branch": "multichain-registry-adapter",
+            "branch": "release/norn-knot-rc1",
+            "base_branch": "master",
             "source_commit": self.source_commit,
             "delivery_commit": self.source_commit,
             "go_norn_upstream_commit": NORN_COMMIT,
@@ -2065,7 +2125,10 @@ class Lab:
                 "version": VERSION,
                 "packages": packages,
                 "image_digests": self.image_refs,
-                "production_trace_ready": False,
+                "production_trace_ready": manifest["production_trace_ready"],
+                "field_package_ready": manifest["field_package_ready"],
+                "real_server_deployed": manifest["real_server_deployed"],
+                "production_traffic_enabled": manifest["production_traffic_enabled"],
                 "p0_blockers": manifest["p0_blockers"],
             },
             "simulation": {
@@ -2181,10 +2244,17 @@ def main() -> int:
         action="store_true",
         help="debug only: omit language test gates (never use for final evidence)",
     )
+    parser.add_argument(
+        "--trace-acceptance",
+        type=Path,
+        required=True,
+        help="script-generated Knot Trace acceptance for this source commit",
+    )
     args = parser.parse_args()
     lab = Lab(
         keep_environment=args.keep_environment,
         skip_full_tests=args.skip_full_tests,
+        trace_acceptance=args.trace_acceptance,
     )
     try:
         destination = lab.execute()

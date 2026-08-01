@@ -1,5 +1,5 @@
 x-runtime: &runtime
-  image: ${RI_IMAGE:-resolver-identity-rust:0.2.0}
+  image: ${RI_IMAGE:-resolver-identity-rust:0.3.0-norn-knot-rc1}
   build:
     context: ../..
     dockerfile: docker/Dockerfile.rust

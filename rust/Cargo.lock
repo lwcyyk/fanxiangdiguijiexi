@@ -1363,7 +1363,7 @@ dependencies = [
 
 [[package]]
 name = "ri-agent"
-version = "0.2.0"
+version = "0.3.0-norn-knot-rc1"
 dependencies = [
  "axum",
  "axum-server",
@@ -1386,7 +1386,7 @@ dependencies = [
 
 [[package]]
 name = "ri-chain-adapter"
-version = "0.2.0"
+version = "0.3.0-norn-knot-rc1"
 dependencies = [
  "async-trait",
  "axum",
@@ -1409,7 +1409,7 @@ dependencies = [
 
 [[package]]
 name = "ri-core"
-version = "0.2.0"
+version = "0.3.0-norn-knot-rc1"
 dependencies = [
  "base64",
  "ed25519-dalek",
@@ -1423,7 +1423,7 @@ dependencies = [
 
 [[package]]
 name = "ri-knot-trace-producer"
-version = "0.2.0"
+version = "0.3.0-norn-knot-rc1"
 dependencies = [
  "base64",
  "hex",
@@ -1439,7 +1439,7 @@ dependencies = [
 
 [[package]]
 name = "ri-registry-sync"
-version = "0.2.0"
+version = "0.3.0-norn-knot-rc1"
 dependencies = [
  "axum",
  "ri-chain-adapter",
@@ -1454,7 +1454,7 @@ dependencies = [
 
 [[package]]
 name = "ri-store"
-version = "0.2.0"
+version = "0.3.0-norn-knot-rc1"
 dependencies = [
  "ri-core",
  "rusqlite",
@@ -1466,7 +1466,7 @@ dependencies = [
 
 [[package]]
 name = "ri-trace-adapter"
-version = "0.2.0"
+version = "0.3.0-norn-knot-rc1"
 dependencies = [
  "axum",
  "reqwest",
@@ -1482,7 +1482,7 @@ dependencies = [
 
 [[package]]
 name = "ri-wrapper"
-version = "0.2.0"
+version = "0.3.0-norn-knot-rc1"
 dependencies = [
  "axum",
  "base64",

@@ -41,7 +41,9 @@ Rendering or installation must fail when:
 
 ## Production boundary
 
-The repository does not contain a production resolver-internal Trace producer.
-All releases must set `production_trace_ready=false`. This is a P0 DNS cutover
-blocker and cannot be replaced by test fixtures, packet capture or time-window
-correlation.
+The integrated release includes the pinned Knot Resolver 6.3.0 internal Trace
+producer. `production_trace_ready=true` is permitted only when the renderer is
+given script-generated, all-passed Trace evidence for the exact source commit.
+This code-level gate does not set `real_server_deployed` or
+`production_traffic_enabled`; both remain false until a separate field change
+process completes.

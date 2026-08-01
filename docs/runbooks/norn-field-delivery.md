@@ -1,5 +1,7 @@
 # Go-Norn 单链现场交付手册
 
+本手册对应整体候选版本 `0.3.0-norn-knot-rc1`。
+
 ## 1. 交付边界
 
 本交付包含中心管理服务器、两个独立 Go-Norn 节点和递归解析器链路服务器的软件包。
@@ -30,13 +32,15 @@ python3 tools/manage_norn_field_delivery.py validate \
 
 python3 tools/manage_norn_field_delivery.py render \
   --inventory /secure/field/inventory.yaml \
+  --trace-acceptance /secure/acceptance/production-resolver-trace.json \
   --output-root artifacts/field-deployment
 
 python3 tools/manage_norn_field_delivery.py verify \
   --release artifacts/field-deployment/<version>
 
 # 制品机上的六服务器隔离验收；最终证据不允许使用 --skip-full-tests
-scripts/field-delivery/run-acceptance.sh
+scripts/field-delivery/run-acceptance.sh \
+  --trace-acceptance /secure/acceptance/production-resolver-trace.json
 ```
 
 Inventory 只记录镜像 digest、主机、网络、Registry 固定值和秘密配置档案名。
@@ -122,12 +126,13 @@ sudo /opt/resolver-identity/current/uninstall.sh --purge-data
 ## 7. 离线镜像
 
 在联网制品机先按 Release Manifest 的完整 digest 拉取镜像，再分别执行
-`docker save`。将归档命名为 `management.tar`、`rust.tar`、`norn.tar` 和
-`nginx.tar`，通过：
+`docker save`。将归档命名为 `management.tar`、`rust.tar`、`knot.tar`、
+`norn.tar` 和 `nginx.tar`，通过：
 
 ```bash
 python3 tools/manage_norn_field_delivery.py render \
   --inventory /secure/field/inventory.yaml \
+  --trace-acceptance /secure/acceptance/production-resolver-trace.json \
   --offline-image-dir /secure/offline-images
 ```
 

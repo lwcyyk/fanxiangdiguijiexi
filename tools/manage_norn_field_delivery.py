@@ -26,6 +26,7 @@ TRACE_ACCEPTANCE_SCHEMA = "resolver-identity-production-trace-acceptance-v1"
 TRACE_RESOLVER_NAME = "Knot Resolver"
 TRACE_RESOLVER_VERSION = "6.3.0"
 TRACE_RESOLVER_COMMIT = "124d9357dc1c7c1b87f9eb40b4d1b225c3d1132e"
+RELEASE_VERSION = "0.3.0-norn-knot-rc1"
 HASH_RE = re.compile(r"^0x[0-9a-f]{64}$")
 ADDRESS_RE = re.compile(r"^0x[0-9a-f]{40}$")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -681,6 +682,7 @@ def _trace_acceptance_ready(path: Path | None, commit: str) -> bool:
     expected = {
         "schema_version": TRACE_ACCEPTANCE_SCHEMA,
         "source_commit": commit,
+        "release_version": RELEASE_VERSION,
         "resolver_name": TRACE_RESOLVER_NAME,
         "resolver_version": TRACE_RESOLVER_VERSION,
         "resolver_upstream_commit": TRACE_RESOLVER_COMMIT,
@@ -701,10 +703,16 @@ def _trace_acceptance_ready(path: Path | None, commit: str) -> bool:
         raise DeliveryError("Trace acceptance does not contain an all-passed result set")
     if evidence.get("cross_talk_count") != 0:
         raise DeliveryError("Trace acceptance detected cross-talk")
+    if evidence.get("concurrency") != 128:
+        raise DeliveryError("Trace acceptance did not run 128 concurrent queries")
     if evidence.get("time_window_matching") is not False:
         raise DeliveryError("Trace acceptance did not disable time-window matching")
     if evidence.get("failure_closed") is not True:
         raise DeliveryError("Trace acceptance did not prove failure-closed behavior")
+    if evidence.get("sqlite_integrity") != "ok":
+        raise DeliveryError("Trace acceptance SQLite integrity is not ok")
+    if evidence.get("temporary_environment_cleaned") is not True:
+        raise DeliveryError("Trace acceptance temporary environment was not cleaned")
     return True
 
 
@@ -792,6 +800,9 @@ def render(
             "upstream_commit": TRACE_RESOLVER_COMMIT,
         },
         "production_trace_ready": production_trace_ready,
+        "field_package_ready": True,
+        "real_server_deployed": False,
+        "production_traffic_enabled": False,
         "p0_blockers": [] if production_trace_ready else [TRACE_BLOCKER],
         "deployment_status": "field-delivery-candidate-not-production-deployed",
     }
@@ -822,8 +833,17 @@ def verify_release(path: Path) -> dict[str, Any]:
     subprocess.run(["sha256sum", "--check", "--strict", str(checksums)], cwd=root, check=True, stdout=subprocess.DEVNULL)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     trace_ready = manifest.get("production_trace_ready")
+    field_ready = manifest.get("field_package_ready")
+    real_server_deployed = manifest.get("real_server_deployed")
+    production_traffic_enabled = manifest.get("production_traffic_enabled")
     blockers = manifest.get("p0_blockers")
-    if not isinstance(trace_ready, bool) or not isinstance(blockers, list):
+    if (
+        not isinstance(trace_ready, bool)
+        or field_ready is not True
+        or real_server_deployed is not False
+        or production_traffic_enabled is not False
+        or not isinstance(blockers, list)
+    ):
         raise DeliveryError("release Trace readiness metadata is malformed")
     if trace_ready == bool(blockers):
         raise DeliveryError("release Trace readiness and blockers are inconsistent")

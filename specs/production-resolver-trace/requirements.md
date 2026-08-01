@@ -1,5 +1,8 @@
 # Production Resolver Trace requirements
 
+The integrated system release is `0.3.0-norn-knot-rc1`. The Trace Producer
+component keeps its independently versioned `0.2.0` protocol implementation.
+
 ## Scope
 
 This stage integrates exactly one resolver:
