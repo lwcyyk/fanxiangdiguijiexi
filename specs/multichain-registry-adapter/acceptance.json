@@ -1,31 +1,32 @@
 {
   "schema_version": "resolver-identity-multichain-acceptance-v1",
-  "generated_at": "2026-07-31T03:31:40Z",
+  "generated_at": "2026-08-01T13:48:17Z",
   "pr_number": 1,
-  "branch": "multichain-registry-adapter",
-  "source_commit": "5c836db19ddd0b396283dbc6a97668f38c84bf93",
-  "acceptance_commit": "5c836db19ddd0b396283dbc6a97668f38c84bf93",
+  "branch": "release/norn-knot-rc1",
+  "source_commit": "dca8887eadf85a1575a6fe6c4c7dafb3f9ec27e5",
+  "acceptance_commit": "dca8887eadf85a1575a6fe6c4c7dafb3f9ec27e5",
+  "release_version": "0.3.0-norn-knot-rc1",
   "adapter": "norn",
   "go_norn_upstream_commit": "a7be734ac2e829e2076d06d45719d2716abd3d72",
-  "transaction_hash": "b00437c3afa6cc9db4f1a470d346a8037473501e8754607cca715eef0879d97b",
+  "transaction_hash": "f70f8bf1f7554836d6c7e661362921fe346567adbd4a7600dfe27e67ac54b07d",
   "image_digests": {
-    "go_norn": "sha256:52313ff42815857c4f3325c3520f4e877fa0ce82bfe9a6447be90f052d21735e",
-    "registry_sync": "sha256:2815a246bbae5d3c44de54947169045091f9ff5dc0db8cb66f4386e0a60b38c6"
+    "go_norn": "sha256:f426a317cc20ac5cba2f4bf97b3aee640bf2dc6a0250e01d8667a120bd804c05",
+    "registry_sync": "sha256:91516da2024a5aafa93410954995de293c99a366fe1c6e6e0c1fcfe5d7251e9f"
   },
-  "genesis_block_hash": "0x207a7b69ff2c6e85e79e0b4179e0241397d3b8db6ac2b56c65a481f07f74aad6",
+  "genesis_block_hash": "0x4084f13f05e94a5df556d36f6a7a05a46cd55e6207f81db8f99ef7d7e4978156",
   "registry": {
     "address": "0x1000000000000000000000000000000000000001",
     "key": "resolver-identity-registry-v2",
     "schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499"
   },
-  "plan_hash": "0x5c6be92709d69d2fdb9b22d4a4fd3595b61b21f11866784d33cb3e96caa83544",
+  "plan_hash": "0xcbf677292923ea1e1245202c67ddb9cce369ef3f2c9e2063fc7878657897d5a6",
   "signed_checkpoint": {
-    "height": 9,
-    "hash": "0xd6651e391efb22ed17b15e872127e69902164c57305002e6f1b73d3c30d8ad17"
+    "height": 1,
+    "hash": "0x31701e3fea1d1c25e22d637553a93bde9fbb2d61e1a93d68e77a3207e9cfaa57"
   },
   "registry_sync": {
-    "checkpoint_height": 31,
-    "checkpoint_hash": "0x33c096dc709c497d0b03ebe849f6b05f228286d2a47a4b7cf5e342cf03f8fb94",
+    "checkpoint_height": 49,
+    "checkpoint_hash": "0xd30b869ad11562923b8aa0079253a16a20f911dd9763a31492b4798f9c0cd81d",
     "identity_count": 1,
     "sqlite_integrity": "ok"
   },
@@ -33,8 +34,8 @@
     "independent_data_directories": true,
     "distinct_node_keys": true,
     "peer_id_sha256": [
-      "b9852ee89635c1704dfc8b411f4d3db9253204d3014df33552f7cfd2d43ff21c",
-      "ba95f7fb5a34e9ba8d7a222437e73aa5a2f77991ed8ab45a9976f8258f6013b0"
+      "11f0f438fbff21307f879aa2a9fa51c2e1f15fe7960308af99d6f1b7320aebce",
+      "a5b32dd76c4d993522f4cce0638a3d3d7d1909c33fd93a4de21862c33f9e7f44"
     ]
   },
   "mtls_read_endpoints": [
@@ -97,9 +98,9 @@
     }
   ],
   "test_counts": {
-    "rust_passed": 74,
+    "rust_passed": 89,
     "rust_ignored": 1,
-    "python_passed": 154,
+    "python_passed": 174,
     "foundry_passed": 14,
     "norn_positive_scenarios": 8,
     "negative_scenarios": 25
@@ -249,7 +250,7 @@
   ],
   "secret_audit": {
     "result": "passed",
-    "reachable_commits_scanned": 36,
+    "reachable_commits_scanned": 82,
     "high_confidence_findings": 0
   },
   "secrets_found": false,

@@ -1,10 +1,10 @@
 {
-  "branch": "production-resolver-trace",
+  "branch": "release/norn-knot-rc1",
   "concurrency": 128,
   "context_id_mechanism": "random 128-bit trace_id bound to Knot (worker PID, request UID); Wrapper correlation_id is derived from the exact forwarded DNS wire",
   "cross_talk_count": 0,
   "failure_closed": true,
-  "generated_at": "2026-08-01T07:46:36+00:00",
+  "generated_at": "2026-08-01T13:33:23+00:00",
   "generated_by": "tools/run_production_trace_acceptance.py",
   "installation": {
     "install": "verified-by-field-package-suite",
@@ -12,7 +12,8 @@
     "upgrade": "verified-by-field-package-suite"
   },
   "production_trace_ready": true,
-  "resolver_binary_sha256": "sha256:723d5c5df5e1ef7b7fc9985511245d5e54deeab0e649a408b6ddc5dfa5f9111d",
+  "release_version": "0.3.0-norn-knot-rc1",
+  "resolver_binary_sha256": "sha256:122767e45f2de8d6760659dbcb424bb2506168bbca0b23e2390cd6319a667f7b",
   "resolver_name": "Knot Resolver",
   "resolver_upstream_commit": "124d9357dc1c7c1b87f9eb40b4d1b225c3d1132e",
   "resolver_version": "6.3.0",
@@ -44,7 +45,7 @@
   },
   "schema_version": "resolver-identity-production-trace-acceptance-v1",
   "secret_scan_clean": true,
-  "source_commit": "2ece9683f1b1e28a0d1e826fd1940b89d3bccce4",
+  "source_commit": "dca8887eadf85a1575a6fe6c4c7dafb3f9ec27e5",
   "sqlite_integrity": "ok",
   "temporary_environment_cleaned": true,
   "test_scenarios": [

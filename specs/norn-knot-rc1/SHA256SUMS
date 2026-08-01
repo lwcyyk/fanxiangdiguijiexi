@@ -1,0 +1,8 @@
+4b36010ed33a7f7d0def8ba2019b01d7aa3150afaa0dca293366db2480186e83  hosts/SHA256SUMS
+5c763d7333d02bcf1e4188078a862817e33c1606631a2c54dc63bd96d4d30baf  installation-order.md
+a7b4b1bdf0fe76a67e2a3c8ec1f30080bafb982d9c255a33e5fb536e445ce7c5  network-matrix.json
+168804f648a07c07a0eed422117874aab1c035f0b228eb3450fd4eb45c114627  release-manifest.json
+05aca271f5fae61a41b69e74f733a7387ed908995040136e476945fea02961c2  resolver-identity-management-0.3.0-norn-knot-rc1.tar.gz
+d9d0868319a85b5570b796233e7d9c3588160c49be3c45240cf6cb6a6afc5a7f  resolver-identity-norn-node-0.3.0-norn-knot-rc1.tar.gz
+94ea342b1e61c8bb50bdcfe5b4af4c016892041efa93ee1bf940e0cb02940e5c  resolver-identity-resolver-link-0.3.0-norn-knot-rc1.tar.gz
+24f83671a8fbd026435b4a81427abe111e0f86df119b4d30e895b1a127c5b168  secret-requirements.json

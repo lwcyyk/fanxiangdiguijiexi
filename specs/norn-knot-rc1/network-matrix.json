@@ -1,0 +1,82 @@
+{
+  "default_policy": "deny",
+  "explicit_denies": [
+    "resolver-link to native Norn gRPC",
+    "Agent or Wrapper to any Norn endpoint",
+    "upstream Wrapper service",
+    "Norn write method through read proxy"
+  ],
+  "rules": [
+    {
+      "destination": "norn-node-a",
+      "port": 22,
+      "protocol": "tcp",
+      "purpose": "authenticated SSH publication tunnel",
+      "source": "ri-hub-mgmt-01"
+    },
+    {
+      "destination": "norn-node-b",
+      "port": 31258,
+      "protocol": "tcp",
+      "purpose": "Go-Norn peer traffic",
+      "source": "norn-node-a"
+    },
+    {
+      "destination": "norn-node-a",
+      "port": 31258,
+      "protocol": "tcp",
+      "purpose": "Go-Norn peer traffic",
+      "source": "norn-node-b"
+    },
+    {
+      "destination": "norn-read-a",
+      "port": 8443,
+      "protocol": "tcp",
+      "purpose": "mTLS Registry Sync read",
+      "source": "resolver-L01-r1"
+    },
+    {
+      "destination": "norn-read-b",
+      "port": 8443,
+      "protocol": "tcp",
+      "purpose": "mTLS Registry Sync read",
+      "source": "resolver-L01-r1"
+    },
+    {
+      "destination": "norn-read-a",
+      "port": 8443,
+      "protocol": "tcp",
+      "purpose": "mTLS Registry Sync read",
+      "source": "resolver-L01-r2"
+    },
+    {
+      "destination": "norn-read-b",
+      "port": 8443,
+      "protocol": "tcp",
+      "purpose": "mTLS Registry Sync read",
+      "source": "resolver-L01-r2"
+    },
+    {
+      "destination": "norn-read-a",
+      "port": 8443,
+      "protocol": "tcp",
+      "purpose": "mTLS Registry Sync read",
+      "source": "resolver-L01-r3"
+    },
+    {
+      "destination": "norn-read-b",
+      "port": 8443,
+      "protocol": "tcp",
+      "purpose": "mTLS Registry Sync read",
+      "source": "resolver-L01-r3"
+    },
+    {
+      "destination": "resolver-L01-r1",
+      "port": 53,
+      "protocol": "udp/tcp",
+      "purpose": "DNS entry",
+      "source": "dns-clients"
+    }
+  ],
+  "schema_version": 1
+}
