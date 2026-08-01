@@ -12,7 +12,8 @@ RUN apt-get update \
 RUN git clone --filter=blob:none --no-checkout \
       https://gitlab.nic.cz/knot/knot-resolver.git /src/knot-resolver \
     && git -C /src/knot-resolver checkout --detach "${KNOT_RESOLVER_COMMIT}" \
-    && test "$(git -C /src/knot-resolver rev-parse HEAD)" = "${KNOT_RESOLVER_COMMIT}"
+    && test "$(git -C /src/knot-resolver rev-parse HEAD)" = "${KNOT_RESOLVER_COMMIT}" \
+    && git -C /src/knot-resolver submodule update --init --recursive
 
 COPY resolver-trace/knot/overlay/daemon/ri_trace_hook.c \
      /src/knot-resolver/daemon/ri_trace_hook.c
