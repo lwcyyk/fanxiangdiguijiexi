@@ -43,7 +43,7 @@ RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
        ca-certificates dns-root-data libcap-ng0 libgnutls30t64 libknot15 \
        liblmdb0 libluajit-5.1-2 libnghttp2-14 libsystemd0 libuv1t64 libxdp1 \
-       luajit \
+       libzscanner4t64 luajit \
     && rm -rf /var/lib/apt/lists/* \
     && printf '%s\n' 'knot-resolver:x:10003:' >> /etc/group \
     && printf '%s\n' \
