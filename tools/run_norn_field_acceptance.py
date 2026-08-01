@@ -125,6 +125,7 @@ class Lab:
         self.local_image_tags: list[str] = []
         self.projects: dict[str, str] = {}
         self.node_runtime_env: dict[str, dict[str, str]] = {}
+        self.resolver_runtime_env: dict[str, dict[str, str]] = {}
         self.bootstrap = ""
         self.inventory: dict[str, Any] = {}
         self.test_counts = {
@@ -591,6 +592,14 @@ class Lab:
                     "tls_profile": f"{host}-unique-tls",
                 }
             )
+            # Published ports are observability hooks, not simulated cross-server
+            # traffic. Give every package instance a distinct loopback address so
+            # the clean runner need not own the field inventory's production IPs.
+            self.resolver_runtime_env[host] = {
+                "RI_MANAGEMENT_BIND_ADDRESS": f"127.77.1.{index}",
+                "RI_RESOLVER_BIND_ADDRESS": f"127.77.2.{index}",
+                "DNS_BIND_ADDRESS": f"127.77.3.{index}",
+            }
         return inventory
 
     def render_release(self) -> None:
@@ -1516,7 +1525,11 @@ class Lab:
                 str(root / "docker-compose.yml"),
                 *arguments,
             ],
-            env={**os.environ, **(env_overrides or {})},
+            env={
+                **os.environ,
+                **self.resolver_runtime_env[host],
+                **(env_overrides or {}),
+            },
             check=check,
         )
 
