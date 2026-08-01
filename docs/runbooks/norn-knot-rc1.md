@@ -17,3 +17,7 @@
 
 Manifest 中的 `real_server_deployed=false` 和
 `production_traffic_enabled=false` 在现场 Shadow 验收与正式变更审批前不得修改。
+
+Knot Resolver 从 CZ.NIC 官方 GitHub 镜像读取，并固定到 6.3.0 Commit。构建所需的
+`lua-aho-corasick` 子模块按父仓库固定的 Commit 随源码保存并由 `SHA256SUMS` 校验；
+构建过程不会选择移动分支，也不会静默回退到其他来源。

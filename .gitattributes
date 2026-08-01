@@ -1,1 +1,2 @@
 deploy/norn-local/patches/*.patch whitespace=-blank-at-eol,-space-before-tab
+resolver-trace/knot/vendor/lua-aho-corasick/** whitespace=-blank-at-eof

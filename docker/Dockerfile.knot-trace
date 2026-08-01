@@ -10,10 +10,17 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --filter=blob:none --no-checkout \
-      https://gitlab.nic.cz/knot/knot-resolver.git /src/knot-resolver \
+      https://github.com/CZ-NIC/knot-resolver.git /src/knot-resolver \
     && git -C /src/knot-resolver checkout --detach "${KNOT_RESOLVER_COMMIT}" \
-    && test "$(git -C /src/knot-resolver rev-parse HEAD)" = "${KNOT_RESOLVER_COMMIT}" \
-    && git -C /src/knot-resolver submodule update --init --recursive
+    && test "$(git -C /src/knot-resolver rev-parse HEAD)" = "${KNOT_RESOLVER_COMMIT}"
+
+COPY resolver-trace/knot/vendor/lua-aho-corasick \
+     /tmp/lua-aho-corasick
+
+RUN cd /tmp/lua-aho-corasick \
+    && sha256sum --check --strict SHA256SUMS \
+    && cp -a . /src/knot-resolver/modules/policy/lua-aho-corasick/ \
+    && rm /src/knot-resolver/modules/policy/lua-aho-corasick/SHA256SUMS
 
 COPY resolver-trace/knot/overlay/daemon/ri_trace_hook.c \
      /src/knot-resolver/daemon/ri_trace_hook.c
