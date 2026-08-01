@@ -38,7 +38,9 @@ RUN cd /src/knot-resolver \
        -Ddnstap=disabled \
        -Ddoc=disabled \
        -Dextra_tests=disabled \
+       -Dinstall_root_keys=enabled \
        -Dkres_gen_test=false \
+       -Dmanaged_ta=disabled \
        -Dquic=disabled \
        -Dsystemd_files=disabled \
        -Dunit_tests=disabled \

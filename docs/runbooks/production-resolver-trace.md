@@ -151,6 +151,11 @@ docker compose --project-name "$PROJECT" --profile first-hop \
 监控采集器和堡垒机来源。Resolver 容器内以非 root 身份监听 `1053`，只在宿主 DNS
 服务 IP 上发布为 `53/udp` 和 `53/tcp`。
 
+Knot 镜像把根信任锚作为只读、固定版本的镜像内容使用，运行时不向只读的
+`/etc/knot-resolver` 写入 RFC 5011 状态。根信任锚发生变更时，中心管理服务器必须先
+构建并验收包含新信任锚的新镜像 digest，再按升级流程逐台替换；不得临时放宽容器
+文件系统权限或让 Resolver 以 root 运行。
+
 监控至少覆盖 Trace pending、dead-letter、Agent 验证失败、Wrapper SERVFAIL、Registry
 staleness、进程重启、SQLite WAL 和磁盘。dead-letter 非零必须告警并阻止扩流。
 
