@@ -279,7 +279,7 @@ jobs:
           RUN apt-get update \
               && apt-get install --yes --no-install-recommends \
                  build-essential ca-certificates cmake git knot knot-dnsutils \
-                 pkgconf python3 \
+                 pkgconf python3 python3-pytest \
               && rm -rf /var/lib/apt/lists/*
           COPY --from=rust-toolchain /usr/local/cargo /usr/local/cargo
           COPY --from=rust-toolchain /usr/local/rustup /usr/local/rustup
@@ -294,6 +294,10 @@ jobs:
       - name: Generate real Knot Trace evidence
         run: |
           docker run --rm --network host \
+            --user "$(id -u):$(id -g)" \
+            --env HOME=/tmp \
+            --env CARGO_HOME=/tmp/cargo \
+            --env RUSTUP_HOME=/usr/local/rustup \
             --volume "$PWD:/workspace" \
             --volume "$RUNNER_TEMP:/evidence" \
             --workdir /workspace \
