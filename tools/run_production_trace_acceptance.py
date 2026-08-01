@@ -120,6 +120,19 @@ class Lab:
             log = (self.logs / f"{name}.log").read_text(errors="replace")
             raise AcceptanceError(f"{name} exited unexpectedly:\n{log[-4000:]}")
 
+    def diagnostic_summary(self) -> str:
+        """Return bounded child-process diagnostics before temporary files are removed."""
+        sections: list[str] = []
+        for path in sorted(self.logs.glob("*.log")):
+            managed = self.processes.get(path.stem)
+            status = "stopped"
+            if managed is not None:
+                return_code = managed.process.poll()
+                status = "running" if return_code is None else f"exit={return_code}"
+            content = path.read_text(errors="replace")
+            sections.append(f"--- {path.name} ({status}) ---\n{content[-4000:]}")
+        return "\n".join(sections)
+
     def close(self) -> None:
         for name in list(reversed(self.processes)):
             self.stop(name)
@@ -1214,6 +1227,9 @@ def main() -> int:
         return 0
     except Exception as error:
         print(f"production Trace acceptance failed: {error}", file=sys.stderr)
+        diagnostics = lab.diagnostic_summary()
+        if diagnostics:
+            print(diagnostics, file=sys.stderr)
         return 1
     finally:
         lab.close()
