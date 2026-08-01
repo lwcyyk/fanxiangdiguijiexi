@@ -4,7 +4,7 @@
   "context_id_mechanism": "random 128-bit trace_id bound to Knot (worker PID, request UID); Wrapper correlation_id is derived from the exact forwarded DNS wire",
   "cross_talk_count": 0,
   "failure_closed": true,
-  "generated_at": "2026-08-01T07:27:02+00:00",
+  "generated_at": "2026-08-01T07:37:25+00:00",
   "generated_by": "tools/run_production_trace_acceptance.py",
   "installation": {
     "install": "verified-by-field-package-suite",
@@ -44,7 +44,7 @@
   },
   "schema_version": "resolver-identity-production-trace-acceptance-v1",
   "secret_scan_clean": true,
-  "source_commit": "373a7314a04f054ed8f35682996ec8ae1d25e15c",
+  "source_commit": "91c9c951180dfa47f565852aeee13ca3067564df",
   "sqlite_integrity": "ok",
   "temporary_environment_cleaned": true,
   "test_scenarios": [
