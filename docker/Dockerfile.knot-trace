@@ -1,0 +1,57 @@
+FROM debian:trixie-slim@sha256:020c0d20b9880058cbe785a9db107156c3c75c2ac944a6aa7ab59f2add76a7bd AS builder
+
+ARG KNOT_RESOLVER_COMMIT=124d9357dc1c7c1b87f9eb40b4d1b225c3d1132e
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends \
+       build-essential ca-certificates git libcap-ng-dev libgnutls28-dev \
+       libknot-dev liblmdb-dev libluajit-5.1-dev libnghttp2-dev \
+       libsystemd-dev libuv1-dev luajit meson ninja-build patch pkgconf \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone --filter=blob:none --no-checkout \
+      https://gitlab.nic.cz/knot/knot-resolver.git /src/knot-resolver \
+    && git -C /src/knot-resolver checkout --detach "${KNOT_RESOLVER_COMMIT}" \
+    && test "$(git -C /src/knot-resolver rev-parse HEAD)" = "${KNOT_RESOLVER_COMMIT}"
+
+COPY resolver-trace/knot/overlay/daemon/ri_trace_hook.c \
+     /src/knot-resolver/daemon/ri_trace_hook.c
+COPY resolver-trace/knot/overlay/daemon/ri_trace_hook.h \
+     /src/knot-resolver/daemon/ri_trace_hook.h
+COPY resolver-trace/knot/0001-production-trace-hook.patch /tmp/trace.patch
+
+RUN cd /src/knot-resolver \
+    && patch --batch --forward -p1 < /tmp/trace.patch \
+    && meson setup build \
+       --buildtype=release \
+       --prefix=/usr \
+       --libdir=lib \
+       -Dbench=disabled \
+       -Ddnstap=disabled \
+       -Ddoc=disabled \
+       -Dextra_tests=disabled \
+       -Dkres_gen_test=false \
+       -Dquic=disabled \
+       -Dsystemd_files=disabled \
+       -Dunit_tests=disabled \
+    && DESTDIR=/output ninja -C build install
+
+FROM debian:trixie-slim@sha256:020c0d20b9880058cbe785a9db107156c3c75c2ac944a6aa7ab59f2add76a7bd
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends \
+       ca-certificates dns-root-data libcap-ng0 libgnutls30t64 libknot15 \
+       liblmdb0 libluajit-5.1-2 libnghttp2-14 libsystemd0 libuv1t64 luajit \
+    && rm -rf /var/lib/apt/lists/* \
+    && printf '%s\n' 'knot-resolver:x:10003:' >> /etc/group \
+    && printf '%s\n' \
+       'knot-resolver:x:10003:10003:Knot Resolver runtime:/nonexistent:/usr/sbin/nologin' \
+       >> /etc/passwd \
+    && install --directory --owner=10003 --group=10003 \
+       /var/cache/knot-resolver /var/lib/knot-resolver /run/resolver-identity
+
+COPY --from=builder /output/ /
+
+USER 10003:10003
+WORKDIR /var/lib/knot-resolver
+ENTRYPOINT ["/usr/sbin/kresd"]

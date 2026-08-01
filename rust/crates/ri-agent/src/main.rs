@@ -81,7 +81,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             key_id: settings.key_id,
             mode: settings.mode,
             max_age_seconds: settings.max_age_seconds,
-            trace_lookback_seconds: settings.trace_lookback_seconds,
             trace_wait_millis: settings.trace_wait_millis,
             max_cache_ttl_seconds: settings.max_cache_ttl_seconds,
             registry_max_staleness_seconds: settings.registry_max_staleness_seconds,
@@ -128,7 +127,6 @@ struct Settings {
     issuer_keys_file: PathBuf,
     mode: VerificationMode,
     max_age_seconds: i64,
-    trace_lookback_seconds: i64,
     trace_wait_millis: u64,
     max_cache_ttl_seconds: i64,
     registry_max_staleness_seconds: i64,
@@ -165,7 +163,6 @@ impl Settings {
             issuer_keys_file: required("RI_ISSUER_KEYS_FILE")?.into(),
             mode,
             max_age_seconds: parse_i64("RI_AGENT_MAX_AGE_SECONDS", 30)?,
-            trace_lookback_seconds: parse_i64("RI_TRACE_LOOKBACK_SECONDS", 5)?,
             trace_wait_millis: parse_u64("RI_TRACE_WAIT_MILLIS", 250)?,
             max_cache_ttl_seconds: parse_i64("RI_MAX_CACHE_TTL_SECONDS", 3_600)?,
             registry_max_staleness_seconds: parse_i64("RI_REGISTRY_MAX_STALENESS_SECONDS", 15)?,
@@ -184,14 +181,10 @@ impl Settings {
             )?,
         };
         if !(1..=60).contains(&settings.max_age_seconds)
-            || settings.trace_lookback_seconds <= 0
             || settings.trace_wait_millis == 0
             || settings.max_cache_ttl_seconds <= 0
             || settings.registry_max_staleness_seconds <= 0
-            || settings.trace_retention_seconds
-                < settings
-                    .trace_lookback_seconds
-                    .saturating_add(settings.max_age_seconds)
+            || settings.trace_retention_seconds < settings.max_age_seconds
             || settings.http_timeout_millis == 0
             || settings.max_concurrent_requests == 0
             || settings.max_request_body_bytes < 1_024
@@ -214,6 +207,7 @@ impl Settings {
 
 fn build_client(settings: &Settings) -> Result<reqwest::Client, Box<dyn std::error::Error>> {
     let mut builder = reqwest::Client::builder()
+        .no_proxy()
         .https_only(settings.production)
         .timeout(std::time::Duration::from_millis(
             settings.http_timeout_millis,

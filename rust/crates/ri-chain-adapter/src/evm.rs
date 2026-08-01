@@ -374,6 +374,7 @@ impl JsonRpcClient {
         Ok(Self {
             url,
             client: reqwest::Client::builder()
+                .no_proxy()
                 .https_only(production)
                 .timeout(timeout)
                 .build()?,

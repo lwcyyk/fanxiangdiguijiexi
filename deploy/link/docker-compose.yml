@@ -90,7 +90,6 @@ services:
       RI_AGENT_PEER_TOKEN_FILE: /run/secrets/agent_peer_token
       RI_DATABASE: /var/lib/resolver-identity/evidence-v2.db
       RI_AGENT_MAX_AGE_SECONDS: ${RI_AGENT_MAX_AGE_SECONDS:-30}
-      RI_TRACE_LOOKBACK_SECONDS: ${RI_TRACE_LOOKBACK_SECONDS:-5}
       RI_TRACE_WAIT_MILLIS: ${RI_TRACE_WAIT_MILLIS:-250}
       RI_TRACE_RETENTION_SECONDS: ${RI_TRACE_RETENTION_SECONDS:-3600}
       RI_MAX_CACHE_TTL_SECONDS: ${RI_MAX_CACHE_TTL_SECONDS:-3600}
@@ -133,12 +132,14 @@ services:
       RI_TRACE_SOCKET: /run/resolver-identity/trace/events.sock
       RI_TRACE_SOCKET_MODE: "660"
       RI_TRACE_PRODUCER_UID: ${RI_TRACE_PRODUCER_UID:?required}
-      RI_TRACE_SPOOL_DATABASE: /var/lib/resolver-identity/trace-spool.db
+      RI_TRACE_SPOOL_DATABASE: /var/lib/resolver-identity/spool/trace-spool.db
+      RI_DATABASE: /var/lib/resolver-identity/evidence/evidence-v2.db
       RI_TRACE_AGENT_URL: https://agent:8443
       RI_TRACE_INGEST_TOKEN_FILE: /run/secrets/trace_ingest_token
       RI_TRACE_BATCH_SIZE: ${RI_TRACE_BATCH_SIZE:-64}
       RI_TRACE_QUEUE_CAPACITY: ${RI_TRACE_QUEUE_CAPACITY:-8192}
       RI_TRACE_FLUSH_INTERVAL_MS: ${RI_TRACE_FLUSH_INTERVAL_MS:-5}
+      RI_TRACE_CACHE_PROVENANCE_WAIT_MS: ${RI_TRACE_CACHE_PROVENANCE_WAIT_MS:-2000}
       RI_TRACE_HTTP_TIMEOUT_MS: ${RI_TRACE_HTTP_TIMEOUT_MS:-500}
       RI_TRACE_SPOOL_MAX_EVENTS: ${RI_TRACE_SPOOL_MAX_EVENTS:-1000000}
       RI_TRACE_MONITORING_BIND: 0.0.0.0:9110
@@ -150,7 +151,8 @@ services:
       - "${RI_TRACE_PRODUCER_GID:?required}"
     volumes:
       - ${RI_TRACE_SOCKET_HOST_DIR:?required}:/run/resolver-identity/trace
-      - trace-spool:/var/lib/resolver-identity
+      - evidence:/var/lib/resolver-identity/evidence
+      - trace-spool:/var/lib/resolver-identity/spool
       - ./tls/trace-client.crt:/run/tls/trace-client.crt:ro
       - ./tls/trace-client.key:/run/tls/trace-client.key:ro
       - ./tls/agent-ca.crt:/run/tls/agent-ca.crt:ro

@@ -6,6 +6,7 @@ members = [
   "crates/ri-agent",
   "crates/ri-wrapper",
   "crates/ri-trace-adapter",
+  "crates/ri-knot-trace-producer",
   "crates/ri-registry-sync",
 ]
 resolver = "2"

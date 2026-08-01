@@ -296,6 +296,7 @@ impl Settings {
 
 fn build_client(settings: &Settings) -> Result<reqwest::Client, AnyError> {
     let mut builder = reqwest::Client::builder()
+        .no_proxy()
         .https_only(settings.production)
         .timeout(settings.agent_timeout);
     if let Some(ca) = &settings.tls_ca {

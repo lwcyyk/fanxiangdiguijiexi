@@ -41,6 +41,9 @@ CREATE TABLE IF NOT EXISTS ri_v2_trace_events (
 );
 CREATE INDEX IF NOT EXISTS ri_v2_trace_events_trace_idx
   ON ri_v2_trace_events(trace_id, observed_at, event_id);
+CREATE UNIQUE INDEX IF NOT EXISTS ri_v2_trace_events_sequence_idx
+  ON ri_v2_trace_events(trace_id, CAST(json_extract(event_json,'$.sequence') AS INTEGER))
+  WHERE CAST(json_extract(event_json,'$.sequence') AS INTEGER) > 0;
 CREATE TABLE IF NOT EXISTS ri_v2_query_contexts (
   request_trace_id TEXT PRIMARY KEY,
   correlation_id TEXT NOT NULL,
@@ -120,8 +123,6 @@ pub struct TraceResponseMatch<'a> {
     pub response_digest: &'a str,
     pub endpoint: Option<&'a DnsEndpoint>,
     pub allow_authority_response: bool,
-    pub not_before: i64,
-    pub not_after: i64,
 }
 
 impl EvidenceStore {
@@ -130,6 +131,10 @@ impl EvidenceStore {
             path: path.as_ref().to_path_buf(),
         };
         let mut connection = store.connect()?;
+        // Journal-mode changes require an exclusive database lock.  Set WAL once
+        // during store initialization instead of on every short-lived connection.
+        connection.pragma_update(None, "journal_mode", "WAL")?;
+        connection.pragma_update(None, "synchronous", "NORMAL")?;
         connection.execute_batch(SCHEMA)?;
         if !table_has_column(&connection, "ri_v2_query_contexts", "registered_at")? {
             connection.execute(
@@ -178,7 +183,7 @@ impl EvidenceStore {
             ));
         }
         let mut connection = self.connect()?;
-        let transaction = connection.transaction()?;
+        let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let current = transaction
             .query_row(
                 r#"SELECT identity_json,registry_json FROM ri_v2_identities
@@ -252,7 +257,7 @@ impl EvidenceStore {
         }
         registry.resolver_status = status.to_owned();
         let mut connection = self.connect()?;
-        let transaction = connection.transaction()?;
+        let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
         transaction.execute(
             r#"UPDATE ri_v2_identities SET
                  status=?,registry_json=?,updated_at=CURRENT_TIMESTAMP
@@ -330,9 +335,94 @@ impl EvidenceStore {
 
     pub fn put_trace_events(&self, events: &[TraceEventV2]) -> Result<(), StoreError> {
         let mut connection = self.connect()?;
-        let transaction = connection.transaction()?;
+        let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
         for event in events {
             let event_json = serde_json::to_string(event)?;
+            let existing = transaction
+                .query_row(
+                    "SELECT event_json FROM ri_v2_trace_events WHERE event_id=?",
+                    [&event.event_id],
+                    |row| row.get::<_, String>(0),
+                )
+                .optional()?;
+            if let Some(existing) = existing {
+                if existing != event_json {
+                    return Err(StoreError::InvalidData(format!(
+                        "trace event {} is immutable and conflicts with stored evidence",
+                        event.event_id
+                    )));
+                }
+                continue;
+            }
+            if event.sequence > 0 {
+                let last_sequence = transaction.query_row(
+                    r#"SELECT COALESCE(MAX(
+                     CAST(json_extract(event_json,'$.sequence') AS INTEGER)
+                   ),0) FROM ri_v2_trace_events WHERE trace_id=?"#,
+                    [&event.trace_id],
+                    |row| row.get::<_, i64>(0),
+                )?;
+                let last_sequence = u64::try_from(last_sequence).map_err(|_| {
+                    StoreError::InvalidData("stored trace sequence is negative".into())
+                })?;
+                if event.sequence != last_sequence.saturating_add(1) {
+                    return Err(StoreError::InvalidData(format!(
+                        "trace {} sequence is out of order: expected {}, received {}",
+                        event.trace_id,
+                        last_sequence.saturating_add(1),
+                        event.sequence
+                    )));
+                }
+                if event.sequence == 1 {
+                    if event.parent_event_id.is_some()
+                        || event.kind != ri_core::TraceEventKind::ClientQuery
+                    {
+                        return Err(StoreError::InvalidData(
+                            "trace sequence 1 must be a parentless client query".into(),
+                        ));
+                    }
+                } else {
+                    let parent = event.parent_event_id.as_deref().ok_or_else(|| {
+                        StoreError::InvalidData("trace event parent is required".into())
+                    })?;
+                    let parent_sequence = transaction
+                        .query_row(
+                            r#"SELECT CAST(json_extract(event_json,'$.sequence') AS INTEGER)
+                           FROM ri_v2_trace_events
+                           WHERE event_id=? AND trace_id=?"#,
+                            params![parent, event.trace_id],
+                            |row| row.get::<_, i64>(0),
+                        )
+                        .optional()?
+                        .ok_or_else(|| {
+                            StoreError::InvalidData(
+                                "trace event parent is missing or belongs to another trace".into(),
+                            )
+                        })?;
+                    let parent_sequence = u64::try_from(parent_sequence).map_err(|_| {
+                        StoreError::InvalidData("stored parent sequence is negative".into())
+                    })?;
+                    if parent_sequence >= event.sequence {
+                        return Err(StoreError::InvalidData(
+                            "trace event parent must precede its child".into(),
+                        ));
+                    }
+                    let terminal = transaction.query_row(
+                        r#"SELECT EXISTS(
+                         SELECT 1 FROM ri_v2_trace_events
+                         WHERE trace_id=? AND json_extract(event_json,'$.kind') IN
+                           ('CLIENT_RESPONSE','RESOLUTION_FAILED')
+                       )"#,
+                        [&event.trace_id],
+                        |row| row.get::<_, bool>(0),
+                    )?;
+                    if terminal {
+                        return Err(StoreError::InvalidData(
+                            "trace event follows a terminal event".into(),
+                        ));
+                    }
+                }
+            }
             let inserted = transaction.execute(
                 r#"INSERT INTO ri_v2_trace_events(
                  event_id,trace_id,parent_event_id,event_json,observed_at
@@ -346,18 +436,10 @@ impl EvidenceStore {
                     event.observed_at,
                 ],
             )?;
-            if inserted == 0 {
-                let existing = transaction.query_row(
-                    "SELECT event_json FROM ri_v2_trace_events WHERE event_id=?",
-                    [&event.event_id],
-                    |row| row.get::<_, String>(0),
-                )?;
-                if existing != event_json {
-                    return Err(StoreError::InvalidData(format!(
-                        "trace event {} is immutable and conflicts with stored evidence",
-                        event.event_id
-                    )));
-                }
+            if inserted != 1 {
+                return Err(StoreError::InvalidData(
+                    "trace event insert did not persist exactly one row".into(),
+                ));
             }
         }
         transaction.commit()?;
@@ -367,7 +449,8 @@ impl EvidenceStore {
     pub fn trace_events(&self, trace_id: &str) -> Result<Vec<TraceEventV2>, StoreError> {
         let connection = self.connect()?;
         let mut statement = connection.prepare(
-            "SELECT event_json FROM ri_v2_trace_events WHERE trace_id=? ORDER BY observed_at,event_id",
+            r#"SELECT event_json FROM ri_v2_trace_events WHERE trace_id=?
+               ORDER BY CAST(json_extract(event_json,'$.sequence') AS INTEGER),event_id"#,
         )?;
         let rows = statement.query_map([trace_id], |row| row.get::<_, String>(0))?;
         rows.map(|row| {
@@ -397,7 +480,7 @@ impl EvidenceStore {
             ));
         }
         let mut connection = self.connect()?;
-        let transaction = connection.transaction()?;
+        let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let min_event_rowid = transaction.query_row(
             "SELECT COALESCE(MAX(rowid),0)+1 FROM ri_v2_trace_events",
             [],
@@ -430,7 +513,7 @@ impl EvidenceStore {
         now: i64,
     ) -> Result<Option<TraceEventV2>, StoreError> {
         let mut connection = self.connect()?;
-        let transaction = connection.transaction()?;
+        let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let context = transaction
             .query_row(
                 r#"SELECT correlation_id,query_digest,min_event_rowid,registered_at,expires_at,
@@ -466,18 +549,15 @@ impl EvidenceStore {
             .query_row(
                 r#"SELECT event_id,event_json FROM ri_v2_trace_events
                    WHERE rowid>=?
-                     AND observed_at>=?
-                     AND observed_at<=?
                      AND json_extract(event_json,'$.observer_server_id')=?
                      AND json_extract(event_json,'$.correlation_id')=?
                      AND json_extract(event_json,'$.query_digest')=?
                      AND json_extract(event_json,'$.response_digest')=?
-                     AND json_extract(event_json,'$.kind')='RESOLVER_RESPONSE'
+                     AND json_extract(event_json,'$.kind') IN
+                         ('CLIENT_RESPONSE','RESOLVER_RESPONSE')
                    ORDER BY rowid DESC LIMIT 1"#,
                 params![
                     context.2,
-                    context.3,
-                    now.saturating_add(5),
                     server_id,
                     correlation_id,
                     query_digest,
@@ -510,23 +590,20 @@ impl EvidenceStore {
         request: &TraceResponseMatch<'_>,
     ) -> Result<Option<TraceEventV2>, StoreError> {
         let mut connection = self.connect()?;
-        let transaction = connection.transaction()?;
+        let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let mut statement = transaction.prepare(
             r#"SELECT event_id,event_json FROM ri_v2_trace_events
-               WHERE observed_at>=?
-                 AND observed_at<=?
-                 AND json_extract(event_json,'$.observer_server_id')=?
+               WHERE json_extract(event_json,'$.observer_server_id')=?
                  AND json_extract(event_json,'$.correlation_id')=?
                  AND json_extract(event_json,'$.query_digest')=?
                  AND json_extract(event_json,'$.response_digest')=?
                  AND json_extract(event_json,'$.kind') IN
-                     ('RESOLVER_RESPONSE','AUTHORITY_RESPONSE')
-               ORDER BY observed_at DESC,rowid DESC"#,
+                     ('CLIENT_RESPONSE','UPSTREAM_RESPONSE',
+                      'RESOLVER_RESPONSE','AUTHORITY_RESPONSE')
+               ORDER BY rowid"#,
         )?;
         let rows = statement.query_map(
             params![
-                request.not_before,
-                request.not_after,
                 request.server_id,
                 request.correlation_id,
                 request.query_digest,
@@ -538,17 +615,25 @@ impl EvidenceStore {
         for row in rows {
             let (event_id, event_json) = row?;
             let event: TraceEventV2 = serde_json::from_str(&event_json)?;
-            let kind_matches = event.kind == ri_core::TraceEventKind::ResolverResponse
-                || (request.allow_authority_response
-                    && event.kind == ri_core::TraceEventKind::AuthorityResponse);
-            if kind_matches
-                && request.endpoint.is_none_or(|expected| {
+            let kind_matches = match event.kind {
+                // A resolver-internal ClientResponse represents the response
+                // emitted by this server. The Agent separately proves that the
+                // requested service endpoint is bound to its local identity;
+                // the event must not invent an outbound target endpoint.
+                ri_core::TraceEventKind::ClientResponse => true,
+                ri_core::TraceEventKind::UpstreamResponse => request.endpoint.is_some(),
+                ri_core::TraceEventKind::ResolverResponse => true,
+                ri_core::TraceEventKind::AuthorityResponse => request.allow_authority_response,
+                _ => false,
+            };
+            let endpoint_matches = event.kind == ri_core::TraceEventKind::ClientResponse
+                || request.endpoint.is_none_or(|expected| {
                     event
                         .target_endpoint
                         .as_ref()
                         .is_some_and(|candidate| expected.matches(candidate).unwrap_or(false))
-                })
-            {
+                });
+            if kind_matches && endpoint_matches {
                 candidates.push((event_id, event));
             }
         }
@@ -576,80 +661,6 @@ impl EvidenceStore {
         }
         transaction.commit()?;
         Ok(None)
-    }
-
-    pub fn find_trace_events(
-        &self,
-        query_digest: &str,
-        response_digest: &str,
-        not_before: i64,
-    ) -> Result<Vec<TraceEventV2>, StoreError> {
-        let connection = self.connect()?;
-        let mut statement = connection.prepare(
-            r#"SELECT event_json FROM ri_v2_trace_events
-               WHERE observed_at>=?
-                 AND json_extract(event_json,'$.query_digest')=?
-                 AND json_extract(event_json,'$.response_digest')=?
-               ORDER BY observed_at,event_id"#,
-        )?;
-        let rows = statement
-            .query_map(params![not_before, query_digest, response_digest], |row| {
-                row.get::<_, String>(0)
-            })?;
-        rows.map(|row| {
-            let value = row?;
-            serde_json::from_str(&value).map_err(StoreError::from)
-        })
-        .collect()
-    }
-
-    pub fn has_matching_response(
-        &self,
-        server_id: &str,
-        correlation_id: &str,
-        query_digest: &str,
-        response_digest: &str,
-        endpoint: &DnsEndpoint,
-        not_before: i64,
-    ) -> Result<bool, StoreError> {
-        Ok(self
-            .matching_response(
-                server_id,
-                correlation_id,
-                query_digest,
-                response_digest,
-                endpoint,
-                not_before,
-            )?
-            .is_some())
-    }
-
-    pub fn matching_response(
-        &self,
-        server_id: &str,
-        correlation_id: &str,
-        query_digest: &str,
-        response_digest: &str,
-        endpoint: &DnsEndpoint,
-        not_before: i64,
-    ) -> Result<Option<TraceEventV2>, StoreError> {
-        Ok(self
-            .find_trace_events(query_digest, response_digest, not_before)?
-            .into_iter()
-            .rev()
-            .find(|event| {
-                event.observer_server_id == server_id
-                    && event.correlation_id == correlation_id
-                    && event
-                        .target_endpoint
-                        .as_ref()
-                        .is_some_and(|candidate| endpoint.matches(candidate).unwrap_or(false))
-                    && matches!(
-                        event.kind,
-                        ri_core::TraceEventKind::ResolverResponse
-                            | ri_core::TraceEventKind::AuthorityResponse
-                    )
-            }))
     }
 
     pub fn put_graph(&self, graph: &QueryEvidenceGraphV2) -> Result<String, StoreError> {
@@ -745,13 +756,99 @@ impl EvidenceStore {
             .transpose()
     }
 
+    pub fn find_latest_cache_source_graph(
+        &self,
+        query_digest: &str,
+        cache_object_digest: &str,
+    ) -> Result<Option<(QueryEvidenceGraphV2, String)>, StoreError> {
+        let generation = self.cache_generation()?;
+        let generation_sql = sql_i64(generation, "cache_generation")?;
+        let connection = self.connect()?;
+        connection
+            .query_row(
+                r#"SELECT g.graph_json,g.graph_digest
+                   FROM ri_v2_evidence_graphs g
+                   JOIN ri_v2_trace_event_claims c ON c.request_trace_id=g.trace_id
+                   JOIN ri_v2_trace_events e ON e.event_id=c.event_id
+                   WHERE g.query_digest=? AND g.snapshot_generation=?
+                     AND json_extract(e.event_json,'$.kind')='CLIENT_RESPONSE'
+                     AND json_extract(e.event_json,'$.cache_object_digest')=?
+                   ORDER BY g.rowid DESC LIMIT 1"#,
+                params![query_digest, generation_sql, cache_object_digest],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            )
+            .optional()?
+            .map(|(value, digest)| {
+                Ok((
+                    serde_json::from_str(&value).map_err(StoreError::from)?,
+                    digest,
+                ))
+            })
+            .transpose()
+    }
+
+    pub fn find_cache_source_graph_by_digest(
+        &self,
+        query_digest: &str,
+        cache_object_digest: &str,
+        graph_digest: &str,
+    ) -> Result<Option<QueryEvidenceGraphV2>, StoreError> {
+        let generation = self.cache_generation()?;
+        let generation_sql = sql_i64(generation, "cache_generation")?;
+        let connection = self.connect()?;
+        connection
+            .query_row(
+                r#"SELECT g.graph_json
+                   FROM ri_v2_evidence_graphs g
+                   JOIN ri_v2_trace_event_claims c ON c.request_trace_id=g.trace_id
+                   JOIN ri_v2_trace_events e ON e.event_id=c.event_id
+                   WHERE g.query_digest=? AND g.graph_digest=?
+                     AND g.snapshot_generation=?
+                     AND json_extract(e.event_json,'$.kind')='CLIENT_RESPONSE'
+                     AND json_extract(e.event_json,'$.cache_object_digest')=?
+                   LIMIT 1"#,
+                params![
+                    query_digest,
+                    graph_digest,
+                    generation_sql,
+                    cache_object_digest
+                ],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()?
+            .map(|value| serde_json::from_str(&value).map_err(StoreError::from))
+            .transpose()
+    }
+
+    pub fn find_source_graph_by_digest(
+        &self,
+        query_digest: &str,
+        response_digest: &str,
+        graph_digest: &str,
+    ) -> Result<Option<QueryEvidenceGraphV2>, StoreError> {
+        let generation = self.cache_generation()?;
+        let generation_sql = sql_i64(generation, "cache_generation")?;
+        let connection = self.connect()?;
+        connection
+            .query_row(
+                r#"SELECT graph_json FROM ri_v2_evidence_graphs
+                   WHERE query_digest=? AND response_digest=? AND graph_digest=?
+                     AND snapshot_generation=? LIMIT 1"#,
+                params![query_digest, response_digest, graph_digest, generation_sql],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()?
+            .map(|value| serde_json::from_str(&value).map_err(StoreError::from))
+            .transpose()
+    }
+
     pub fn put_registry_snapshot(
         &self,
         key: &str,
         reference: &RegistryReferenceV2,
     ) -> Result<(), StoreError> {
         let mut connection = self.connect()?;
-        let transaction = connection.transaction()?;
+        let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let (chain_id, contract_address, runtime_code_hash) = legacy_evm_columns(reference)?;
         let finalized_block = sql_i64(reference.checkpoint_height, "checkpoint_height")?;
         let snapshot_generation = sql_i64(reference.snapshot_generation, "snapshot_generation")?;
@@ -1136,7 +1233,7 @@ impl EvidenceStore {
 
     pub fn invalidate_all(&self) -> Result<u64, StoreError> {
         let mut connection = self.connect()?;
-        let transaction = connection.transaction()?;
+        let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let generation = bump_generation(&transaction)?;
         transaction.execute("DELETE FROM ri_v2_evidence_graphs", [])?;
         transaction.commit()?;
@@ -1197,9 +1294,7 @@ impl EvidenceStore {
     fn connect(&self) -> Result<Connection, StoreError> {
         let connection = Connection::open(&self.path)?;
         connection.busy_timeout(Duration::from_secs(5))?;
-        connection.pragma_update(None, "journal_mode", "WAL")?;
         connection.pragma_update(None, "foreign_keys", "ON")?;
-        connection.pragma_update(None, "synchronous", "NORMAL")?;
         Ok(connection)
     }
 }

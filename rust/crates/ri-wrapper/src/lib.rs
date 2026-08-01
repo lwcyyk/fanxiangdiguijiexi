@@ -81,8 +81,8 @@ pub enum WrapperError {
     UpstreamTimeout,
     #[error("Agent request failed: {0}")]
     AgentHttp(#[from] reqwest::Error),
-    #[error("Agent returned {0}")]
-    AgentStatus(reqwest::StatusCode),
+    #[error("Agent returned {0}: {1}")]
+    AgentStatus(reqwest::StatusCode, String),
     #[error("Agent response exceeds configured limit")]
     AgentResponseTooLarge,
     #[error("Agent response is not valid JSON: {0}")]
@@ -110,7 +110,6 @@ struct EvidenceGraphRequest<'a> {
     challenge: &'a str,
     query_digest: &'a str,
     response_digest: &'a str,
-    expected_observed_at: Option<i64>,
     visited_server_ids: Vec<String>,
 }
 
@@ -272,7 +271,6 @@ impl WrapperState {
             challenge: &challenge,
             query_digest,
             response_digest,
-            expected_observed_at: None,
             visited_server_ids: vec![],
         };
         let response = timeout(
@@ -289,7 +287,9 @@ impl WrapperState {
         .await
         .map_err(|_| WrapperError::AgentTimeout)??;
         if !response.status().is_success() {
-            return Err(WrapperError::AgentStatus(response.status()));
+            let status = response.status();
+            let detail = decode_error_limited(response, 4_096).await;
+            return Err(WrapperError::AgentStatus(status, detail));
         }
         let graph = decode_json_limited::<QueryEvidenceGraphV2>(
             response,
@@ -392,6 +392,21 @@ impl WrapperState {
             .await
             .map_err(|error| WrapperError::BlockingTask(error.to_string()))?
     }
+}
+
+async fn decode_error_limited(response: reqwest::Response, limit: usize) -> String {
+    let mut stream = response.bytes_stream();
+    let mut body = Vec::new();
+    while let Some(chunk) = stream.next().await {
+        let Ok(chunk) = chunk else {
+            return "unreadable error body".into();
+        };
+        if body.len().saturating_add(chunk.len()) > limit {
+            return "error body exceeded 4096 bytes".into();
+        }
+        body.extend_from_slice(&chunk);
+    }
+    String::from_utf8(body).unwrap_or_else(|_| "non-UTF-8 error body".into())
 }
 
 fn registry_is_fresh(

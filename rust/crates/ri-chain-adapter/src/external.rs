@@ -400,6 +400,7 @@ impl ExternalProtocolClient {
             );
         }
         let mut builder = Client::builder()
+            .no_proxy()
             .https_only(production)
             .timeout(timeout)
             .connect_timeout(timeout)

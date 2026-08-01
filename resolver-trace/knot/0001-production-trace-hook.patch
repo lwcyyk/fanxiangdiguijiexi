@@ -1,0 +1,78 @@
+diff --git a/daemon/meson.build b/daemon/meson.build
+index eb62d6d..e269cef 100644
+--- a/daemon/meson.build
++++ b/daemon/meson.build
+@@ -18,0 +19 @@ kresd_src = files([
++  'ri_trace_hook.c',
+diff --git a/daemon/worker.c b/daemon/worker.c
+index f4e7f5c..bf17c88 100644
+--- a/daemon/worker.c
++++ b/daemon/worker.c
+@@ -34,0 +35 @@
++#include "daemon/ri_trace_hook.h"
+@@ -76,0 +78,2 @@ struct request_ctx
++	bool ri_trace_enabled : 1;
++	bool ri_trace_failed : 1;
+@@ -424,0 +428,4 @@ static int request_start(struct request_ctx *ctx, knot_pkt_t *query)
++	ctx->ri_trace_enabled = ctx->source.session && !ctx->source.session->outgoing;
++	if (ctx->ri_trace_enabled
++	    && ri_trace_hook_begin(req, req->qsource.packet) != 0)
++		ctx->ri_trace_failed = true;
+@@ -666,0 +674,6 @@ static int qr_task_send(struct qr_task *task, struct session2 *session,
++	if (task->ctx->ri_trace_enabled && session->outgoing
++	    && ri_trace_hook_send(&task->ctx->req, task->transport, pkt) != 0) {
++		task->ctx->ri_trace_failed = true;
++		return qr_task_on_send(task, NULL, kr_error(EIO));
++	}
++
+@@ -932,0 +946,7 @@ static void subreq_finalize(struct qr_task *task, const struct sockaddr *packet_
++				/* The follower reused the leader's exact UDP exchange.  Attach
++				 * that exchange to the follower's request-scoped Trace before
++				 * consuming the shared response. */
++				if (follower->ctx->ri_trace_enabled && follower->transport
++				    && ri_trace_hook_send(&follower->ctx->req,
++							  follower->transport, task->pktbuf) != 0)
++					follower->ctx->ri_trace_failed = true;
+@@ -994,0 +1015,2 @@ static int qr_task_finalize(struct qr_task *task, int state)
++	if (ctx->ri_trace_failed)
++		state = KR_STATE_FAIL;
+@@ -995,0 +1018,10 @@ static int qr_task_finalize(struct qr_task *task, int state)
++	if (ctx->ri_trace_enabled && !ctx->ri_trace_failed && ctx->req.answer
++	    && ri_trace_hook_finish(&ctx->req, ctx->req.answer,
++				    state == KR_STATE_DONE) != 0) {
++		ctx->ri_trace_failed = true;
++		state = KR_STATE_FAIL;
++		kr_pkt_clear_payload(ctx->req.answer);
++		knot_wire_clear_ad(ctx->req.answer->wire);
++		knot_wire_clear_aa(ctx->req.answer->wire);
++		knot_wire_set_rcode(ctx->req.answer->wire, KNOT_RCODE_SERVFAIL);
++	}
+@@ -1298,0 +1331,8 @@ static int qr_task_step(struct qr_task *task,
++	if (ctx->ri_trace_failed)
++		return qr_task_finalize(task, KR_STATE_FAIL);
++	if (ctx->ri_trace_enabled && !packet && task->transport) {
++		if (ri_trace_hook_failure(req, task->transport, "transport-failure") != 0) {
++			ctx->ri_trace_failed = true;
++			return qr_task_finalize(task, KR_STATE_FAIL);
++		}
++	}
+@@ -1320,0 +1361,11 @@ static int qr_task_step(struct qr_task *task,
++	struct kr_transport trace_transport = { 0 };
++	const bool trace_transport_valid = ctx->ri_trace_enabled && packet && task->transport;
++	knot_pkt_t *trace_packet = NULL;
++	if (trace_transport_valid) {
++		trace_transport = *task->transport;
++		trace_packet = knot_pkt_new(NULL, packet->size, &req->pool);
++		if (!trace_packet || knot_pkt_copy(trace_packet, packet) != KNOT_EOK) {
++			ctx->ri_trace_failed = true;
++			return qr_task_finalize(task, KR_STATE_FAIL);
++		}
++	}
+@@ -1321,0 +1373,5 @@ static int qr_task_step(struct qr_task *task,
++	if (trace_transport_valid
++	    && ri_trace_hook_response(req, &trace_transport, trace_packet) != 0) {
++		ctx->ri_trace_failed = true;
++		return qr_task_finalize(task, KR_STATE_FAIL);
++	}
+@@ -1755,0 +1812 @@ void worker_deinit(void)
++	ri_trace_hook_close();
