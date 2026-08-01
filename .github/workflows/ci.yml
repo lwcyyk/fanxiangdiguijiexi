@@ -109,6 +109,45 @@ jobs:
           compose --env-file deploy/link/.env.norn.example -f deploy/link/docker-compose.yml config --quiet
           compose --env-file deploy/link/.env.external.example -f deploy/link/docker-compose.yml config --quiet
 
+  field-delivery:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13.11"
+          cache: pip
+          cache-dependency-path: requirements-ci.lock
+      - name: Install hash-locked Python test dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --require-hashes -r requirements-ci.lock
+          python -m pip install --disable-pip-version-check --no-deps --no-build-isolation -e .
+      - name: Install fixed ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck=0.9.0-1
+          test "$(shellcheck --version | awk '/^version:/ {print $2}')" = "0.9.0"
+      - name: Validate templates and package lifecycle tests
+        run: |
+          python3 tools/manage_norn_field_delivery.py validate \
+            --inventory deploy/field/inventory.example.yaml --template
+          python3 tools/run_norn_field_acceptance.py --help
+          python3 -m pytest -q tests/unit/test_norn_field_delivery.py
+          shellcheck \
+            deploy/field/common/*.sh \
+            deploy/field/management/*.sh \
+            deploy/field/norn-node/*.sh \
+            deploy/field/resolver-link/*.sh \
+            scripts/field-delivery/*.sh
+      - name: Render all field Compose templates
+        run: |
+          for kind in management norn-node resolver-link; do
+            docker compose \
+              --env-file "deploy/field/${kind}/.env.example" \
+              -f "deploy/field/${kind}/docker-compose.yml" \
+              config --quiet
+          done
+
   legacy-python-image:
     name: legacy Python compatibility image
     runs-on: ubuntu-24.04
@@ -137,13 +176,41 @@ jobs:
             docker run --rm --entrypoint /bin/sh resolver-identity-rust:ci -c "test -x /usr/local/bin/$binary"
           done
 
+  management-image:
+    runs-on: ubuntu-24.04
+    needs: [python, field-delivery]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - run: docker build --pull --file docker/Dockerfile.management --tag resolver-identity-management:ci .
+      - name: Verify management image policy
+        run: |
+          test "$(docker image inspect resolver-identity-management:ci --format '{{.Config.User}}')" = resolver
+          docker run --rm resolver-identity-management:ci --help
+          docker run --rm --entrypoint /usr/local/bin/ri-nornctl resolver-identity-management:ci 2>&1 |
+            grep -q 'usage: ri-nornctl'
+          docker run --rm --entrypoint /bin/sh resolver-identity-management:ci \
+            -c 'test ! -e /run/field-secrets && test ! -e /root/.ssh'
+
   release-candidate-gate:
     name: release candidate gate
     runs-on: ubuntu-24.04
     if: always()
-    needs: [rust, python, solidity, compose, legacy-python-image, rust-production-image]
+    needs: [rust, python, solidity, compose, field-delivery, legacy-python-image, rust-production-image, management-image]
     steps:
       - name: Require every release-candidate check
         env:
-          RESULTS: ${{ join(needs.*.result, ',') }}
-        run: test "$RESULTS" = "success,success,success,success,success,success"
+          RUST_RESULT: ${{ needs.rust.result }}
+          PYTHON_RESULT: ${{ needs.python.result }}
+          SOLIDITY_RESULT: ${{ needs.solidity.result }}
+          COMPOSE_RESULT: ${{ needs.compose.result }}
+          FIELD_RESULT: ${{ needs.field-delivery.result }}
+          LEGACY_IMAGE_RESULT: ${{ needs.legacy-python-image.result }}
+          RUST_IMAGE_RESULT: ${{ needs.rust-production-image.result }}
+          MANAGEMENT_IMAGE_RESULT: ${{ needs.management-image.result }}
+        run: |
+          for result in \
+            "$RUST_RESULT" "$PYTHON_RESULT" "$SOLIDITY_RESULT" "$COMPOSE_RESULT" \
+            "$FIELD_RESULT" "$LEGACY_IMAGE_RESULT" "$RUST_IMAGE_RESULT" \
+            "$MANAGEMENT_IMAGE_RESULT"; do
+            test "$result" = success
+          done

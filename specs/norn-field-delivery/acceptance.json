@@ -1,0 +1,1455 @@
+{
+  "base_branch": "multichain-registry-adapter",
+  "boundaries": {
+    "agent_wrapper_direct_norn_access": false,
+    "agents_read_local_sqlite_only": true,
+    "native_norn_grpc_externally_exposed": false,
+    "read_proxy_write_methods_allowed": false,
+    "registry_sync_only_chain_client": true,
+    "upstream_wrapper_started": false
+  },
+  "branch": "norn-field-delivery",
+  "delivery_commit": "a38e1ffba954bed5b931b394f1f3794628dec1ed",
+  "generated_at": "2026-07-31T05:54:21Z",
+  "go_norn_upstream_commit": "a7be734ac2e829e2076d06d45719d2716abd3d72",
+  "lifecycle_tests": {
+    "explicit_purge_data": "passed",
+    "health_failure_automatic_program_rollback": "passed",
+    "idempotent_install_all_six_hosts": "passed",
+    "ordinary_uninstall_preserved_data": "passed",
+    "rollback_all_six_hosts": "passed",
+    "upgrade_all_six_hosts": "passed"
+  },
+  "negative_tests": {
+    "failed_sync_preserved_sqlite_heartbeat_generation": "failed-closed",
+    "mtls_read_proxy_write_method": "failed-closed",
+    "norn_a_b_checkpoint_disagreement": "failed-closed",
+    "single_norn_node_unavailable": "failed-closed"
+  },
+  "positive_tests": {
+    "actual_genesis_synchronized_to_resolver_configs": "passed",
+    "agent_wrapper_no_direct_norn_access": "passed",
+    "agents_read_local_sqlite_only": "passed",
+    "dual_node_genesis_agreement": "passed",
+    "fresh_mtls_material": "passed",
+    "management_signed_norn_snapshot": "passed",
+    "management_signed_three_identities": "passed",
+    "node_a_b_distinct_peer_ids": "passed",
+    "node_a_b_independent_data_paths": "passed",
+    "non_evm_legacy_columns_empty": "passed",
+    "package_publication_replicated_to_both_nodes": "passed",
+    "secret_free_package_scan": "passed",
+    "three_checksums_verified_packages": "passed",
+    "three_independent_sqlite_snapshots": "passed",
+    "three_registry_sync_state_roots_agree": "passed",
+    "upstream_wrapper_absent": "passed"
+  },
+  "registry": {
+    "chain_id": 20001,
+    "genesis_hash": "0x22854e8e9fd9562d0fdb72c7f18eeadfd79cf64ca8fedbacb6ee95cadbdee687",
+    "plan_hash": "0x915b31b56ec2cb21636e30c00743ba5e59fc03f58b2516203058174ca195a466",
+    "publication_transaction_hash": "8bdddbd67809be99953047589f37b74a9d4d236e0d8c3e2b454f24ca6d067a7e",
+    "registry_address": "0x1000000000000000000000000000000000000001",
+    "registry_key": "resolver-identity-registry-v2",
+    "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+    "registry_sync_checkpoint": {
+      "hash": "0x364b5415d8f40efae0e6b51d47b20a9e5485da79fab3ffbce1b3243ef716bf72",
+      "height": 18,
+      "height_range": [
+        18,
+        19
+      ],
+      "recorded_from": "minimum per-resolver accepted checkpoint"
+    },
+    "signed_checkpoint": {
+      "hash": "0xd9911906323f74717bc9fc7eca0c5b2f57bffadd3b705ee04edd10e9af5fae4c",
+      "height": 1
+    }
+  },
+  "registry_sync": {
+    "resolver-L01-r1": {
+      "checkpoint_hash": "0x364b5415d8f40efae0e6b51d47b20a9e5485da79fab3ffbce1b3243ef716bf72",
+      "checkpoint_height": 18,
+      "database": "resolver-L01-r1/evidence-v2.db",
+      "database_path_sha256": "006adb2e2fd862afca3c7c51aea8d675cba0f3fa7ae538e1cf912f3a8837926d",
+      "identity_count": 3,
+      "integrity": "ok"
+    },
+    "resolver-L01-r2": {
+      "checkpoint_hash": "0x0818b651a661386cac3a0dd029a24d9bdf30075b7ea1ace653791f15497bda68",
+      "checkpoint_height": 19,
+      "database": "resolver-L01-r2/evidence-v2.db",
+      "database_path_sha256": "8b163d003055b6c8a22e55c35c41e13dad4078a68a14f6199ccce7b477c73135",
+      "identity_count": 3,
+      "integrity": "ok"
+    },
+    "resolver-L01-r3": {
+      "checkpoint_hash": "0x0818b651a661386cac3a0dd029a24d9bdf30075b7ea1ace653791f15497bda68",
+      "checkpoint_height": 19,
+      "database": "resolver-L01-r3/evidence-v2.db",
+      "database_path_sha256": "3e5d6d17fd3a2f59fe3690415ed77e7ed77f6efd53fbf29198ce38448e06e6f3",
+      "identity_count": 3,
+      "integrity": "ok"
+    }
+  },
+  "release": {
+    "image_digests": {
+      "management": "127.0.0.1:58253/resolver-identity/management@sha256:f9ecc793d0b213a8b39fb010c98d1bd29b67f155fe374c3baa87c29f1aa9c9ca",
+      "nginx": "127.0.0.1:58253/resolver-identity/nginx@sha256:114dff0fc8ee3d0200c3a12c60e3e2b79d0920dd953175ecb78a0b157425b25e",
+      "norn": "127.0.0.1:58253/resolver-identity/norn@sha256:f4bb5cc1c3aee0bf7edbbd12c491c854a7bac13911a76751370874d2a485dd09",
+      "rust": "127.0.0.1:58253/resolver-identity/rust@sha256:f59562a593ddeb85467efeb5c950e6e89b48f1ef2bda209147923ec5272ad591"
+    },
+    "p0_blockers": [
+      "P0: repository does not contain a production resolver-internal Trace producer for BIND, Unbound, Knot Resolver, or PowerDNS Recursor"
+    ],
+    "packages": {
+      "management": {
+        "filename": "resolver-identity-management-0.3.0-norn-field-rc1.tar.gz",
+        "sha256": "193d586526a62aaad44f0a75130ac53eb9c0f0cb4d3122924a3c90aa3f11f9d0"
+      },
+      "norn-node": {
+        "filename": "resolver-identity-norn-node-0.3.0-norn-field-rc1.tar.gz",
+        "sha256": "39ffae10412a3c937537744898a54c02ce9e0537745b526c0aebede7828f9992"
+      },
+      "resolver-link": {
+        "filename": "resolver-identity-resolver-link-0.3.0-norn-field-rc1.tar.gz",
+        "sha256": "780af1274166092e65f43af1d47fd8b37f9f759dcaf7e5f264d3fe66ea3dd222"
+      }
+    },
+    "production_trace_ready": false,
+    "version": "0.3.0-norn-field-rc1"
+  },
+  "result": "passed",
+  "schema_version": "resolver-identity-norn-field-acceptance-v1",
+  "secret_audit": {
+    "high_confidence_findings": 0,
+    "reachable_commits_scanned": 57,
+    "result": "passed"
+  },
+  "secrets_found": false,
+  "simulation": {
+    "cross_server_localhost_used": false,
+    "node_a_b_independent": true,
+    "node_peer_id_sha256": [
+      "7cb7f2e72d6660121469326b18efbadd405adf06f5d6909f80f36a7e5c9731e7",
+      "fe4daab8a1a09530e32ca4e29751ca684a7344c415bc4d9dc5a0ce834b2492dc"
+    ],
+    "resolver_sqlite_independent": true,
+    "server_count": 6,
+    "servers": [
+      "ri-hub-mgmt-01",
+      "norn-node-a",
+      "norn-node-b",
+      "resolver-L01-r1",
+      "resolver-L01-r2",
+      "resolver-L01-r3"
+    ],
+    "temporary_environment_cleaned": true,
+    "used_package_contents_only": true
+  },
+  "source_commit": "a38e1ffba954bed5b931b394f1f3794628dec1ed",
+  "test_commands": [
+    {
+      "command": "docker compose version",
+      "duration_ms": 131,
+      "exit_code": 0,
+      "log_sha256": "2458cb4487685de8f41edcb1b0fdcd1f2685a25f13d9ca72e9767661ebc35af1",
+      "name": "docker-compose-version"
+    },
+    {
+      "command": "bash -c ! docker ps -a --format '{{.Names}}' | grep -F 'ri-nfd-a38e1ffb-721586'",
+      "duration_ms": 33,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "ensure-clean-prefix"
+    },
+    {
+      "command": "cargo fmt --all --check",
+      "duration_ms": 214,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "rust-fmt"
+    },
+    {
+      "command": "cargo test --workspace --locked",
+      "duration_ms": 2067,
+      "exit_code": 0,
+      "log_sha256": "054b535b28d6929c90359d6559139020a71e7c5a4261ec0af239d426cca1fca2",
+      "name": "rust-test"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "duration_ms": 341,
+      "exit_code": 0,
+      "log_sha256": "f2066ca264b9a8598ecd436c70919e1efe1acea4098ad2a13b5d82d67bc049ec",
+      "name": "rust-clippy"
+    },
+    {
+      "command": "python3 -m pytest -q",
+      "duration_ms": 8057,
+      "exit_code": 0,
+      "log_sha256": "7ec56b5c1d6d4f873ae4d98a5d79c86c6a240c546d587191403b7bf2a137a55c",
+      "name": "python-test"
+    },
+    {
+      "command": "python3 -m pytest --collect-only -q tests/unit/test_norn_field_delivery.py",
+      "duration_ms": 290,
+      "exit_code": 0,
+      "log_sha256": "9c31e7ddeff95692317c55b871576cf04b64ee3778327346de68481a1107b543",
+      "name": "field-delivery-test-collection"
+    },
+    {
+      "command": "forge fmt --check",
+      "duration_ms": 31,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "forge-fmt"
+    },
+    {
+      "command": "forge build",
+      "duration_ms": 163,
+      "exit_code": 0,
+      "log_sha256": "00f3f2fdc39909168d23034be47a421ea5661d896692b9635a63386e9bf24368",
+      "name": "forge-build"
+    },
+    {
+      "command": "forge test -vvv",
+      "duration_ms": 187,
+      "exit_code": 0,
+      "log_sha256": "be5e391ea3da0515205a103ba6faf86a826ed591432769e81b715d2f312fe207",
+      "name": "forge-test"
+    },
+    {
+      "command": "/tmp/ri-tools/usr/bin/shellcheck deploy/field/common/backup.sh deploy/field/common/lib.sh deploy/field/common/lifecycle.sh deploy/field/common/load-offline-images.sh deploy/field/common/logs.sh deploy/field/management/backup.sh deploy/field/management/health-check.sh deploy/field/management/install.sh deploy/field/management/logs.sh deploy/field/management/nornctl.sh deploy/field/management/preflight.sh deploy/field/management/publish-norn.sh deploy/field/management/registry-tool.sh deploy/field/management/rollback.sh deploy/field/management/uninstall.sh deploy/field/management/upgrade.sh deploy/field/norn-node/backup.sh deploy/field/norn-node/health-check.sh deploy/field/norn-node/install.sh deploy/field/norn-node/logs.sh deploy/field/norn-node/preflight.sh deploy/field/norn-node/rollback.sh deploy/field/norn-node/start-norn.sh deploy/field/norn-node/start-read-proxy.sh deploy/field/norn-node/uninstall.sh deploy/field/norn-node/upgrade.sh deploy/field/resolver-link/backup.sh deploy/field/resolver-link/health-check.sh deploy/field/resolver-link/install.sh deploy/field/resolver-link/logs.sh deploy/field/resolver-link/preflight.sh deploy/field/resolver-link/rollback.sh deploy/field/resolver-link/uninstall.sh deploy/field/resolver-link/upgrade.sh scripts/field-delivery/run-acceptance.sh",
+      "duration_ms": 464,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "shellcheck"
+    },
+    {
+      "command": "python3 tools/manage_norn_field_delivery.py validate --inventory deploy/field/inventory.example.yaml --template",
+      "duration_ms": 50,
+      "exit_code": 0,
+      "log_sha256": "b2feadc600ec7caf4d89115ee19fd77fd4b26fd6f28a9521082731d5f5ef623d",
+      "name": "inventory-template"
+    },
+    {
+      "command": "docker compose --env-file /home/lwc/fanxiangdiguijiexi/deploy/link/.env.example -f /home/lwc/fanxiangdiguijiexi/deploy/link/docker-compose.yml config --quiet",
+      "duration_ms": 148,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "compose-link-evm"
+    },
+    {
+      "command": "docker compose --env-file /home/lwc/fanxiangdiguijiexi/deploy/link/.env.norn.example -f /home/lwc/fanxiangdiguijiexi/deploy/link/docker-compose.yml config --quiet",
+      "duration_ms": 148,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "compose-link-norn"
+    },
+    {
+      "command": "docker compose --env-file /home/lwc/fanxiangdiguijiexi/deploy/link/.env.external.example -f /home/lwc/fanxiangdiguijiexi/deploy/link/docker-compose.yml config --quiet",
+      "duration_ms": 151,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "compose-link-external"
+    },
+    {
+      "command": "docker compose --env-file /home/lwc/fanxiangdiguijiexi/deploy/field/management/.env.example -f /home/lwc/fanxiangdiguijiexi/deploy/field/management/docker-compose.yml config --quiet",
+      "duration_ms": 135,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "compose-field-management"
+    },
+    {
+      "command": "docker compose --env-file /home/lwc/fanxiangdiguijiexi/deploy/field/norn-node/.env.example -f /home/lwc/fanxiangdiguijiexi/deploy/field/norn-node/docker-compose.yml config --quiet",
+      "duration_ms": 132,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "compose-field-norn-node"
+    },
+    {
+      "command": "docker compose --env-file /home/lwc/fanxiangdiguijiexi/deploy/field/resolver-link/.env.example -f /home/lwc/fanxiangdiguijiexi/deploy/field/resolver-link/docker-compose.yml config --quiet",
+      "duration_ms": 147,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "compose-field-resolver-link"
+    },
+    {
+      "command": "docker run -d --name ri-nfd-a38e1ffb-721586-registry --label resolver-identity.acceptance=ri-nfd-a38e1ffb-721586 -p 127.0.0.1:58253:5000 registry:2.8.3@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373",
+      "duration_ms": 424,
+      "exit_code": 0,
+      "log_sha256": "67869be25cee859b73e7ce6aca5c8dd0e9fccf5458c795e93dff2b9074d4feda",
+      "name": "start-registry-helper"
+    },
+    {
+      "command": "docker build --file docker/Dockerfile.rust --tag ri-nfd-a38e1ffb-721586-rust:acceptance .",
+      "duration_ms": 302,
+      "exit_code": 0,
+      "log_sha256": "2531b41a0e05605faad1c4e73081a67bc2750f7f94bb590d7e66838dbe15ad9d",
+      "name": "build-rust-image"
+    },
+    {
+      "command": "docker build --file docker/Dockerfile.management --tag ri-nfd-a38e1ffb-721586-management:acceptance .",
+      "duration_ms": 227,
+      "exit_code": 0,
+      "log_sha256": "1e5f85bdb7d37ad71ad1664b98a6e531c0993727efb366b251b7421029629bc9",
+      "name": "build-management-image"
+    },
+    {
+      "command": "docker build --file deploy/norn-local/Dockerfile --build-arg NORN_COMMIT=a7be734ac2e829e2076d06d45719d2716abd3d72 --tag ri-nfd-a38e1ffb-721586-norn:acceptance deploy/norn-local",
+      "duration_ms": 130,
+      "exit_code": 0,
+      "log_sha256": "390cfe7df1515cab57fa8d4ca805a33739b9295fd1d8f12088903cf54c5998e0",
+      "name": "build-norn-image"
+    },
+    {
+      "command": "docker tag nginx:1.27.5-bookworm@sha256:6784fb0834aa7dbbe12e3d7471e69c290df3e6ba810dc38b34ae33d3c1c05f7d ri-nfd-a38e1ffb-721586-nginx:acceptance",
+      "duration_ms": 43,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "tag-nginx-local"
+    },
+    {
+      "command": "docker tag ri-nfd-a38e1ffb-721586-management:acceptance 127.0.0.1:58253/resolver-identity/management:a38e1ffb",
+      "duration_ms": 37,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "tag-management"
+    },
+    {
+      "command": "docker push 127.0.0.1:58253/resolver-identity/management:a38e1ffb",
+      "duration_ms": 4822,
+      "exit_code": 0,
+      "log_sha256": "a2b53725332fb1d4f3517c6222b5b1b8694b93f969f1ef010c7212d86ead8d17",
+      "name": "push-management"
+    },
+    {
+      "command": "docker image inspect 127.0.0.1:58253/resolver-identity/management:a38e1ffb --format {{json .RepoDigests}}",
+      "duration_ms": 27,
+      "exit_code": 0,
+      "log_sha256": "73a7559fc60a387cdf5f01b81160790c69567ef988a0ec473622a4c98b86afb8",
+      "name": "inspect-management-digest"
+    },
+    {
+      "command": "docker tag ri-nfd-a38e1ffb-721586-rust:acceptance 127.0.0.1:58253/resolver-identity/rust:a38e1ffb",
+      "duration_ms": 40,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "tag-rust"
+    },
+    {
+      "command": "docker push 127.0.0.1:58253/resolver-identity/rust:a38e1ffb",
+      "duration_ms": 3021,
+      "exit_code": 0,
+      "log_sha256": "0af3d703672d9dbcdb04b7cede6bb5d3486bf7ad3a1bf33bbbfdcadcf32586af",
+      "name": "push-rust"
+    },
+    {
+      "command": "docker image inspect 127.0.0.1:58253/resolver-identity/rust:a38e1ffb --format {{json .RepoDigests}}",
+      "duration_ms": 25,
+      "exit_code": 0,
+      "log_sha256": "904ea95eb7f15fb0caecbf6d8a1cecb9c43d75965af9c9c8fb926425ca5c5b46",
+      "name": "inspect-rust-digest"
+    },
+    {
+      "command": "docker tag ri-nfd-a38e1ffb-721586-norn:acceptance 127.0.0.1:58253/resolver-identity/norn:a38e1ffb",
+      "duration_ms": 25,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "tag-norn"
+    },
+    {
+      "command": "docker push 127.0.0.1:58253/resolver-identity/norn:a38e1ffb",
+      "duration_ms": 1216,
+      "exit_code": 0,
+      "log_sha256": "357135eadf9de308859c7e12ab49af4c1ed1d8da0a9012769580ba90a3e0d0b3",
+      "name": "push-norn"
+    },
+    {
+      "command": "docker image inspect 127.0.0.1:58253/resolver-identity/norn:a38e1ffb --format {{json .RepoDigests}}",
+      "duration_ms": 25,
+      "exit_code": 0,
+      "log_sha256": "b3a605e02d7b221ea2e3000db8c1c37e97152f84af5af9ba09410835e2a0bb79",
+      "name": "inspect-norn-digest"
+    },
+    {
+      "command": "docker tag ri-nfd-a38e1ffb-721586-nginx:acceptance 127.0.0.1:58253/resolver-identity/nginx:a38e1ffb",
+      "duration_ms": 31,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "tag-nginx"
+    },
+    {
+      "command": "docker push 127.0.0.1:58253/resolver-identity/nginx:a38e1ffb",
+      "duration_ms": 4308,
+      "exit_code": 0,
+      "log_sha256": "949f8dd0f9a29725403449d5cc7e809621d7ab465c15ee5bb785427d7d906456",
+      "name": "push-nginx"
+    },
+    {
+      "command": "docker image inspect 127.0.0.1:58253/resolver-identity/nginx:a38e1ffb --format {{json .RepoDigests}}",
+      "duration_ms": 22,
+      "exit_code": 0,
+      "log_sha256": "aac857d4f2646b7ee2d6cde1fbcf5941303cd9c5a7f9b190973930870def9732",
+      "name": "inspect-nginx-digest"
+    },
+    {
+      "command": "docker image inspect 127.0.0.1:58253/resolver-identity/norn@sha256:f4bb5cc1c3aee0bf7edbbd12c491c854a7bac13911a76751370874d2a485dd09 --format {{index .Config.Labels \"org.opencontainers.image.revision\"}}",
+      "duration_ms": 23,
+      "exit_code": 0,
+      "log_sha256": "e70c44ec09b3bce39deb3e4e4c7b78d7b2b4fb0cbb05c93c61fb4d1ff2071860",
+      "name": "verify-norn-revision"
+    },
+    {
+      "command": "docker image inspect 127.0.0.1:58253/resolver-identity/rust@sha256:f59562a593ddeb85467efeb5c950e6e89b48f1ef2bda209147923ec5272ad591 --format {{.Config.User}}",
+      "duration_ms": 25,
+      "exit_code": 0,
+      "log_sha256": "626f8f4d55ce7cf72b0f16d56dfae1e515925e557639b9135152f71daa465e98",
+      "name": "verify-rust-user"
+    },
+    {
+      "command": "docker image inspect 127.0.0.1:58253/resolver-identity/management@sha256:f9ecc793d0b213a8b39fb010c98d1bd29b67f155fe374c3baa87c29f1aa9c9ca --format {{.Config.User}}",
+      "duration_ms": 25,
+      "exit_code": 0,
+      "log_sha256": "47533bc4b523ba4f7d0ebef3d25fe654f5ec126bc6a161394b027f4355ed6f64",
+      "name": "verify-management-user"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/packages/management/resolver-identity-management-0.3.0-norn-field-rc1/install.sh --version 0.3.0-norn-field-rc1 --config-dir /home/lwc/fanxiangdiguijiexi/artifacts/field-deployment/0.3.0-norn-field-rc1/hosts/ri-hub-mgmt-01/config",
+      "duration_ms": 298,
+      "exit_code": 0,
+      "log_sha256": "b8fdf40e14e01cb7eb555722c01bf1bcfa331b77e46f10678bb086e60dfd38d5",
+      "name": "install-ri-hub-mgmt-01"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/packages/management/resolver-identity-management-0.3.0-norn-field-rc1/install.sh --version 0.3.0-norn-field-rc1 --config-dir /home/lwc/fanxiangdiguijiexi/artifacts/field-deployment/0.3.0-norn-field-rc1/hosts/ri-hub-mgmt-01/config",
+      "duration_ms": 298,
+      "exit_code": 0,
+      "log_sha256": "8bf02ea2665310d831c379393c52e926ae50d04b87815f2bc801d6a7c063c71e",
+      "name": "install-idempotent-ri-hub-mgmt-01"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/packages/norn-node/resolver-identity-norn-node-0.3.0-norn-field-rc1/install.sh --version 0.3.0-norn-field-rc1 --config-dir /home/lwc/fanxiangdiguijiexi/artifacts/field-deployment/0.3.0-norn-field-rc1/hosts/norn-node-a/config",
+      "duration_ms": 297,
+      "exit_code": 0,
+      "log_sha256": "83544d8e639b3aeb9fed2710960eda8eae54e67ac3a1ff5445d1b87466e50e51",
+      "name": "install-norn-node-a"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/packages/norn-node/resolver-identity-norn-node-0.3.0-norn-field-rc1/install.sh --version 0.3.0-norn-field-rc1 --config-dir /home/lwc/fanxiangdiguijiexi/artifacts/field-deployment/0.3.0-norn-field-rc1/hosts/norn-node-a/config",
+      "duration_ms": 328,
+      "exit_code": 0,
+      "log_sha256": "7f0d0e814a994558a69e6173bb64147870f011aa1fdba780bff3d9245d2bbf00",
+      "name": "install-idempotent-norn-node-a"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/packages/norn-node/resolver-identity-norn-node-0.3.0-norn-field-rc1/install.sh --version 0.3.0-norn-field-rc1 --config-dir /home/lwc/fanxiangdiguijiexi/artifacts/field-deployment/0.3.0-norn-field-rc1/hosts/norn-node-b/config",
+      "duration_ms": 291,
+      "exit_code": 0,
+      "log_sha256": "83544d8e639b3aeb9fed2710960eda8eae54e67ac3a1ff5445d1b87466e50e51",
+      "name": "install-norn-node-b"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/packages/norn-node/resolver-identity-norn-node-0.3.0-norn-field-rc1/install.sh --version 0.3.0-norn-field-rc1 --config-dir /home/lwc/fanxiangdiguijiexi/artifacts/field-deployment/0.3.0-norn-field-rc1/hosts/norn-node-b/config",
+      "duration_ms": 286,
+      "exit_code": 0,
+      "log_sha256": "7f0d0e814a994558a69e6173bb64147870f011aa1fdba780bff3d9245d2bbf00",
+      "name": "install-idempotent-norn-node-b"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/packages/resolver-link/resolver-identity-resolver-link-0.3.0-norn-field-rc1/install.sh --version 0.3.0-norn-field-rc1 --config-dir /home/lwc/fanxiangdiguijiexi/artifacts/field-deployment/0.3.0-norn-field-rc1/hosts/resolver-L01-r1/config",
+      "duration_ms": 294,
+      "exit_code": 0,
+      "log_sha256": "b20cc98a5567c3433cc617aed52924ea8d071dcee41fc3efebb1bfc1021eefb3",
+      "name": "install-resolver-L01-r1"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/packages/resolver-link/resolver-identity-resolver-link-0.3.0-norn-field-rc1/install.sh --version 0.3.0-norn-field-rc1 --config-dir /home/lwc/fanxiangdiguijiexi/artifacts/field-deployment/0.3.0-norn-field-rc1/hosts/resolver-L01-r1/config",
+      "duration_ms": 286,
+      "exit_code": 0,
+      "log_sha256": "f7cd2703b806a023e5e71ff840d24990d530ec79d12f71b3980a9cb99d6ac902",
+      "name": "install-idempotent-resolver-L01-r1"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/packages/resolver-link/resolver-identity-resolver-link-0.3.0-norn-field-rc1/install.sh --version 0.3.0-norn-field-rc1 --config-dir /home/lwc/fanxiangdiguijiexi/artifacts/field-deployment/0.3.0-norn-field-rc1/hosts/resolver-L01-r2/config",
+      "duration_ms": 304,
+      "exit_code": 0,
+      "log_sha256": "b20cc98a5567c3433cc617aed52924ea8d071dcee41fc3efebb1bfc1021eefb3",
+      "name": "install-resolver-L01-r2"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/packages/resolver-link/resolver-identity-resolver-link-0.3.0-norn-field-rc1/install.sh --version 0.3.0-norn-field-rc1 --config-dir /home/lwc/fanxiangdiguijiexi/artifacts/field-deployment/0.3.0-norn-field-rc1/hosts/resolver-L01-r2/config",
+      "duration_ms": 299,
+      "exit_code": 0,
+      "log_sha256": "f7cd2703b806a023e5e71ff840d24990d530ec79d12f71b3980a9cb99d6ac902",
+      "name": "install-idempotent-resolver-L01-r2"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/packages/resolver-link/resolver-identity-resolver-link-0.3.0-norn-field-rc1/install.sh --version 0.3.0-norn-field-rc1 --config-dir /home/lwc/fanxiangdiguijiexi/artifacts/field-deployment/0.3.0-norn-field-rc1/hosts/resolver-L01-r3/config",
+      "duration_ms": 299,
+      "exit_code": 0,
+      "log_sha256": "b20cc98a5567c3433cc617aed52924ea8d071dcee41fc3efebb1bfc1021eefb3",
+      "name": "install-resolver-L01-r3"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/packages/resolver-link/resolver-identity-resolver-link-0.3.0-norn-field-rc1/install.sh --version 0.3.0-norn-field-rc1 --config-dir /home/lwc/fanxiangdiguijiexi/artifacts/field-deployment/0.3.0-norn-field-rc1/hosts/resolver-L01-r3/config",
+      "duration_ms": 291,
+      "exit_code": 0,
+      "log_sha256": "f7cd2703b806a023e5e71ff840d24990d530ec79d12f71b3980a9cb99d6ac902",
+      "name": "install-idempotent-resolver-L01-r3"
+    },
+    {
+      "command": "docker run --rm --user 1000:1000 --volume /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/norn/a/config:/config --workdir /config 127.0.0.1:58253/resolver-identity/norn@sha256:f4bb5cc1c3aee0bf7edbbd12c491c854a7bac13911a76751370874d2a485dd09 /usr/local/bin/norn-generate",
+      "duration_ms": 403,
+      "exit_code": 0,
+      "log_sha256": "9f0ce52cc56b3ee7f90c87e4a72cd84ac35ada4192f423a211056a3b8cad7857",
+      "name": "generate-norn-node-a-config"
+    },
+    {
+      "command": "docker run --rm --user 1000:1000 --volume /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/norn/b/config:/config --workdir /config 127.0.0.1:58253/resolver-identity/norn@sha256:f4bb5cc1c3aee0bf7edbbd12c491c854a7bac13911a76751370874d2a485dd09 /usr/local/bin/norn-generate",
+      "duration_ms": 410,
+      "exit_code": 0,
+      "log_sha256": "9f0ce52cc56b3ee7f90c87e4a72cd84ac35ada4192f423a211056a3b8cad7857",
+      "name": "generate-norn-node-b-config"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key",
+      "duration_ms": 104,
+      "exit_code": 0,
+      "log_sha256": "618d4beeb0a47b8b42fd6586381f387b13bac6243609e813212a1cd8ad2a314f",
+      "name": "generate-lab-ca-key"
+    },
+    {
+      "command": "openssl req -x509 -new -sha256 -days 2 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -subj /CN=ri-nfd-a38e1ffb-721586-ca -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt",
+      "duration_ms": 9,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-lab-ca-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/norn/a/tls/node-a-server.key",
+      "duration_ms": 279,
+      "exit_code": 0,
+      "log_sha256": "03f25723e2dd0820524f2998a5908d89b17bca3e60a7f2ffdf087fbe2eaa0034",
+      "name": "generate-node-a-server-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/norn/a/tls/node-a-server.key -subj /CN=node-a-server -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/norn/a/tls/node-a-server.csr",
+      "duration_ms": 7,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-node-a-server-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/norn/a/tls/node-a-server.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 10 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/norn/a/tls/node-a-server.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/norn/a/tls/node-a-server.crt",
+      "duration_ms": 22,
+      "exit_code": 0,
+      "log_sha256": "a28e776fc6bd9b3ffe7b514cc4be4807bf21b83eefa06491d6325620fe32870e",
+      "name": "sign-node-a-server-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/norn/b/tls/node-b-server.key",
+      "duration_ms": 192,
+      "exit_code": 0,
+      "log_sha256": "f6d7e61a4082fe5272da8fb089f8bb3dc9f15bb579d1d472ccad6aade45af9eb",
+      "name": "generate-node-b-server-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/norn/b/tls/node-b-server.key -subj /CN=node-b-server -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/norn/b/tls/node-b-server.csr",
+      "duration_ms": 7,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-node-b-server-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/norn/b/tls/node-b-server.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 11 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/norn/b/tls/node-b-server.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/norn/b/tls/node-b-server.crt",
+      "duration_ms": 24,
+      "exit_code": 0,
+      "log_sha256": "ebef84e0e5e5e36ec163d460c1458acce89bb169daf100fdfd9f67e3dcf23b0d",
+      "name": "sign-node-b-server-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/norn-tls/management-norn-read.key",
+      "duration_ms": 738,
+      "exit_code": 0,
+      "log_sha256": "dda228c913ab6cbde17f5c5682790e4d1433ae2d6c60fc1dd359df3c6ea458c1",
+      "name": "generate-management-norn-read-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/norn-tls/management-norn-read.key -subj /CN=management-norn-read -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/norn-tls/management-norn-read.csr",
+      "duration_ms": 7,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-management-norn-read-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/norn-tls/management-norn-read.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 12 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/norn-tls/management-norn-read.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/norn-tls/management-norn-read.crt",
+      "duration_ms": 22,
+      "exit_code": 0,
+      "log_sha256": "ef8844657693f09c5ab7a6e8aae3d4918947cd7a79c050741837455b3148fd5d",
+      "name": "sign-management-norn-read-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/norn-tls/resolver-L01-r1-norn-read.key",
+      "duration_ms": 185,
+      "exit_code": 0,
+      "log_sha256": "cf51313fde7495ab78f86e3f4a4f3f3959c6a7a87ecf5cc046a8d7fee9a0fd45",
+      "name": "generate-resolver-L01-r1-norn-read-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/norn-tls/resolver-L01-r1-norn-read.key -subj /CN=resolver-L01-r1-norn-read -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/norn-tls/resolver-L01-r1-norn-read.csr",
+      "duration_ms": 7,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-resolver-L01-r1-norn-read-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/norn-tls/resolver-L01-r1-norn-read.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 13 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/norn-tls/resolver-L01-r1-norn-read.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/norn-tls/resolver-L01-r1-norn-read.crt",
+      "duration_ms": 22,
+      "exit_code": 0,
+      "log_sha256": "e8bb2733d26542d318d2ef5213819828326a434ae72a4ffa59ae74cfbb549697",
+      "name": "sign-resolver-L01-r1-norn-read-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/norn-tls/resolver-L01-r2-norn-read.key",
+      "duration_ms": 81,
+      "exit_code": 0,
+      "log_sha256": "b35e034db2a12d2a09cf6868d01ea8654e88dbcfa213a9d179d63d59045e4475",
+      "name": "generate-resolver-L01-r2-norn-read-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/norn-tls/resolver-L01-r2-norn-read.key -subj /CN=resolver-L01-r2-norn-read -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/norn-tls/resolver-L01-r2-norn-read.csr",
+      "duration_ms": 8,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-resolver-L01-r2-norn-read-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/norn-tls/resolver-L01-r2-norn-read.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 14 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/norn-tls/resolver-L01-r2-norn-read.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/norn-tls/resolver-L01-r2-norn-read.crt",
+      "duration_ms": 21,
+      "exit_code": 0,
+      "log_sha256": "74a47bf6a1b12085f846e274a2b6ef3208ae5ef6e5cd53ef15a80dd1d9466a1b",
+      "name": "sign-resolver-L01-r2-norn-read-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/norn-tls/resolver-L01-r3-norn-read.key",
+      "duration_ms": 155,
+      "exit_code": 0,
+      "log_sha256": "ef7de1397e387249564c6f5ccae20f990632a65ad2f76ff08a0c9e78ed4028c9",
+      "name": "generate-resolver-L01-r3-norn-read-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/norn-tls/resolver-L01-r3-norn-read.key -subj /CN=resolver-L01-r3-norn-read -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/norn-tls/resolver-L01-r3-norn-read.csr",
+      "duration_ms": 8,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-resolver-L01-r3-norn-read-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/norn-tls/resolver-L01-r3-norn-read.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 15 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/norn-tls/resolver-L01-r3-norn-read.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/norn-tls/resolver-L01-r3-norn-read.crt",
+      "duration_ms": 27,
+      "exit_code": 0,
+      "log_sha256": "1f8aa36b68cfa8f9605c8f3c725515e1b259479875b9e36980a9d17e79c8b914",
+      "name": "sign-resolver-L01-r3-norn-read-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm ED25519 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/secrets/identity-issuer.pem",
+      "duration_ms": 7,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-identity-issuer"
+    },
+    {
+      "command": "openssl pkey -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/secrets/identity-issuer.pem -outform DER -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/secrets/identity-issuer.private.der",
+      "duration_ms": 5,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "export-identity-issuer-private"
+    },
+    {
+      "command": "openssl pkey -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/secrets/identity-issuer.pem -pubout -outform DER -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/secrets/identity-issuer.public.der",
+      "duration_ms": 6,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "export-identity-issuer-public"
+    },
+    {
+      "command": "openssl genpkey -algorithm ED25519 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/secrets/snapshot-issuer.pem",
+      "duration_ms": 5,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-snapshot-issuer"
+    },
+    {
+      "command": "openssl pkey -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/secrets/snapshot-issuer.pem -outform DER -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/secrets/snapshot-issuer.private.der",
+      "duration_ms": 5,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "export-snapshot-issuer-private"
+    },
+    {
+      "command": "openssl pkey -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/secrets/snapshot-issuer.pem -pubout -outform DER -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/secrets/snapshot-issuer.public.der",
+      "duration_ms": 5,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "export-snapshot-issuer-public"
+    },
+    {
+      "command": "openssl genpkey -algorithm ED25519 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/secrets/agent-L01-r1.pem",
+      "duration_ms": 6,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-agent-L01-r1"
+    },
+    {
+      "command": "openssl pkey -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/secrets/agent-L01-r1.pem -outform DER -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/secrets/agent-L01-r1.private.der",
+      "duration_ms": 5,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "export-agent-L01-r1-private"
+    },
+    {
+      "command": "openssl pkey -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/secrets/agent-L01-r1.pem -pubout -outform DER -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/secrets/agent-L01-r1.public.der",
+      "duration_ms": 6,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "export-agent-L01-r1-public"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/agent-L01-r1.key",
+      "duration_ms": 167,
+      "exit_code": 0,
+      "log_sha256": "d041c09bdc239ee963134195360a5eb1b70b6ce97321a2f99dd1b843a2cb6bf5",
+      "name": "generate-agent-L01-r1-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/agent-L01-r1.key -subj /CN=agent-L01-r1 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/agent-L01-r1.csr",
+      "duration_ms": 7,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-agent-L01-r1-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/agent-L01-r1.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 16 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/agent-L01-r1.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/agent-L01-r1.crt",
+      "duration_ms": 22,
+      "exit_code": 0,
+      "log_sha256": "4e288a2768c8f25660a51854c709b2e5ab463fbb85cbad2ad1a7df207082ba38",
+      "name": "sign-agent-L01-r1-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/agent-client-L01-r1.key",
+      "duration_ms": 238,
+      "exit_code": 0,
+      "log_sha256": "626585b8f0064369ddb0af0ebed1e7a07e86bd0764547d9f7247d9804654213e",
+      "name": "generate-agent-client-L01-r1-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/agent-client-L01-r1.key -subj /CN=agent-client-L01-r1 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/agent-client-L01-r1.csr",
+      "duration_ms": 8,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-agent-client-L01-r1-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/agent-client-L01-r1.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 17 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/agent-client-L01-r1.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/agent-client-L01-r1.crt",
+      "duration_ms": 24,
+      "exit_code": 0,
+      "log_sha256": "b01e0e6f4c021ea48d92a246ac13e6963486b4992354471cb816a1d4fcb67821",
+      "name": "sign-agent-client-L01-r1-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/trace-client-L01-r1.key",
+      "duration_ms": 81,
+      "exit_code": 0,
+      "log_sha256": "f1b716320ed1ea00bd7534cbb756d7f4265bdc71f51527906e683381fc08dfc4",
+      "name": "generate-trace-client-L01-r1-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/trace-client-L01-r1.key -subj /CN=trace-client-L01-r1 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/trace-client-L01-r1.csr",
+      "duration_ms": 6,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-trace-client-L01-r1-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/trace-client-L01-r1.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 18 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/trace-client-L01-r1.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/trace-client-L01-r1.crt",
+      "duration_ms": 22,
+      "exit_code": 0,
+      "log_sha256": "d7d0d15caadfffb1b3fee842969724f8da0af0438eec2c0b785e94dd6d667088",
+      "name": "sign-trace-client-L01-r1-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/wrapper-client-L01-r1.key",
+      "duration_ms": 213,
+      "exit_code": 0,
+      "log_sha256": "5bf639bf42d3ba410be6d497b87da7b87e0f7e941629e2546f2e9af84a72e92d",
+      "name": "generate-wrapper-client-L01-r1-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/wrapper-client-L01-r1.key -subj /CN=wrapper-client-L01-r1 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/wrapper-client-L01-r1.csr",
+      "duration_ms": 7,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-wrapper-client-L01-r1-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/wrapper-client-L01-r1.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 19 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/wrapper-client-L01-r1.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r1/agent-tls/wrapper-client-L01-r1.crt",
+      "duration_ms": 20,
+      "exit_code": 0,
+      "log_sha256": "0b2aaafc96f4cb53e0fbe7a4bf9f279b77e22279e7eabc8cef33a73cde690bb4",
+      "name": "sign-wrapper-client-L01-r1-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm ED25519 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/secrets/agent-L01-r2.pem",
+      "duration_ms": 5,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-agent-L01-r2"
+    },
+    {
+      "command": "openssl pkey -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/secrets/agent-L01-r2.pem -outform DER -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/secrets/agent-L01-r2.private.der",
+      "duration_ms": 5,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "export-agent-L01-r2-private"
+    },
+    {
+      "command": "openssl pkey -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/secrets/agent-L01-r2.pem -pubout -outform DER -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/secrets/agent-L01-r2.public.der",
+      "duration_ms": 6,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "export-agent-L01-r2-public"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/agent-L01-r2.key",
+      "duration_ms": 183,
+      "exit_code": 0,
+      "log_sha256": "27c108e360978f30763190ec57164b49b5246dba079f3a87955ab75811c29fd0",
+      "name": "generate-agent-L01-r2-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/agent-L01-r2.key -subj /CN=agent-L01-r2 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/agent-L01-r2.csr",
+      "duration_ms": 7,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-agent-L01-r2-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/agent-L01-r2.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 20 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/agent-L01-r2.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/agent-L01-r2.crt",
+      "duration_ms": 25,
+      "exit_code": 0,
+      "log_sha256": "0a5c78bfddd398cf3cf781be0affe14ca9ec2c6cce8f0e04b34e6c5884f69e6c",
+      "name": "sign-agent-L01-r2-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/agent-client-L01-r2.key",
+      "duration_ms": 94,
+      "exit_code": 0,
+      "log_sha256": "009d007f35481a79d88b4b0608de0a7e57b900f3008c90f5266035536931820f",
+      "name": "generate-agent-client-L01-r2-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/agent-client-L01-r2.key -subj /CN=agent-client-L01-r2 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/agent-client-L01-r2.csr",
+      "duration_ms": 6,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-agent-client-L01-r2-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/agent-client-L01-r2.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 21 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/agent-client-L01-r2.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/agent-client-L01-r2.crt",
+      "duration_ms": 21,
+      "exit_code": 0,
+      "log_sha256": "cf8a2744d95eb62954db84da17bd9b125310639c5cb50746434a23d515787feb",
+      "name": "sign-agent-client-L01-r2-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/trace-client-L01-r2.key",
+      "duration_ms": 104,
+      "exit_code": 0,
+      "log_sha256": "11c4e3ac555e5ae8ad06a7b7df92b2c990300ccc8d825c1a1c5c9a02fdf332f5",
+      "name": "generate-trace-client-L01-r2-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/trace-client-L01-r2.key -subj /CN=trace-client-L01-r2 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/trace-client-L01-r2.csr",
+      "duration_ms": 8,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-trace-client-L01-r2-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/trace-client-L01-r2.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 22 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/trace-client-L01-r2.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/trace-client-L01-r2.crt",
+      "duration_ms": 24,
+      "exit_code": 0,
+      "log_sha256": "83af753ba0e890b6e276f06832b95d395f4788952667647fac677bf04577eb50",
+      "name": "sign-trace-client-L01-r2-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/wrapper-client-L01-r2.key",
+      "duration_ms": 192,
+      "exit_code": 0,
+      "log_sha256": "c3c429b26af459eb7477c86c5ec9ac58e9c1655d7dc93cf90b7b36d69dc965ef",
+      "name": "generate-wrapper-client-L01-r2-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/wrapper-client-L01-r2.key -subj /CN=wrapper-client-L01-r2 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/wrapper-client-L01-r2.csr",
+      "duration_ms": 8,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-wrapper-client-L01-r2-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/wrapper-client-L01-r2.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 23 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/wrapper-client-L01-r2.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r2/agent-tls/wrapper-client-L01-r2.crt",
+      "duration_ms": 21,
+      "exit_code": 0,
+      "log_sha256": "874f791330fc05ed30ef523a31a3e1cb4db184ecada5e9b237c3739cd7db33db",
+      "name": "sign-wrapper-client-L01-r2-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm ED25519 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/secrets/agent-L01-r3.pem",
+      "duration_ms": 6,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-agent-L01-r3"
+    },
+    {
+      "command": "openssl pkey -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/secrets/agent-L01-r3.pem -outform DER -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/secrets/agent-L01-r3.private.der",
+      "duration_ms": 4,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "export-agent-L01-r3-private"
+    },
+    {
+      "command": "openssl pkey -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/secrets/agent-L01-r3.pem -pubout -outform DER -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/secrets/agent-L01-r3.public.der",
+      "duration_ms": 5,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "export-agent-L01-r3-public"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/agent-L01-r3.key",
+      "duration_ms": 113,
+      "exit_code": 0,
+      "log_sha256": "2ff84775bb7e84afaf0a61f2e4df1ab27eb6d34f83cd37f739f007564c0d7379",
+      "name": "generate-agent-L01-r3-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/agent-L01-r3.key -subj /CN=agent-L01-r3 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/agent-L01-r3.csr",
+      "duration_ms": 8,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-agent-L01-r3-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/agent-L01-r3.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 24 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/agent-L01-r3.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/agent-L01-r3.crt",
+      "duration_ms": 27,
+      "exit_code": 0,
+      "log_sha256": "c5c568cb4671eaaa2174657e6b0bc58daa58720da4a317079e5ac60e5db86faa",
+      "name": "sign-agent-L01-r3-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/agent-client-L01-r3.key",
+      "duration_ms": 180,
+      "exit_code": 0,
+      "log_sha256": "74c94d76a8b00e4af1f89625ffd18f6c0e3562f5bb0761cd8c051fc4974f98a5",
+      "name": "generate-agent-client-L01-r3-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/agent-client-L01-r3.key -subj /CN=agent-client-L01-r3 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/agent-client-L01-r3.csr",
+      "duration_ms": 7,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-agent-client-L01-r3-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/agent-client-L01-r3.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 25 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/agent-client-L01-r3.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/agent-client-L01-r3.crt",
+      "duration_ms": 24,
+      "exit_code": 0,
+      "log_sha256": "fda9c5c2366c09add964c4d1fad521a8ac7281d72224e1d22fd9c20ac823bad4",
+      "name": "sign-agent-client-L01-r3-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/trace-client-L01-r3.key",
+      "duration_ms": 266,
+      "exit_code": 0,
+      "log_sha256": "b22adc47fdceabf70f41a930a780edcd5c33e766447b772e51328620030c3d7d",
+      "name": "generate-trace-client-L01-r3-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/trace-client-L01-r3.key -subj /CN=trace-client-L01-r3 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/trace-client-L01-r3.csr",
+      "duration_ms": 8,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-trace-client-L01-r3-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/trace-client-L01-r3.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 26 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/trace-client-L01-r3.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/trace-client-L01-r3.crt",
+      "duration_ms": 24,
+      "exit_code": 0,
+      "log_sha256": "be88c5f367bdf0b8f825a21a71451bf7dc9d7304631e4b464afa17b7299ddacc",
+      "name": "sign-trace-client-L01-r3-certificate"
+    },
+    {
+      "command": "openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/wrapper-client-L01-r3.key",
+      "duration_ms": 56,
+      "exit_code": 0,
+      "log_sha256": "5dd1233b42c6951e3035301bcab51be39c8656c8e55112c155f3dc1ffe9fc85b",
+      "name": "generate-wrapper-client-L01-r3-key"
+    },
+    {
+      "command": "openssl req -new -sha256 -key /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/wrapper-client-L01-r3.key -subj /CN=wrapper-client-L01-r3 -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/wrapper-client-L01-r3.csr",
+      "duration_ms": 7,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "generate-wrapper-client-L01-r3-csr"
+    },
+    {
+      "command": "openssl x509 -req -sha256 -days 2 -in /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/wrapper-client-L01-r3.csr -CA /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.crt -CAkey /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/private/ca/ca.key -set_serial 27 -extfile /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/wrapper-client-L01-r3.ext -out /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/resolver/resolver-L01-r3/agent-tls/wrapper-client-L01-r3.crt",
+      "duration_ms": 23,
+      "exit_code": 0,
+      "log_sha256": "4ff732f136e31c69752c1cbd7ff2a36e6db86d6202087e02dcd16ac041ad282c",
+      "name": "sign-wrapper-client-L01-r3-certificate"
+    },
+    {
+      "command": "docker network create ri-nfd-a38e1ffb-721586-field",
+      "duration_ms": 82,
+      "exit_code": 0,
+      "log_sha256": "81db8d01a35a2ca6c1d5bdda6a70fdd6ddc47e84312ae7d9a46428d1123ab30c",
+      "name": "create-field-network"
+    },
+    {
+      "command": "docker compose --project-name ri-norn-node-a --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-a/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-a/opt/resolver-identity/current/docker-compose.yml up -d norn-node",
+      "duration_ms": 455,
+      "exit_code": 0,
+      "log_sha256": "caa1a993375423fecc5c4eaed96f1d44c48fa0eb054440f1ac101391f9458bf4",
+      "name": "start-norn-node-a"
+    },
+    {
+      "command": "docker compose --project-name ri-norn-node-a --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-a/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-a/opt/resolver-identity/current/docker-compose.yml logs --no-color norn-node",
+      "duration_ms": 131,
+      "exit_code": 0,
+      "log_sha256": "b3df25780f40dff7a968e403483c92a5879aefbd08225231f879d1315a5e7902",
+      "name": "probe-peer-a"
+    },
+    {
+      "command": "docker compose --project-name ri-norn-node-a --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-a/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-a/opt/resolver-identity/current/docker-compose.yml up -d norn-read-proxy",
+      "duration_ms": 414,
+      "exit_code": 0,
+      "log_sha256": "61999038838c94675859cd204612535b07e9c83266a549b773f7b026ec08731e",
+      "name": "start-norn-read-a"
+    },
+    {
+      "command": "docker compose --project-name ri-norn-node-b --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/docker-compose.yml up -d norn-node norn-read-proxy",
+      "duration_ms": 819,
+      "exit_code": 0,
+      "log_sha256": "a5ddf783f9109ceac123bd66b78c2ff93e817ca62f0733ebfa555f23590ee593",
+      "name": "start-norn-node-b-and-read"
+    },
+    {
+      "command": "docker compose --project-name ri-norn-node-b --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/docker-compose.yml logs --no-color norn-node",
+      "duration_ms": 162,
+      "exit_code": 0,
+      "log_sha256": "f06564d13b857f26f80f8b2ed7161ff41a27d676946194017f818aeedd0870a0",
+      "name": "probe-peer-b"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/ri-hub-mgmt-01/opt/resolver-identity/current/registry-tool.sh sign --input /work/identities-v2.unsigned.json --private-key-file /run/field-secrets/identity-issuer.key --output /work/identities-v2.json",
+      "duration_ms": 814,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "sign-identities"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/ri-hub-mgmt-01/opt/resolver-identity/current/registry-tool.sh verify-identities --identities /work/identities-v2.json --issuer-keys /work/issuer-keys.json",
+      "duration_ms": 860,
+      "exit_code": 0,
+      "log_sha256": "c9a2e7dd1a5aa0e49d3651581748dd54874e9a62512c096b635b92874f548aa2",
+      "name": "verify-identities"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/ri-hub-mgmt-01/opt/resolver-identity/current/registry-tool.sh prepare --identities /work/identities-v2.json --issuer-keys /work/issuer-keys.json --root-version 1 --chain-id 20001 --contract-address 0x1000000000000000000000000000000000000001 --contract-code-hash 0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499 --output /work/registry-plan-v2.json",
+      "duration_ms": 802,
+      "exit_code": 0,
+      "log_sha256": "6b74aff240195d87c896ef4032863b9670e255401220722f737faa1626f00de0",
+      "name": "prepare-registry-plan"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/ri-hub-mgmt-01/opt/resolver-identity/current/registry-tool.sh prepare-norn-snapshot --plan /work/registry-plan-v2.json --expected-plan-hash 0x915b31b56ec2cb21636e30c00743ba5e59fc03f58b2516203058174ca195a466 --chain-id 20001 --genesis-block-hash 0x22854e8e9fd9562d0fdb72c7f18eeadfd79cf64ca8fedbacb6ee95cadbdee687 --registry-address 0x1000000000000000000000000000000000000001 --registry-key resolver-identity-registry-v2 --snapshot-version 1 --checkpoint-height 1 --checkpoint-hash 0xd9911906323f74717bc9fc7eca0c5b2f57bffadd3b705ee04edd10e9af5fae4c --valid-until 1785563593 --issuer norn-registry --key-id snapshot-key-1 --private-key-file /run/field-secrets/snapshot-issuer.key --issuer-keys /work/issuer-keys.json --output /work/registry-snapshot-v1.json",
+      "duration_ms": 653,
+      "exit_code": 0,
+      "log_sha256": "0aa4f2fba38e3d35dceff6d5594735ef50ded8d5df0597e93bef73e2b172d078",
+      "name": "prepare-norn-snapshot"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/ri-hub-mgmt-01/opt/resolver-identity/current/registry-tool.sh verify-norn-snapshot --snapshot /work/registry-snapshot-v1.json --issuer-keys /work/issuer-keys.json",
+      "duration_ms": 710,
+      "exit_code": 0,
+      "log_sha256": "7f27f00252ebdcdd6573ed26e511e7b00d5e6b858e7eb40c3f3b17ef30fea6ca",
+      "name": "verify-norn-snapshot"
+    },
+    {
+      "command": "docker run --rm --network ri-nfd-a38e1ffb-721586-field --env NORN_PUBLISHER_TLS_CA_FILE=/tls/ca.crt --env NORN_PUBLISHER_TLS_CLIENT_CERT_FILE=/tls/client.crt --env NORN_PUBLISHER_TLS_CLIENT_KEY_FILE=/tls/client.key --volume /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/norn-tls:/tls:ro --volume /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/work/registry-snapshot-v1.json:/input/snapshot.json:ro 127.0.0.1:58253/resolver-identity/norn@sha256:f4bb5cc1c3aee0bf7edbbd12c491c854a7bac13911a76751370874d2a485dd09 /usr/local/bin/norn-local-publisher norn-read-a:8443 1000000000000000000000000000000000000001 resolver-identity-registry-v2 /input/snapshot.json",
+      "duration_ms": 525,
+      "exit_code": 1,
+      "log_sha256": "aa71b8ac11383e479e67e8ec22f46b383304ff65fbe717bfc19d1944d7b8417b",
+      "name": "read-proxy-write-method-denied"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/ri-hub-mgmt-01/opt/resolver-identity/current/publish-norn.sh /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/management/work/registry-snapshot-v1.json 0x1000000000000000000000000000000000000001 resolver-identity-registry-v2",
+      "duration_ms": 510,
+      "exit_code": 0,
+      "log_sha256": "816b64744943bdd00fa8b244b5eb79f191662a7aef1e06dd612fc906a9450409",
+      "name": "publish-snapshot-from-package"
+    },
+    {
+      "command": "docker compose --project-name ri-resolver-l01-r1 --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r1/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r1/opt/resolver-identity/current/docker-compose.yml run --rm --no-deps registry-sync",
+      "duration_ms": 818,
+      "exit_code": 0,
+      "log_sha256": "cfd804cc96482d928248a5be572010227c3f45154609681c37f03a380d99007a",
+      "name": "sync-resolver-L01-r1"
+    },
+    {
+      "command": "docker compose --project-name ri-resolver-l01-r2 --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r2/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r2/opt/resolver-identity/current/docker-compose.yml run --rm --no-deps registry-sync",
+      "duration_ms": 789,
+      "exit_code": 0,
+      "log_sha256": "27aaba36945cb840e15e46d07e5e48ec3eca8a32d7361a9ea12e15459f7ed9c7",
+      "name": "sync-resolver-L01-r2"
+    },
+    {
+      "command": "docker compose --project-name ri-resolver-l01-r3 --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r3/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r3/opt/resolver-identity/current/docker-compose.yml run --rm --no-deps registry-sync",
+      "duration_ms": 804,
+      "exit_code": 0,
+      "log_sha256": "3528e1dc2f4fc7aca08503f15e8b6676e81325cb665ab6448d47789fe0aea3d4",
+      "name": "sync-resolver-L01-r3"
+    },
+    {
+      "command": "docker compose --project-name ri-resolver-l01-r1 --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r1/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r1/opt/resolver-identity/current/docker-compose.yml up -d --no-deps agent",
+      "duration_ms": 628,
+      "exit_code": 0,
+      "log_sha256": "13fb48bf36370cc9ae3ac20e6b76bcd87c366ec9bd627214c81522f98bd4d095",
+      "name": "start-agent-resolver-L01-r1"
+    },
+    {
+      "command": "docker compose --project-name ri-resolver-l01-r1 --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r1/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r1/opt/resolver-identity/current/docker-compose.yml ps -q agent",
+      "duration_ms": 230,
+      "exit_code": 0,
+      "log_sha256": "85530e05fdf176f561fc70eb3f2867679879e9a6ef62527808803f1a708a8791",
+      "name": "inspect-agent-id-resolver-L01-r1"
+    },
+    {
+      "command": "docker inspect 1104f33f4d812815227289259c874b9e7ff7a48edf7723104f9b0d460856934a",
+      "duration_ms": 300,
+      "exit_code": 0,
+      "log_sha256": "f9da69edf1d626b7508db3664e867d57e5102eef250556962f778b2e2d33422f",
+      "name": "inspect-agent-resolver-L01-r1"
+    },
+    {
+      "command": "docker compose --project-name ri-resolver-l01-r1 --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r1/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r1/opt/resolver-identity/current/docker-compose.yml ps -q wrapper",
+      "duration_ms": 182,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "inspect-wrapper-id-resolver-L01-r1"
+    },
+    {
+      "command": "docker compose --project-name ri-resolver-l01-r2 --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r2/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r2/opt/resolver-identity/current/docker-compose.yml up -d --no-deps agent",
+      "duration_ms": 864,
+      "exit_code": 0,
+      "log_sha256": "eafb7943cee8e3760234947ce63394afe3296f395b80e75c53fe7155254a0e01",
+      "name": "start-agent-resolver-L01-r2"
+    },
+    {
+      "command": "docker compose --project-name ri-resolver-l01-r2 --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r2/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r2/opt/resolver-identity/current/docker-compose.yml ps -q agent",
+      "duration_ms": 227,
+      "exit_code": 0,
+      "log_sha256": "5c998da060aae96a4325291d81051ea0e702cc8f56c32bc7f2c722af6c92f444",
+      "name": "inspect-agent-id-resolver-L01-r2"
+    },
+    {
+      "command": "docker inspect 462f2acdc2c74f6c01635d981fea51b9909d1b2fcb8d5aca97a796f2fd44c435",
+      "duration_ms": 688,
+      "exit_code": 0,
+      "log_sha256": "2b866a1bd6a3d958526d29d05eb7f0f96cab805b7dca4a779b41e1b3de09df6c",
+      "name": "inspect-agent-resolver-L01-r2"
+    },
+    {
+      "command": "docker compose --project-name ri-resolver-l01-r2 --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r2/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r2/opt/resolver-identity/current/docker-compose.yml ps -q wrapper",
+      "duration_ms": 165,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "inspect-wrapper-id-resolver-L01-r2"
+    },
+    {
+      "command": "docker compose --project-name ri-resolver-l01-r3 --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r3/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r3/opt/resolver-identity/current/docker-compose.yml up -d --no-deps agent",
+      "duration_ms": 1224,
+      "exit_code": 0,
+      "log_sha256": "58a730af08d9d24a12d90ad5951515d43758779a6de6f932435d6ce486db9be8",
+      "name": "start-agent-resolver-L01-r3"
+    },
+    {
+      "command": "docker compose --project-name ri-resolver-l01-r3 --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r3/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r3/opt/resolver-identity/current/docker-compose.yml ps -q agent",
+      "duration_ms": 280,
+      "exit_code": 0,
+      "log_sha256": "f1dedf08472a014df14ae80cf499f68637b51fe4a6e1d7e30f6e648f438d702c",
+      "name": "inspect-agent-id-resolver-L01-r3"
+    },
+    {
+      "command": "docker inspect ff33176934728056f81d145e4c7ffa625366aa9fd1589e8195ef885a7cfc1397",
+      "duration_ms": 409,
+      "exit_code": 0,
+      "log_sha256": "36c64cf05a64137ba590da2fa21c44b1b25c9b8f4f76508d33cc5759a4decebf",
+      "name": "inspect-agent-resolver-L01-r3"
+    },
+    {
+      "command": "docker compose --project-name ri-resolver-l01-r3 --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r3/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r3/opt/resolver-identity/current/docker-compose.yml ps -q wrapper",
+      "duration_ms": 166,
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "name": "inspect-wrapper-id-resolver-L01-r3"
+    },
+    {
+      "command": "docker compose --project-name ri-norn-node-b --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/docker-compose.yml stop norn-read-proxy",
+      "duration_ms": 474,
+      "exit_code": 0,
+      "log_sha256": "706dac427c4fdf34c96aec365397707900f88a748f9b0d45bf1aabaaa7cdaee9",
+      "name": "stop-norn-read-b"
+    },
+    {
+      "command": "docker compose --project-name ri-resolver-l01-r1 --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r1/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r1/opt/resolver-identity/current/docker-compose.yml run --rm --no-deps registry-sync",
+      "duration_ms": 1166,
+      "exit_code": 1,
+      "log_sha256": "4bdc5fbcd2bdaadfd0b3c0255760074ad9b9f03ab4ed473dee7d930d48d4c46a",
+      "name": "single-node-failure-sync"
+    },
+    {
+      "command": "docker compose --project-name ri-norn-node-b --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/docker-compose.yml up -d norn-read-proxy",
+      "duration_ms": 686,
+      "exit_code": 0,
+      "log_sha256": "b4f01af244f89bf00b6dbd818d42d521cb47d2ac80709fe831ac8bc86ba133c2",
+      "name": "restart-norn-read-b"
+    },
+    {
+      "command": "docker compose --project-name ri-norn-node-b --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/docker-compose.yml down --remove-orphans",
+      "duration_ms": 1184,
+      "exit_code": 0,
+      "log_sha256": "f1054b2439e62b6f7841b4644e9d10dd4102aabf516a1535fb4061d77d489f9f",
+      "name": "stop-node-b-for-disagreement"
+    },
+    {
+      "command": "docker compose --project-name ri-norn-node-b --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/docker-compose.yml up -d norn-node norn-read-proxy",
+      "duration_ms": 1226,
+      "exit_code": 0,
+      "log_sha256": "a5ddf783f9109ceac123bd66b78c2ff93e817ca62f0733ebfa555f23590ee593",
+      "name": "start-isolated-node-b-chain"
+    },
+    {
+      "command": "docker compose --project-name ri-resolver-l01-r1 --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r1/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r1/opt/resolver-identity/current/docker-compose.yml run --rm --no-deps registry-sync",
+      "duration_ms": 758,
+      "exit_code": 1,
+      "log_sha256": "fdefea2eb50e3d2cb29c2937f1624718793288050381ad6a57e0128f9f66c18f",
+      "name": "dual-node-disagreement-sync"
+    },
+    {
+      "command": "docker compose --project-name ri-norn-node-b --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/docker-compose.yml down --remove-orphans",
+      "duration_ms": 874,
+      "exit_code": 0,
+      "log_sha256": "f1054b2439e62b6f7841b4644e9d10dd4102aabf516a1535fb4061d77d489f9f",
+      "name": "stop-isolated-node-b-chain"
+    },
+    {
+      "command": "docker compose --project-name ri-norn-node-b --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/docker-compose.yml up -d norn-node norn-read-proxy",
+      "duration_ms": 825,
+      "exit_code": 0,
+      "log_sha256": "a5ddf783f9109ceac123bd66b78c2ff93e817ca62f0733ebfa555f23590ee593",
+      "name": "restore-node-b-chain"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/upgrade-packages/0.3.0-norn-field-rc2/management/resolver-identity-management-0.3.0-norn-field-rc2/upgrade.sh --version 0.3.0-norn-field-rc2 --config-dir /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/upgrade-artifacts-0.3.0-norn-field-rc2/0.3.0-norn-field-rc2/hosts/ri-hub-mgmt-01/config",
+      "duration_ms": 317,
+      "exit_code": 0,
+      "log_sha256": "bdcc4355ea95786bae22ac8e02d42732899b0e734cb483903ef4cce1adbf8fa6",
+      "name": "upgrade-ri-hub-mgmt-01"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/ri-hub-mgmt-01/opt/resolver-identity/current/rollback.sh",
+      "duration_ms": 151,
+      "exit_code": 0,
+      "log_sha256": "58f4d36341a3efd17421437cef02bc2c242b794a41d7740a90363958e968b5b7",
+      "name": "rollback-ri-hub-mgmt-01"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/upgrade-packages/0.3.0-norn-field-rc2/norn-node/resolver-identity-norn-node-0.3.0-norn-field-rc2/upgrade.sh --version 0.3.0-norn-field-rc2 --config-dir /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/upgrade-artifacts-0.3.0-norn-field-rc2/0.3.0-norn-field-rc2/hosts/norn-node-a/config",
+      "duration_ms": 316,
+      "exit_code": 0,
+      "log_sha256": "0cdda64da6a3b8d5f02875394dbae485cd153c75b7c52ba4b164b40140df678c",
+      "name": "upgrade-norn-node-a"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-a/opt/resolver-identity/current/rollback.sh",
+      "duration_ms": 163,
+      "exit_code": 0,
+      "log_sha256": "b21047b6782f0ec3d7fc4b177573890a62798e6d301157ba22f4895daea12c2e",
+      "name": "rollback-norn-node-a"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/upgrade-packages/0.3.0-norn-field-rc2/norn-node/resolver-identity-norn-node-0.3.0-norn-field-rc2/upgrade.sh --version 0.3.0-norn-field-rc2 --config-dir /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/upgrade-artifacts-0.3.0-norn-field-rc2/0.3.0-norn-field-rc2/hosts/norn-node-b/config",
+      "duration_ms": 342,
+      "exit_code": 0,
+      "log_sha256": "0cdda64da6a3b8d5f02875394dbae485cd153c75b7c52ba4b164b40140df678c",
+      "name": "upgrade-norn-node-b"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/rollback.sh",
+      "duration_ms": 180,
+      "exit_code": 0,
+      "log_sha256": "048c103ec8cd35600bd7d7d62bccbb1ebecd25c0d9ba57713f6cda367036f42c",
+      "name": "rollback-norn-node-b"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/upgrade-packages/0.3.0-norn-field-rc2/resolver-link/resolver-identity-resolver-link-0.3.0-norn-field-rc2/upgrade.sh --version 0.3.0-norn-field-rc2 --config-dir /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/upgrade-artifacts-0.3.0-norn-field-rc2/0.3.0-norn-field-rc2/hosts/resolver-L01-r1/config",
+      "duration_ms": 386,
+      "exit_code": 0,
+      "log_sha256": "3a51e51e946aa2fb38e442c19d0ebe93635c4f43c48db42d47ae830389e16346",
+      "name": "upgrade-resolver-L01-r1"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r1/opt/resolver-identity/current/rollback.sh",
+      "duration_ms": 230,
+      "exit_code": 0,
+      "log_sha256": "64c5bf0caa7098051e15d1a14be2fb6cff0c92a8057abf51671f27f0bff6ff10",
+      "name": "rollback-resolver-L01-r1"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/upgrade-packages/0.3.0-norn-field-rc2/resolver-link/resolver-identity-resolver-link-0.3.0-norn-field-rc2/upgrade.sh --version 0.3.0-norn-field-rc2 --config-dir /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/upgrade-artifacts-0.3.0-norn-field-rc2/0.3.0-norn-field-rc2/hosts/resolver-L01-r2/config",
+      "duration_ms": 459,
+      "exit_code": 0,
+      "log_sha256": "3a51e51e946aa2fb38e442c19d0ebe93635c4f43c48db42d47ae830389e16346",
+      "name": "upgrade-resolver-L01-r2"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r2/opt/resolver-identity/current/rollback.sh",
+      "duration_ms": 225,
+      "exit_code": 0,
+      "log_sha256": "bff9350a2e1bda467543b0fe1a085e5e8c7f2dc5ed364371833dbd2c55048b5d",
+      "name": "rollback-resolver-L01-r2"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/upgrade-packages/0.3.0-norn-field-rc2/resolver-link/resolver-identity-resolver-link-0.3.0-norn-field-rc2/upgrade.sh --version 0.3.0-norn-field-rc2 --config-dir /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/upgrade-artifacts-0.3.0-norn-field-rc2/0.3.0-norn-field-rc2/hosts/resolver-L01-r3/config",
+      "duration_ms": 389,
+      "exit_code": 0,
+      "log_sha256": "3a51e51e946aa2fb38e442c19d0ebe93635c4f43c48db42d47ae830389e16346",
+      "name": "upgrade-resolver-L01-r3"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r3/opt/resolver-identity/current/rollback.sh",
+      "duration_ms": 238,
+      "exit_code": 0,
+      "log_sha256": "b6d0f819cf36e5f687d354b59ffd10cf0e152c09fde4d6d3d8200f60cd542ad4",
+      "name": "rollback-resolver-L01-r3"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/upgrade-packages/0.3.0-norn-field-rc3/management/resolver-identity-management-0.3.0-norn-field-rc3/upgrade.sh --version 0.3.0-norn-field-rc3 --config-dir /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/failing-config",
+      "duration_ms": 262,
+      "exit_code": 1,
+      "log_sha256": "f70d8a3cf4ab2578e27599efcb4c1d646c30be857f75222fe387b6a3caca0cbc",
+      "name": "upgrade-health-failure-auto-rollback"
+    },
+    {
+      "command": "docker compose --project-name ri-resolver-l01-r1 --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r1/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r1/opt/resolver-identity/current/docker-compose.yml down --remove-orphans",
+      "duration_ms": 394,
+      "exit_code": 0,
+      "log_sha256": "cfd41a095614299ad11c7f8d59764aee9496b9815933379533e18ac504133267",
+      "name": "stop-resolver-L01-r1"
+    },
+    {
+      "command": "docker compose --project-name ri-resolver-l01-r2 --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r2/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r2/opt/resolver-identity/current/docker-compose.yml down --remove-orphans",
+      "duration_ms": 500,
+      "exit_code": 0,
+      "log_sha256": "aa7c32575f5ca1217689de18f82505d62b854f7d53029a003df8f476f6a69faa",
+      "name": "stop-resolver-L01-r2"
+    },
+    {
+      "command": "docker compose --project-name ri-resolver-l01-r3 --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r3/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r3/opt/resolver-identity/current/docker-compose.yml down --remove-orphans",
+      "duration_ms": 466,
+      "exit_code": 0,
+      "log_sha256": "f1abd6961d7beb59f4618ecd79e9a8b592ea266acc9e830e4c7ba8afc4417b95",
+      "name": "stop-resolver-L01-r3"
+    },
+    {
+      "command": "docker compose --project-name ri-norn-node-a --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-a/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-a/opt/resolver-identity/current/docker-compose.yml down --remove-orphans",
+      "duration_ms": 932,
+      "exit_code": 0,
+      "log_sha256": "638debe3284222b708ef154398e3d0afadce0d26154f6d4381b3981eb2e11c08",
+      "name": "stop-norn-node-a"
+    },
+    {
+      "command": "docker compose --project-name ri-norn-node-b --env-file /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/config/.env -f /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/docker-compose.yml down --remove-orphans",
+      "duration_ms": 973,
+      "exit_code": 0,
+      "log_sha256": "f1054b2439e62b6f7841b4644e9d10dd4102aabf516a1535fb4061d77d489f9f",
+      "name": "stop-norn-node-b"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/ri-hub-mgmt-01/opt/resolver-identity/current/uninstall.sh",
+      "duration_ms": 37,
+      "exit_code": 0,
+      "log_sha256": "c7d57391e2d9fc236f954f6df0a2cfe35daf17f628cc6ee5f30f995982d9ef22",
+      "name": "ordinary-uninstall-ri-hub-mgmt-01"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-a/opt/resolver-identity/current/uninstall.sh",
+      "duration_ms": 39,
+      "exit_code": 0,
+      "log_sha256": "c7d57391e2d9fc236f954f6df0a2cfe35daf17f628cc6ee5f30f995982d9ef22",
+      "name": "ordinary-uninstall-norn-node-a"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/norn-node-b/opt/resolver-identity/current/uninstall.sh",
+      "duration_ms": 39,
+      "exit_code": 0,
+      "log_sha256": "c7d57391e2d9fc236f954f6df0a2cfe35daf17f628cc6ee5f30f995982d9ef22",
+      "name": "ordinary-uninstall-norn-node-b"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r1/opt/resolver-identity/current/uninstall.sh",
+      "duration_ms": 38,
+      "exit_code": 0,
+      "log_sha256": "c7d57391e2d9fc236f954f6df0a2cfe35daf17f628cc6ee5f30f995982d9ef22",
+      "name": "ordinary-uninstall-resolver-L01-r1"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r2/opt/resolver-identity/current/uninstall.sh",
+      "duration_ms": 41,
+      "exit_code": 0,
+      "log_sha256": "c7d57391e2d9fc236f954f6df0a2cfe35daf17f628cc6ee5f30f995982d9ef22",
+      "name": "ordinary-uninstall-resolver-L01-r2"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/servers/resolver-L01-r3/opt/resolver-identity/current/uninstall.sh",
+      "duration_ms": 38,
+      "exit_code": 0,
+      "log_sha256": "c7d57391e2d9fc236f954f6df0a2cfe35daf17f628cc6ee5f30f995982d9ef22",
+      "name": "ordinary-uninstall-resolver-L01-r3"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/packages/management/resolver-identity-management-0.3.0-norn-field-rc1/install.sh --version 0.3.0-norn-field-rc1 --config-dir /tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/purge-test/config",
+      "duration_ms": 416,
+      "exit_code": 0,
+      "log_sha256": "b8fdf40e14e01cb7eb555722c01bf1bcfa331b77e46f10678bb086e60dfd38d5",
+      "name": "install-purge-test"
+    },
+    {
+      "command": "/tmp/ri-nfd-a38e1ffb-721586-xhvc2_ak/purge-test/install/current/uninstall.sh --purge-data",
+      "duration_ms": 44,
+      "exit_code": 0,
+      "log_sha256": "a9f78d91a6e9ec44c3d23a982c4bb641c115ff2dc07f0e4d563e16f917600a2b",
+      "name": "explicit-purge-data"
+    }
+  ],
+  "test_counts": {
+    "field_delivery_passed": 14,
+    "foundry_passed": 14,
+    "python_passed": 168,
+    "rust_ignored": 1,
+    "rust_passed": 74
+  }
+}

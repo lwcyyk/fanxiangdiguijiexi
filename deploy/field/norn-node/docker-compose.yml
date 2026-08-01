@@ -1,0 +1,58 @@
+services:
+  norn-node:
+    image: ${RI_NORN_IMAGE:?pin Go-Norn image digest}
+    hostname: ${RI_NORN_NODE_HOSTNAME:?required}
+    user: "${RI_NORN_UID:-10003}:${RI_NORN_GID:-10003}"
+    entrypoint: ["/field/start-norn.sh"]
+    environment:
+      RI_NORN_ROLE: ${RI_NORN_ROLE:?node-a or node-b}
+      RI_NORN_BOOTSTRAP: ${RI_NORN_BOOTSTRAP:-}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    volumes:
+      - ./start-norn.sh:/field/start-norn.sh:ro
+      - ${RI_NORN_CONFIG_DIR:?required}:/config:ro
+      - ${RI_FIELD_DATA_DIR:?required}:/data
+    ports:
+      - "${RI_NORN_NATIVE_BIND_ADDRESS:-127.0.0.1}:${RI_NORN_NATIVE_LOOPBACK_PORT:-45555}:45555/tcp"
+      - "${RI_NORN_P2P_BIND_ADDRESS:?required}:31258:31258/tcp"
+    networks:
+      field:
+        aliases:
+          - "${RI_NORN_NODE_HOSTNAME:?required}"
+    logging:
+      driver: json-file
+      options:
+        max-size: ${RI_DOCKER_LOG_MAX_SIZE:-50m}
+        max-file: ${RI_DOCKER_LOG_MAX_FILES:-5}
+
+  norn-read-proxy:
+    image: ${RI_NGINX_IMAGE:?pin nginx image digest}
+    hostname: ${RI_NORN_READ_HOSTNAME:?required}
+    user: "${RI_NORN_UID:-10003}:${RI_NORN_GID:-10003}"
+    entrypoint: ["/field/start-read-proxy.sh"]
+    environment:
+      RI_NORN_NODE_HOSTNAME: ${RI_NORN_NODE_HOSTNAME:?required}
+    depends_on: [norn-node]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    tmpfs: [/var/cache/nginx, /var/run, /tmp]
+    volumes:
+      - ./nginx-readonly.conf:/field/nginx-readonly.conf:ro
+      - ./start-read-proxy.sh:/field/start-read-proxy.sh:ro
+      - ${RI_NORN_TLS_DIR:?required}:/tls:ro
+    ports:
+      - "${RI_NORN_READ_BIND_ADDRESS:?required}:${RI_NORN_READ_PORT:-8443}:8443/tcp"
+    networks:
+      field:
+        aliases:
+          - "${RI_NORN_READ_HOSTNAME:?required}"
+
+networks:
+  field:
+    external: true
+    name: ${RI_FIELD_NETWORK:?required}
