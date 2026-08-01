@@ -233,6 +233,119 @@ jobs:
           docker run --rm --entrypoint /bin/sh resolver-identity-management:ci \
             -c 'test ! -e /run/field-secrets && test ! -e /root/.ssh'
 
+  full-rc-acceptance:
+    name: full Go-Norn + Knot RC acceptance
+    if: github.event_name == 'pull_request' && github.head_ref == 'release/norn-knot-rc1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    needs: [rust, python, solidity, compose, field-delivery, knot-trace-image, management-image]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          ref: release/norn-knot-rc1
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13.11"
+          cache: pip
+          cache-dependency-path: requirements-ci.lock
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1
+        with:
+          version: v1.7.1
+      - name: Install fixed acceptance dependencies
+        run: |
+          rustup toolchain install 1.97.0 --profile minimal --component clippy,rustfmt
+          python -m pip install --disable-pip-version-check --require-hashes -r requirements-ci.lock
+          python -m pip install --disable-pip-version-check --no-deps --no-build-isolation -e .
+          sudo apt-get update
+          sudo apt-get install --yes jq shellcheck=0.9.0-1 sqlite3
+          install -d "$HOME/.docker/cli-plugins"
+          curl --fail --location --silent --show-error \
+            https://github.com/docker/compose/releases/download/v5.0.0/docker-compose-linux-x86_64 \
+            --output "$HOME/.docker/cli-plugins/docker-compose"
+          echo '5091bac5729ce968c602d157c2f0b959b7b367d4efb70aa864eb9ae78eebe13e  /home/runner/.docker/cli-plugins/docker-compose' |
+            sha256sum --check --strict
+          chmod 0755 "$HOME/.docker/cli-plugins/docker-compose"
+          test "$(docker compose version --short)" = "5.0.0"
+      - name: Build isolated real Knot acceptance runner
+        run: |
+          docker build --pull \
+            --file docker/Dockerfile.knot-trace \
+            --tag resolver-identity-knot-trace:rc-acceptance .
+          cat >"$RUNNER_TEMP/Dockerfile.trace-acceptance" <<'EOF'
+          FROM rust:1.97.0-bookworm@sha256:8fa55b2f3ddf97471ab6a767bfa3f37e6bad0986ba823e75fea57e2a2a5c3073 AS rust-toolchain
+          FROM resolver-identity-knot-trace:rc-acceptance
+          USER 0:0
+          RUN apt-get update \
+              && apt-get install --yes --no-install-recommends \
+                 build-essential ca-certificates cmake git knot knot-dnsutils \
+                 pkgconf python3 \
+              && rm -rf /var/lib/apt/lists/*
+          COPY --from=rust-toolchain /usr/local/cargo /usr/local/cargo
+          COPY --from=rust-toolchain /usr/local/rustup /usr/local/rustup
+          ENV PATH=/usr/local/cargo/bin:/usr/local/rustup/bin:$PATH \
+              RUSTUP_HOME=/usr/local/rustup \
+              CARGO_HOME=/usr/local/cargo
+          ENTRYPOINT []
+          EOF
+          docker build \
+            --file "$RUNNER_TEMP/Dockerfile.trace-acceptance" \
+            --tag resolver-identity-knot-trace-acceptance:rc1 .
+      - name: Generate real Knot Trace evidence
+        run: |
+          docker run --rm --network host \
+            --volume "$PWD:/workspace" \
+            --volume "$RUNNER_TEMP:/evidence" \
+            --workdir /workspace \
+            resolver-identity-knot-trace-acceptance:rc1 \
+            python3 tools/run_production_trace_acceptance.py \
+              --kresd /usr/sbin/kresd \
+              --knotd /usr/sbin/knotd \
+              --kdig /usr/bin/kdig \
+              --concurrency 128 \
+              --output /evidence/production-resolver-trace.json
+      - name: Run six-server field package acceptance
+        run: |
+          scripts/field-delivery/run-acceptance.sh \
+            --trace-acceptance "$RUNNER_TEMP/production-resolver-trace.json"
+      - name: Run clean Go-Norn multichain acceptance
+        env:
+          NORN_CLEAN_BUILD: "true"
+        run: |
+          cleanup() { scripts/norn/99-stop.sh || true; }
+          trap cleanup EXIT
+          scripts/norn/00-build.sh
+          scripts/norn/01-initialize.sh
+          scripts/norn/02-start.sh
+          scripts/norn/03-prepare-snapshot.sh
+          scripts/norn/04-publish-and-sync.sh
+          scripts/norn/05-negative-tests.sh
+          scripts/norn/06-finalize-acceptance.sh
+          scripts/norn/99-stop.sh
+          trap - EXIT
+      - name: Finalize integrated evidence
+        run: |
+          install -m 0644 "$RUNNER_TEMP/production-resolver-trace.json" \
+            specs/production-resolver-trace/acceptance.json
+          source_commit="$(git rev-parse HEAD)"
+          python3 tools/finalize_norn_knot_rc.py finalize \
+            --source-commit "$source_commit" \
+            --release-root artifacts/field-deployment/0.3.0-norn-knot-rc1 \
+            --output specs/norn-knot-rc1
+          git diff --check
+          test "$(jq -r .source_commit specs/norn-knot-rc1/test-summary.json)" = "$source_commit"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: norn-knot-rc1-evidence
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            artifacts/field-deployment/0.3.0-norn-knot-rc1
+            specs/multichain-registry-adapter/acceptance.json
+            specs/norn-field-delivery/acceptance.json
+            specs/production-resolver-trace/acceptance.json
+            specs/norn-knot-rc1
+
   integration-evidence:
     runs-on: ubuntu-24.04
     needs: [python, field-delivery, production-trace-evidence]
@@ -260,7 +373,7 @@ jobs:
     name: release candidate gate
     runs-on: ubuntu-24.04
     if: always()
-    needs: [rust, python, solidity, compose, field-delivery, legacy-python-image, rust-production-image, knot-trace-image, production-trace-evidence, management-image, integration-evidence]
+    needs: [rust, python, solidity, compose, field-delivery, legacy-python-image, rust-production-image, knot-trace-image, production-trace-evidence, management-image, integration-evidence, full-rc-acceptance]
     steps:
       - name: Require every release-candidate check
         env:
@@ -275,6 +388,8 @@ jobs:
           TRACE_EVIDENCE_RESULT: ${{ needs.production-trace-evidence.result }}
           MANAGEMENT_IMAGE_RESULT: ${{ needs.management-image.result }}
           INTEGRATION_EVIDENCE_RESULT: ${{ needs.integration-evidence.result }}
+          FULL_RC_ACCEPTANCE_RESULT: ${{ needs.full-rc-acceptance.result }}
+          REQUIRE_FULL_RC_ACCEPTANCE: ${{ github.event_name == 'pull_request' && github.head_ref == 'release/norn-knot-rc1' }}
         run: |
           for result in \
             "$RUST_RESULT" "$PYTHON_RESULT" "$SOLIDITY_RESULT" "$COMPOSE_RESULT" \
@@ -283,3 +398,8 @@ jobs:
             "$INTEGRATION_EVIDENCE_RESULT"; do
             test "$result" = success
           done
+          if [[ "$REQUIRE_FULL_RC_ACCEPTANCE" == "true" ]]; then
+            test "$FULL_RC_ACCEPTANCE_RESULT" = success
+          else
+            test "$FULL_RC_ACCEPTANCE_RESULT" = skipped
+          fi
