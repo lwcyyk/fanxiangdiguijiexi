@@ -47,7 +47,6 @@ pub struct AgentConfig {
     pub key_id: String,
     pub mode: VerificationMode,
     pub max_age_seconds: i64,
-    pub trace_lookback_seconds: i64,
     pub trace_wait_millis: u64,
     pub max_cache_ttl_seconds: i64,
     pub registry_max_staleness_seconds: i64,
@@ -65,8 +64,6 @@ pub struct EvidenceGraphRequest {
     pub challenge: String,
     pub query_digest: String,
     pub response_digest: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub expected_observed_at: Option<i64>,
     #[serde(default)]
     pub visited_server_ids: Vec<String>,
 }
@@ -79,7 +76,6 @@ pub struct ResponseAttestationRequest {
     pub query_digest: String,
     pub response_digest: String,
     pub endpoint: DnsEndpoint,
-    pub observed_at: i64,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -216,20 +212,6 @@ impl AgentState {
             &request.response_digest,
         )?;
         let now = unix_time();
-        let clock_skew = EvidencePolicy::controlled_strict().max_clock_skew_seconds;
-        if let Some(expected_observed_at) = request.expected_observed_at
-            && (expected_observed_at < now.saturating_sub(self.config.trace_lookback_seconds)
-                || expected_observed_at > now.saturating_add(clock_skew))
-        {
-            return Err(AgentError::InvalidRequest(
-                "expected observation time is outside the Trace binding window".into(),
-            ));
-        }
-        if !require_registered_context && request.expected_observed_at.is_none() {
-            return Err(AgentError::InvalidRequest(
-                "peer evidence requests require an expected observation time".into(),
-            ));
-        }
         self.require_fresh_registry(now).await?;
         if request.visited_server_ids.len() > 64 {
             return Err(AgentError::InvalidRequest(
@@ -257,8 +239,13 @@ impl AgentState {
                 ))
             })?;
         let anchor = self
-            .wait_for_trace_anchor(request, require_registered_context, now)
+            .wait_for_trace_anchor(request, require_registered_context)
             .await?;
+        // Knot can only classify the complete client answer after consuming all
+        // DNSKEY, DS, and answer exchanges. Intermediate upstream packets are
+        // therefore bound causally here, while the terminal Resolver verdict
+        // supplies the DNSSEC result for the complete resolution context.
+        let resolver_dnssec_status = anchor.dnssec_status;
         let anchor_trace_id = anchor.trace_id.clone();
         let events = self
             .with_store(move |store| Ok(store.trace_events(&anchor_trace_id)?))
@@ -270,6 +257,26 @@ impl AgentState {
                 && event.query_digest == request.query_digest
                 && event.response_digest.as_deref() == Some(request.response_digest.as_str())
         });
+        let mut upstream_responses = events
+            .iter()
+            .filter(|event| event.kind == TraceEventKind::UpstreamResponse)
+            .filter_map(|event| {
+                event
+                    .parent_event_id
+                    .as_ref()
+                    .map(|parent| (parent.clone(), event.clone()))
+            })
+            .collect::<HashMap<_, _>>();
+        let mut upstream_timeouts = events
+            .iter()
+            .filter(|event| event.kind == TraceEventKind::UpstreamTimeout)
+            .filter_map(|event| {
+                event
+                    .parent_event_id
+                    .as_ref()
+                    .map(|parent| (parent.clone(), event.clone()))
+            })
+            .collect::<HashMap<_, _>>();
         let outbound = events
             .iter()
             .filter(|event| {
@@ -277,7 +284,9 @@ impl AgentState {
                     && event.correlation_id == request.correlation_id
                     && matches!(
                         event.kind,
-                        TraceEventKind::ResolverQuery | TraceEventKind::AuthorityQuery
+                        TraceEventKind::UpstreamQuery
+                            | TraceEventKind::ResolverQuery
+                            | TraceEventKind::AuthorityQuery
                     )
             })
             .cloned()
@@ -306,10 +315,49 @@ impl AgentState {
                     event.event_id
                 ))
             })?;
-            let response_digest = event.response_digest.clone().ok_or_else(|| {
-                AgentError::EvidenceUnavailable(format!(
-                    "trace event {} has no response digest",
+            let response_event = if event.kind == TraceEventKind::UpstreamQuery {
+                if let Some(response) = upstream_responses.remove(&event.event_id) {
+                    response
+                } else if let Some(timeout) = upstream_timeouts.remove(&event.event_id) {
+                    if timeout.sequence <= event.sequence
+                        || timeout.correlation_id != event.correlation_id
+                        || timeout.query_digest != event.query_digest
+                        || timeout.target_correlation_id != event.target_correlation_id
+                        || timeout.target_endpoint != event.target_endpoint
+                        || timeout.attempt != event.attempt
+                    {
+                        return Err(AgentError::EvidenceUnavailable(format!(
+                            "outbound timeout for {} violates causal binding",
+                            event.event_id
+                        )));
+                    }
+                    continue;
+                } else {
+                    return Err(AgentError::EvidenceUnavailable(format!(
+                        "outbound trace event {} has no causally bound response or timeout",
+                        event.event_id
+                    )));
+                }
+            } else {
+                event.clone()
+            };
+            if event.kind == TraceEventKind::UpstreamQuery
+                && (response_event.sequence <= event.sequence
+                    || response_event.correlation_id != event.correlation_id
+                    || response_event.query_digest != event.query_digest
+                    || response_event.target_correlation_id != event.target_correlation_id
+                    || response_event.target_endpoint != event.target_endpoint
+                    || response_event.attempt != event.attempt)
+            {
+                return Err(AgentError::EvidenceUnavailable(format!(
+                    "outbound response for {} violates causal binding",
                     event.event_id
+                )));
+            }
+            let response_digest = response_event.response_digest.clone().ok_or_else(|| {
+                AgentError::EvidenceUnavailable(format!(
+                    "response event {} has no response digest",
+                    response_event.event_id
                 ))
             })?;
             let lookup_endpoint = target_endpoint.clone();
@@ -343,7 +391,6 @@ impl AgentState {
                         query_digest: event.query_digest.clone(),
                         response_digest: response_digest.clone(),
                         endpoint: target_endpoint.clone(),
-                        observed_at: event.observed_at,
                     },
                 )
                 .await?;
@@ -351,7 +398,7 @@ impl AgentState {
             if target_attestation.is_some() {
                 levels.push(EvidenceLevel::AgentAttested);
             }
-            if event.dnssec_status == DnssecStatus::Secure {
+            if resolver_dnssec_status == DnssecStatus::Secure {
                 levels.push(EvidenceLevel::DnssecValidated);
             }
             merge_node(
@@ -370,8 +417,8 @@ impl AgentState {
                 from_endpoint,
                 to_endpoint: target_endpoint,
                 query_digest: event.query_digest.clone(),
-                response_digest,
-                observed_at: event.observed_at,
+                response_digest: response_digest.clone(),
+                observed_at: response_event.observed_at,
                 issued_at: now,
                 expires_at: now + self.config.max_age_seconds,
                 accepted: true,
@@ -393,10 +440,7 @@ impl AgentState {
                             correlation_id: target_correlation_id,
                             challenge: request.challenge.clone(),
                             query_digest: event.query_digest,
-                            response_digest: event
-                                .response_digest
-                                .expect("response digest checked above"),
-                            expected_observed_at: Some(event.observed_at),
+                            response_digest,
                             visited_server_ids: request
                                 .visited_server_ids
                                 .iter()
@@ -518,27 +562,31 @@ impl AgentState {
             ));
         }
         let query_digest = request.query_digest.clone();
-        let response_digest = request.response_digest.clone();
-        let (source_graph, source_digest) = self
-            .with_store(move |store| {
-                Ok(store.find_latest_source_graph(&query_digest, &response_digest)?)
-            })
-            .await?
-            .ok_or_else(|| {
-                AgentError::EvidenceUnavailable(
-                    "cache hit has no source evidence in the current Registry generation".into(),
-                )
-            })?;
-        let claimed_source_digest = cache_hit.source_graph_digest.as_deref().ok_or_else(|| {
+        let cache_object_digest = cache_hit.cache_object_digest.clone().ok_or_else(|| {
+            AgentError::EvidenceUnavailable(
+                "cache-hit event has no normalized cache object digest".into(),
+            )
+        })?;
+        let source_digest = cache_hit.source_graph_digest.as_deref().ok_or_else(|| {
             AgentError::EvidenceUnavailable(
                 "cache-hit event does not declare its source graph digest".into(),
             )
         })?;
-        if claimed_source_digest != source_digest {
-            return Err(AgentError::EvidenceUnavailable(
-                "cache-hit source graph digest mismatch".into(),
-            ));
-        }
+        let claimed_source_digest = source_digest.to_owned();
+        let source_graph = self
+            .with_store(move |store| {
+                Ok(store.find_cache_source_graph_by_digest(
+                    &query_digest,
+                    &cache_object_digest,
+                    &claimed_source_digest,
+                )?)
+            })
+            .await?
+            .ok_or_else(|| {
+                AgentError::EvidenceUnavailable(
+                    "cache-hit source graph is absent from the current Registry generation".into(),
+                )
+            })?;
         if cache_hit.dnssec_status != source_graph.dnssec_status {
             return Err(AgentError::EvidenceUnavailable(
                 "cache-hit DNSSEC status differs from source evidence".into(),
@@ -573,7 +621,7 @@ impl AgentState {
             expires_at: now + self.config.max_age_seconds,
             dnssec_status: source_graph.dnssec_status,
             cache_provenance: Some(CacheProvenanceV2 {
-                source_graph_digest: source_digest,
+                source_graph_digest: source_digest.to_owned(),
                 source_dnssec_required,
                 cached_at: cache_hit.observed_at,
                 dns_ttl_expires_at: ttl_expires_at,
@@ -639,7 +687,7 @@ impl AgentState {
                 "attested endpoint is not bound to local identity".into(),
             ));
         }
-        let response_event = self.wait_for_matching_response(request, now).await?;
+        let response_event = self.wait_for_matching_response(request).await?;
         let mut attestation = TargetResponseAttestationV2 {
             schema_version: TARGET_RESPONSE_ATTESTATION_V2.into(),
             target_server_id: self.config.server_id.clone(),
@@ -739,14 +787,9 @@ impl AgentState {
     async fn wait_for_matching_response(
         &self,
         request: &ResponseAttestationRequest,
-        now: i64,
     ) -> Result<TraceEventV2, AgentError> {
         let deadline = tokio::time::Instant::now()
             + std::time::Duration::from_millis(self.config.trace_wait_millis);
-        let clock_skew = EvidencePolicy::controlled_strict().max_clock_skew_seconds;
-        let not_before = (now - self.config.trace_lookback_seconds)
-            .max(request.observed_at.saturating_sub(clock_skew));
-        let not_after = (now + clock_skew).min(request.observed_at.saturating_add(clock_skew));
         loop {
             let request_trace_id = request.trace_id.clone();
             let server_id = self.config.server_id.clone();
@@ -764,8 +807,6 @@ impl AgentState {
                         response_digest: &response_digest,
                         endpoint: Some(&endpoint),
                         allow_authority_response: true,
-                        not_before,
-                        not_after,
                     })?)
                 })
                 .await?;
@@ -785,11 +826,9 @@ impl AgentState {
         &self,
         request: &EvidenceGraphRequest,
         require_registered_context: bool,
-        now: i64,
     ) -> Result<TraceEventV2, AgentError> {
         let deadline = tokio::time::Instant::now()
             + std::time::Duration::from_millis(self.config.trace_wait_millis);
-        let clock_skew = EvidencePolicy::controlled_strict().max_clock_skew_seconds;
         loop {
             let anchor = if require_registered_context {
                 let request_trace_id = request.trace_id.clone();
@@ -804,25 +843,16 @@ impl AgentState {
                         &correlation_id,
                         &query_digest,
                         &response_digest,
-                        now,
+                        unix_time(),
                     )?)
                 })
                 .await?
             } else {
-                let expected_observed_at = request.expected_observed_at.ok_or_else(|| {
-                    AgentError::InvalidRequest(
-                        "peer evidence request lacks expected observation time".into(),
-                    )
-                })?;
                 let request_trace_id = request.trace_id.clone();
                 let server_id = self.config.server_id.clone();
                 let correlation_id = request.correlation_id.clone();
                 let query_digest = request.query_digest.clone();
                 let response_digest = request.response_digest.clone();
-                let not_before = (now - self.config.trace_lookback_seconds)
-                    .max(expected_observed_at.saturating_sub(clock_skew));
-                let not_after =
-                    (now + clock_skew).min(expected_observed_at.saturating_add(clock_skew));
                 self.with_store(move |store| {
                     Ok(store.claim_matching_response(&TraceResponseMatch {
                         request_trace_id: &request_trace_id,
@@ -832,8 +862,6 @@ impl AgentState {
                         response_digest: &response_digest,
                         endpoint: None,
                         allow_authority_response: false,
-                        not_before,
-                        not_after,
                     })?)
                 })
                 .await?
@@ -876,10 +904,13 @@ impl AgentState {
             .send()
             .await?;
         if !response.status().is_success() {
+            let status = response.status();
+            let detail =
+                decode_error_body_limited(response, self.config.max_request_body_bytes.min(4_096))
+                    .await;
             return Err(AgentError::Downstream(format!(
-                "{} graph endpoint returned {}",
-                target.server_id,
-                response.status()
+                "{} graph endpoint returned {}{}",
+                target.server_id, status, detail
             )));
         }
         let graph = decode_json_limited(
@@ -1289,6 +1320,26 @@ async fn decode_json_limited<T: DeserializeOwned>(
     Ok(serde_json::from_slice(&body)?)
 }
 
+async fn decode_error_body_limited(response: reqwest::Response, limit: usize) -> String {
+    let mut body = Vec::new();
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let Ok(chunk) = chunk else {
+            return String::new();
+        };
+        if body.len().saturating_add(chunk.len()) > limit {
+            return " (response detail exceeded limit)".into();
+        }
+        body.extend_from_slice(&chunk);
+    }
+    let detail = String::from_utf8_lossy(&body);
+    if detail.trim().is_empty() {
+        String::new()
+    } else {
+        format!(": {}", detail.trim())
+    }
+}
+
 fn unix_time() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -1305,6 +1356,7 @@ fn validate_trace_event(event: &TraceEventV2, server_id: &str) -> Result<(), Age
         || event.event_id.len() > 256
         || event.trace_id.is_empty()
         || event.trace_id.len() > 256
+        || event.sequence == 0
         || event.observer_server_id != server_id
         || !is_digest(&event.correlation_id)
         || event
@@ -1316,6 +1368,10 @@ fn validate_trace_event(event: &TraceEventV2, server_id: &str) -> Result<(), Age
             .response_digest
             .as_deref()
             .is_some_and(|digest| !is_digest(digest))
+        || event
+            .failure_reason
+            .as_deref()
+            .is_some_and(|reason| reason.is_empty() || reason.len() > 128)
     {
         return Err(AgentError::InvalidRequest(
             "trace event fields are invalid".into(),
@@ -1327,7 +1383,30 @@ fn validate_trace_event(event: &TraceEventV2, server_id: &str) -> Result<(), Age
             "trace event timestamp is outside the ingestion window".into(),
         ));
     }
+    if (event.sequence == 1) != (event.kind == TraceEventKind::ClientQuery)
+        || (event.sequence == 1 && event.parent_event_id.is_some())
+        || (event.sequence > 1
+            && event
+                .parent_event_id
+                .as_deref()
+                .is_none_or(|parent| parent.is_empty() || parent.len() > 256))
+    {
+        return Err(AgentError::InvalidRequest(
+            "trace event sequence and parent are inconsistent".into(),
+        ));
+    }
     match event.kind {
+        TraceEventKind::UpstreamQuery => {
+            if event.target_endpoint.is_none()
+                || event.target_correlation_id.is_none()
+                || event.attempt.is_none_or(|attempt| attempt == 0)
+                || event.response_digest.is_some()
+            {
+                return Err(AgentError::InvalidRequest(
+                    "upstream query requires endpoint, target correlation and attempt".into(),
+                ));
+            }
+        }
         TraceEventKind::ResolverQuery | TraceEventKind::AuthorityQuery => {
             if event.target_endpoint.is_none()
                 || event.target_correlation_id.is_none()
@@ -1339,8 +1418,23 @@ fn validate_trace_event(event: &TraceEventV2, server_id: &str) -> Result<(), Age
                 ));
             }
         }
+        TraceEventKind::UpstreamResponse => {
+            if event.target_endpoint.is_none()
+                || event.target_correlation_id.is_none()
+                || event.attempt.is_none_or(|attempt| attempt == 0)
+                || event.response_digest.is_none()
+            {
+                return Err(AgentError::InvalidRequest(
+                    "upstream response requires endpoint, target correlation, attempt and response"
+                        .into(),
+                ));
+            }
+        }
         TraceEventKind::ResolverResponse | TraceEventKind::AuthorityResponse => {
-            if event.target_endpoint.is_none() || event.response_digest.is_none() {
+            if event.target_endpoint.is_none()
+                || event.response_digest.is_none()
+                || event.attempt.is_none_or(|attempt| attempt == 0)
+            {
                 return Err(AgentError::InvalidRequest(
                     "response trace event requires endpoint and response digest".into(),
                 ));
@@ -1348,6 +1442,10 @@ fn validate_trace_event(event: &TraceEventV2, server_id: &str) -> Result<(), Age
         }
         TraceEventKind::CacheHit => {
             if event.response_digest.is_none()
+                || event
+                    .cache_object_digest
+                    .as_deref()
+                    .is_none_or(|digest| !is_digest(digest))
                 || event.ttl_expires_at.is_none()
                 || event
                     .source_graph_digest
@@ -1355,7 +1453,37 @@ fn validate_trace_event(event: &TraceEventV2, server_id: &str) -> Result<(), Age
                     .is_none_or(|digest| !is_digest(digest))
             {
                 return Err(AgentError::InvalidRequest(
-                    "cache-hit event requires response, TTL and source graph digest".into(),
+                    "cache-hit event requires response, cache object, TTL and source graph digest"
+                        .into(),
+                ));
+            }
+        }
+        TraceEventKind::UpstreamTimeout
+        | TraceEventKind::UpstreamRetry
+        | TraceEventKind::TransportSwitch => {
+            if event.attempt.is_none_or(|attempt| attempt == 0) || event.failure_reason.is_none() {
+                return Err(AgentError::InvalidRequest(
+                    "transport event requires attempt and reason".into(),
+                ));
+            }
+        }
+        TraceEventKind::ClientResponse => {
+            if event.response_digest.is_none()
+                || (event.sequence > 0
+                    && event
+                        .cache_object_digest
+                        .as_deref()
+                        .is_none_or(|digest| !is_digest(digest)))
+            {
+                return Err(AgentError::InvalidRequest(
+                    "client response requires response and normalized cache object digests".into(),
+                ));
+            }
+        }
+        TraceEventKind::ResolutionFailed => {
+            if event.failure_reason.is_none() {
+                return Err(AgentError::InvalidRequest(
+                    "resolution failure requires a reason".into(),
                 ));
             }
         }

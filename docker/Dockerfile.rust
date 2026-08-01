@@ -22,6 +22,7 @@ COPY --from=builder /build/target/release/ri-agent /usr/local/bin/ri-agent
 COPY --from=builder /build/target/release/ri-wrapper /usr/local/bin/ri-wrapper
 COPY --from=builder /build/target/release/ri-trace-adapter /usr/local/bin/ri-trace-adapter
 COPY --from=builder /build/target/release/ri-registry-sync /usr/local/bin/ri-registry-sync
+COPY --from=builder /build/target/release/ri-knot-trace-producer /usr/local/bin/ri-knot-trace-producer
 
 USER resolver-rust
 WORKDIR /var/lib/resolver-identity

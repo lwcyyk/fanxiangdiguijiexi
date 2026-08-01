@@ -50,6 +50,8 @@ preflight() {
   field_require_command docker
   field_require_command sha256sum
   field_require_command df
+  field_require_command cmp
+  field_require_command install
   docker compose version >/dev/null
   field_verify_package "${PACKAGE_ROOT}"
 
@@ -105,6 +107,11 @@ install_release() {
 
   field_load_env "${target}/config/.env"
   : "${RI_FIELD_DATA_DIR:?RI_FIELD_DATA_DIR is required}"
+  if [[ "${KIND}" == "resolver-link" ]]; then
+    field_backup_resolver_config \
+      "${INSTALL_ROOT}" "${RI_EXISTING_RESOLVER_CONFIG_PATH:?required}"
+    field_prepare_resolver_runtime_dirs
+  fi
   field_data_marker "${RI_FIELD_DATA_DIR}"
   ln -sfn "${target}" "${INSTALL_ROOT}/current.new"
   mv -Tf "${INSTALL_ROOT}/current.new" "${INSTALL_ROOT}/current"

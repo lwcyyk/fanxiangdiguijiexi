@@ -1,16 +1,14 @@
 [package]
-name = "ri-trace-adapter"
+name = "ri-knot-trace-producer"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-axum.workspace = true
-reqwest.workspace = true
+hex.workspace = true
+rand.workspace = true
 ri-core = { path = "../ri-core" }
-ri-store = { path = "../ri-store" }
-rusqlite.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
 tracing.workspace = true
@@ -20,4 +18,6 @@ tracing-subscriber.workspace = true
 workspace = true
 
 [dev-dependencies]
+base64.workspace = true
+ri-store = { path = "../ri-store" }
 tempfile.workspace = true

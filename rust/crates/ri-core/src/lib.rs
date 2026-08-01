@@ -6,8 +6,8 @@ pub mod policy;
 
 pub use canonical::{canonical_json_bytes, canonical_json_text, strip_signatures};
 pub use crypto::{
-    ED25519_PREFIX, dns_correlation_id, dns_wire_digest, ed25519_public_key_b64, object_hash,
-    resolver_id_key, sha256_hex, sign_ed25519, verify_ed25519,
+    ED25519_PREFIX, dns_cache_object_digest, dns_correlation_id, dns_wire_digest,
+    ed25519_public_key_b64, object_hash, resolver_id_key, sha256_hex, sign_ed25519, verify_ed25519,
 };
 pub use endpoint::DnsEndpoint;
 pub use evidence::{

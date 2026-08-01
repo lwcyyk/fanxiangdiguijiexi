@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddr;
 use std::os::unix::fs::{FileTypeExt, PermissionsExt};
@@ -12,11 +13,12 @@ use axum::response::IntoResponse;
 use axum::routing::get;
 use ri_core::TraceEventV2;
 use rusqlite::{Connection, OptionalExtension, params};
-use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc;
 
 const MAX_LINE_BYTES: usize = 65_536;
+const TRACE_PRODUCER_PROTOCOL: &str = "RI-TRACE/2";
 type AnyError = Box<dyn std::error::Error + Send + Sync>;
 
 #[tokio::main]
@@ -36,6 +38,7 @@ async fn main() -> Result<(), AnyError> {
     )?;
     let client = build_client(&settings)?;
     let spool = TraceSpool::open(&settings.spool_database, settings.max_spool_events)?;
+    let evidence_store = ri_store::EvidenceStore::open(&settings.evidence_database)?;
     let token = std::fs::read_to_string(&settings.token_file)?
         .trim()
         .to_owned();
@@ -43,15 +46,20 @@ async fn main() -> Result<(), AnyError> {
         return Err("trace ingestion token must contain at least 32 bytes".into());
     }
     let (sender, receiver) = mpsc::channel(settings.queue_capacity);
-    let mut worker = tokio::spawn(upload_worker(
+    let mut worker = tokio::spawn(upload_worker(UploadWorker {
         receiver,
-        spool.clone(),
+        spool: spool.clone(),
+        evidence_store: evidence_store.clone(),
         client,
-        settings.agent_url,
+        endpoint: format!(
+            "{}/v2/trace-events/batch",
+            settings.agent_url.trim_end_matches('/')
+        ),
         token,
-        settings.batch_size,
-        settings.flush_interval,
-    ));
+        batch_size: settings.batch_size,
+        flush_interval: settings.flush_interval,
+        cache_provenance_wait: settings.cache_provenance_wait,
+    }));
     let mut monitoring = tokio::spawn(serve_monitoring(settings.monitoring_bind, spool.clone()));
     let mut terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     tracing::info!(
@@ -99,8 +107,11 @@ async fn read_events(
     sender: mpsc::Sender<()>,
     spool: TraceSpool,
 ) -> Result<(), AnyError> {
-    let mut reader = BufReader::new(stream);
+    let (read_half, mut writer) = stream.into_split();
+    let mut reader = BufReader::new(read_half);
     let mut line = Vec::with_capacity(4096);
+    let mut durable_ack = false;
+    let mut first_line = true;
     loop {
         line.clear();
         let size = reader.read_until(b'\n', &mut line).await?;
@@ -119,46 +130,159 @@ async fn read_events(
         if line.is_empty() {
             continue;
         }
+        if first_line && line == TRACE_PRODUCER_PROTOCOL.as_bytes() {
+            durable_ack = true;
+            first_line = false;
+            continue;
+        }
+        first_line = false;
         let event = serde_json::from_slice::<TraceEventV2>(&line)?;
+        let event_id = event.event_id.clone();
         let write_spool = spool.clone();
         tokio::task::spawn_blocking(move || write_spool.enqueue(&event)).await??;
         sender
             .send(())
             .await
             .map_err(|_| "trace upload worker stopped")?;
+        if durable_ack {
+            writer
+                .write_all(format!("OK {event_id}\n").as_bytes())
+                .await?;
+        }
     }
 }
 
-async fn upload_worker(
-    mut receiver: mpsc::Receiver<()>,
+struct UploadWorker {
+    receiver: mpsc::Receiver<()>,
     spool: TraceSpool,
+    evidence_store: ri_store::EvidenceStore,
     client: reqwest::Client,
-    agent_url: String,
+    endpoint: String,
     token: String,
     batch_size: usize,
     flush_interval: Duration,
-) -> Result<(), AnyError> {
-    let endpoint = format!("{}/v2/trace-events/batch", agent_url.trim_end_matches('/'));
+    cache_provenance_wait: Duration,
+}
+
+async fn upload_worker(mut worker: UploadWorker) -> Result<(), AnyError> {
+    let mut provenance_wait_started = HashMap::<String, tokio::time::Instant>::new();
     loop {
-        let mut batch = load_batch_async(&spool, batch_size).await?;
+        let mut batch = load_batch_async(&worker.spool, worker.batch_size).await?;
         if batch.is_empty() {
-            receiver.recv().await.ok_or("trace event channel closed")?;
-            let deadline = tokio::time::Instant::now() + flush_interval;
-            while batch.len() < batch_size {
-                match tokio::time::timeout_at(deadline, receiver.recv()).await {
+            worker
+                .receiver
+                .recv()
+                .await
+                .ok_or("trace event channel closed")?;
+            let deadline = tokio::time::Instant::now() + worker.flush_interval;
+            while batch.len() < worker.batch_size {
+                match tokio::time::timeout_at(deadline, worker.receiver.recv()).await {
                     Ok(Some(())) => {
-                        batch = load_batch_async(&spool, batch_size).await?;
+                        batch = load_batch_async(&worker.spool, worker.batch_size).await?;
                     }
                     Ok(None) | Err(_) => break,
                 }
             }
             if batch.is_empty() {
-                batch = load_batch_async(&spool, batch_size).await?;
+                batch = load_batch_async(&worker.spool, worker.batch_size).await?;
             }
         }
-        process_batch(&client, &endpoint, &token, &spool, &batch).await?;
-        while receiver.try_recv().is_ok() {}
+        batch = match prepare_upload_batch(
+            &worker.spool,
+            &worker.evidence_store,
+            batch,
+            &mut provenance_wait_started,
+            worker.cache_provenance_wait,
+        )
+        .await?
+        {
+            BatchPreparation::Ready(batch) => batch,
+            BatchPreparation::Waiting => {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+                continue;
+            }
+            BatchPreparation::Quarantine { trace_id, reason } => {
+                let write_spool = worker.spool.clone();
+                tokio::task::spawn_blocking(move || {
+                    write_spool.quarantine_trace(&trace_id, &reason)
+                })
+                .await??;
+                continue;
+            }
+        };
+        process_batch(
+            &worker.client,
+            &worker.endpoint,
+            &worker.token,
+            &worker.spool,
+            &batch,
+        )
+        .await?;
+        while worker.receiver.try_recv().is_ok() {}
     }
+}
+
+enum BatchPreparation {
+    Ready(Vec<TraceEventV2>),
+    Waiting,
+    Quarantine { trace_id: String, reason: String },
+}
+
+async fn prepare_upload_batch(
+    spool: &TraceSpool,
+    evidence_store: &ri_store::EvidenceStore,
+    batch: Vec<TraceEventV2>,
+    provenance_wait_started: &mut HashMap<String, tokio::time::Instant>,
+    cache_provenance_wait: Duration,
+) -> Result<BatchPreparation, AnyError> {
+    let Some((index, event)) = batch.iter().enumerate().find(|(_, event)| {
+        event.kind == ri_core::TraceEventKind::CacheHit && event.source_graph_digest.is_none()
+    }) else {
+        return Ok(BatchPreparation::Ready(batch));
+    };
+    if index > 0 {
+        return Ok(BatchPreparation::Ready(batch[..index].to_vec()));
+    }
+    let cache_object_digest = event
+        .cache_object_digest
+        .as_deref()
+        .ok_or("cache-hit event has no normalized cache object digest")?
+        .to_owned();
+    let query_digest = event.query_digest.clone();
+    let source_store = evidence_store.clone();
+    let source = tokio::task::spawn_blocking(move || {
+        source_store.find_latest_cache_source_graph(&query_digest, &cache_object_digest)
+    })
+    .await??;
+    let Some((source_graph, source_digest)) = source else {
+        // Earlier Trace rows are uploaded first.  The Wrapper/Agent creates the
+        // source graph from those exact rows, after which this event can be
+        // enriched without blocking the Resolver's durable spool ACK.
+        let started = provenance_wait_started
+            .entry(event.event_id.clone())
+            .or_insert_with(tokio::time::Instant::now);
+        if started.elapsed() >= cache_provenance_wait {
+            provenance_wait_started.remove(&event.event_id);
+            return Ok(BatchPreparation::Quarantine {
+                trace_id: event.trace_id.clone(),
+                reason: "cache provenance source graph was not created before deadline".into(),
+            });
+        }
+        return Ok(BatchPreparation::Waiting);
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)?
+        .as_secs() as i64;
+    if source_graph.expires_at < now {
+        return Err("cache-hit source graph is expired".into());
+    }
+    let mut enriched = event.clone();
+    enriched.source_graph_digest = Some(source_digest);
+    provenance_wait_started.remove(&event.event_id);
+    let write_spool = spool.clone();
+    let stored = enriched.clone();
+    tokio::task::spawn_blocking(move || write_spool.replace_pending(&stored)).await??;
+    Ok(BatchPreparation::Ready(vec![enriched]))
 }
 
 async fn process_batch(
@@ -279,6 +403,7 @@ struct Settings {
     socket_mode: u32,
     expected_uid: u32,
     spool_database: PathBuf,
+    evidence_database: PathBuf,
     queue_capacity: usize,
     batch_size: usize,
     flush_interval: Duration,
@@ -290,6 +415,7 @@ struct Settings {
     http_timeout: Duration,
     monitoring_bind: SocketAddr,
     max_spool_events: usize,
+    cache_provenance_wait: Duration,
 }
 
 impl Settings {
@@ -330,6 +456,7 @@ impl Settings {
             spool_database: env::var("RI_TRACE_SPOOL_DATABASE")
                 .unwrap_or_else(|_| "/var/lib/resolver-identity/trace-spool.db".into())
                 .into(),
+            evidence_database: required("RI_DATABASE")?.into(),
             queue_capacity,
             batch_size,
             flush_interval: Duration::from_millis(parse_u64("RI_TRACE_FLUSH_INTERVAL_MS", 5)?),
@@ -343,6 +470,12 @@ impl Settings {
                 .unwrap_or_else(|_| "127.0.0.1:9110".into())
                 .parse()?,
             max_spool_events,
+            cache_provenance_wait: Duration::from_millis(parse_bounded_u64(
+                "RI_TRACE_CACHE_PROVENANCE_WAIT_MS",
+                2_000,
+                100,
+                30_000,
+            )?),
         })
     }
 }
@@ -375,6 +508,20 @@ impl TraceSpool {
               reason TEXT NOT NULL,
               quarantined_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS trace_spool_seen (
+              event_id TEXT PRIMARY KEY,
+              trace_id TEXT NOT NULL,
+              sequence INTEGER NOT NULL,
+              event_json TEXT NOT NULL,
+              created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              UNIQUE(trace_id, sequence)
+            );
+            CREATE TABLE IF NOT EXISTS trace_spool_state (
+              trace_id TEXT PRIMARY KEY,
+              last_sequence INTEGER NOT NULL,
+              terminal INTEGER NOT NULL DEFAULT 0,
+              updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
             "#,
         )?;
         Ok(Self {
@@ -385,13 +532,14 @@ impl TraceSpool {
 
     fn enqueue(&self, event: &TraceEventV2) -> Result<(), AnyError> {
         let event_json = serde_json::to_string(event)?;
-        let connection = self
+        let mut connection = self
             .connection
             .lock()
             .map_err(|_| "trace spool lock is poisoned")?;
-        let existing = connection
+        let transaction = connection.transaction()?;
+        let existing = transaction
             .query_row(
-                "SELECT event_json FROM trace_spool WHERE event_id=?",
+                "SELECT event_json FROM trace_spool_seen WHERE event_id=?",
                 [&event.event_id],
                 |row| row.get::<_, String>(0),
             )
@@ -406,13 +554,55 @@ impl TraceSpool {
             }
             return Ok(());
         }
-        let count = connection.query_row("SELECT COUNT(*) FROM trace_spool", [], |row| {
+        let count = transaction.query_row("SELECT COUNT(*) FROM trace_spool", [], |row| {
             row.get::<_, i64>(0)
         })?;
         if usize::try_from(count)? >= self.max_events {
             return Err("Trace spool event limit reached".into());
         }
-        let inserted = connection.execute(
+        let state = transaction
+            .query_row(
+                "SELECT last_sequence,terminal FROM trace_spool_state WHERE trace_id=?",
+                [&event.trace_id],
+                |row| Ok((row.get::<_, i64>(0)?, row.get::<_, bool>(1)?)),
+            )
+            .optional()?;
+        let state = state
+            .map(|(sequence, terminal)| {
+                u64::try_from(sequence)
+                    .map(|sequence| (sequence, terminal))
+                    .map_err(|_| "stored Trace sequence is negative")
+            })
+            .transpose()?;
+        let expected_sequence = state.as_ref().map_or(1, |value| value.0.saturating_add(1));
+        if state.as_ref().is_some_and(|value| value.1)
+            || event.sequence != expected_sequence
+            || (event.sequence == 1
+                && (event.kind != ri_core::TraceEventKind::ClientQuery
+                    || event.parent_event_id.is_some()))
+        {
+            return Err("Trace event is terminal, duplicated, or out of sequence".into());
+        }
+        if event.sequence > 1 {
+            let parent = event
+                .parent_event_id
+                .as_deref()
+                .ok_or("Trace event parent is required")?;
+            let parent_sequence = transaction
+                .query_row(
+                    "SELECT sequence FROM trace_spool_seen WHERE event_id=? AND trace_id=?",
+                    params![parent, event.trace_id],
+                    |row| row.get::<_, i64>(0),
+                )
+                .optional()?
+                .ok_or("Trace event parent is unknown or belongs to another trace")?;
+            let parent_sequence =
+                u64::try_from(parent_sequence).map_err(|_| "stored parent sequence is negative")?;
+            if parent_sequence >= event.sequence {
+                return Err("Trace event parent does not precede its child".into());
+            }
+        }
+        let inserted = transaction.execute(
             r#"INSERT INTO trace_spool(event_id,event_json) VALUES(?,?)
                ON CONFLICT(event_id) DO NOTHING"#,
             params![event.event_id, event_json],
@@ -420,6 +610,25 @@ impl TraceSpool {
         if inserted != 1 {
             return Err("Trace spool insert did not persist exactly one event".into());
         }
+        let sequence = i64::try_from(event.sequence)?;
+        transaction.execute(
+            "INSERT INTO trace_spool_seen(event_id,trace_id,sequence,event_json) VALUES(?,?,?,?)",
+            params![event.event_id, event.trace_id, sequence, event_json],
+        )?;
+        let terminal = matches!(
+            event.kind,
+            ri_core::TraceEventKind::ClientResponse | ri_core::TraceEventKind::ResolutionFailed
+        );
+        transaction.execute(
+            r#"INSERT INTO trace_spool_state(trace_id,last_sequence,terminal)
+               VALUES(?,?,?)
+               ON CONFLICT(trace_id) DO UPDATE SET
+                 last_sequence=excluded.last_sequence,
+                 terminal=excluded.terminal,
+                 updated_at=CURRENT_TIMESTAMP"#,
+            params![event.trace_id, sequence, terminal],
+        )?;
+        transaction.commit()?;
         Ok(())
     }
 
@@ -436,6 +645,21 @@ impl TraceSpool {
             serde_json::from_str(&event_json).map_err(AnyError::from)
         })
         .collect()
+    }
+
+    fn replace_pending(&self, event: &TraceEventV2) -> Result<(), AnyError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| "trace spool lock is poisoned")?;
+        let updated = connection.execute(
+            "UPDATE trace_spool SET event_json=? WHERE event_id=?",
+            params![serde_json::to_string(event)?, event.event_id],
+        )?;
+        if updated != 1 {
+            return Err("Trace event is no longer pending in the durable spool".into());
+        }
+        Ok(())
     }
 
     fn acknowledge(&self, events: &[TraceEventV2]) -> Result<(), AnyError> {
@@ -476,6 +700,41 @@ impl TraceSpool {
         Ok(())
     }
 
+    fn quarantine_trace(&self, trace_id: &str, reason: &str) -> Result<(), AnyError> {
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|_| "trace spool lock is poisoned")?;
+        let transaction = connection.transaction()?;
+        let pending = {
+            let mut statement = transaction.prepare(
+                "SELECT event_id,event_json FROM trace_spool WHERE json_extract(event_json,'$.trace_id')=? ORDER BY rowid",
+            )?;
+            statement
+                .query_map([trace_id], |row| {
+                    Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                })?
+                .collect::<Result<Vec<_>, _>>()?
+        };
+        if pending.is_empty() {
+            return Err("orphan Trace has no pending spool events".into());
+        }
+        for (event_id, event_json) in pending {
+            transaction.execute(
+                r#"INSERT INTO trace_dead_letter(event_id,event_json,reason) VALUES(?,?,?)
+                   ON CONFLICT(event_id) DO UPDATE SET
+                     event_json=excluded.event_json,
+                     reason=excluded.reason,
+                     quarantined_at=CURRENT_TIMESTAMP"#,
+                params![event_id, event_json, reason],
+            )?;
+            transaction.execute("DELETE FROM trace_spool WHERE event_id=?", [&event_id])?;
+        }
+        transaction.commit()?;
+        tracing::error!(%trace_id, %reason, "orphan Trace moved to dead letter");
+        Ok(())
+    }
+
     fn stats(&self) -> Result<(u64, u64), AnyError> {
         let connection = self
             .connection
@@ -506,7 +765,7 @@ async fn serve_monitoring(bind: SocketAddr, spool: TraceSpool) -> Result<(), Any
 async fn trace_readiness(State(spool): State<TraceSpool>) -> StatusCode {
     let max_events = u64::try_from(spool.max_events).unwrap_or(u64::MAX);
     match tokio::task::spawn_blocking(move || spool.stats()).await {
-        Ok(Ok((pending, _))) if pending < max_events => StatusCode::NO_CONTENT,
+        Ok(Ok((pending, dead))) if pending < max_events && dead == 0 => StatusCode::NO_CONTENT,
         _ => StatusCode::SERVICE_UNAVAILABLE,
     }
 }
@@ -547,6 +806,7 @@ fn prepare_socket(path: &Path) -> Result<(), AnyError> {
 
 fn build_client(settings: &Settings) -> Result<reqwest::Client, AnyError> {
     let mut builder = reqwest::Client::builder()
+        .no_proxy()
         .https_only(settings.production)
         .timeout(settings.http_timeout);
     if let Some(ca) = &settings.tls_ca {
@@ -593,6 +853,19 @@ fn parse_usize(name: &str, default: usize) -> Result<usize, AnyError> {
 
 fn parse_u64(name: &str, default: u64) -> Result<u64, AnyError> {
     Ok(env::var(name).map_or(Ok(default), |value| value.parse())?)
+}
+
+fn parse_bounded_u64(
+    name: &str,
+    default: u64,
+    minimum: u64,
+    maximum: u64,
+) -> Result<u64, AnyError> {
+    let value = parse_u64(name, default)?;
+    if !(minimum..=maximum).contains(&value) {
+        return Err(format!("{name} must be between {minimum} and {maximum}").into());
+    }
+    Ok(value)
 }
 
 #[cfg(test)]
@@ -642,6 +915,42 @@ mod tests {
     }
 
     #[test]
+    fn spool_rejects_out_of_order_terminal_followup_and_capacity_overflow() {
+        let directory = tempfile::tempdir().unwrap();
+        let spool = TraceSpool::open(&directory.path().join("trace-spool.db"), 3).unwrap();
+        let first = trace_event("first");
+        spool.enqueue(&first).unwrap();
+
+        let mut third = first.clone();
+        third.event_id = "third".into();
+        third.sequence = 3;
+        third.parent_event_id = Some(first.event_id.clone());
+        assert!(spool.enqueue(&third).is_err());
+
+        let mut terminal = first.clone();
+        terminal.event_id = "terminal".into();
+        terminal.sequence = 2;
+        terminal.parent_event_id = Some(first.event_id.clone());
+        terminal.kind = TraceEventKind::ClientResponse;
+        terminal.response_digest =
+            Some("0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc".into());
+        spool.enqueue(&terminal).unwrap();
+
+        third.parent_event_id = Some(terminal.event_id.clone());
+        assert!(spool.enqueue(&third).is_err());
+
+        let other = trace_event("other");
+        spool.enqueue(&other).unwrap();
+        assert!(
+            spool
+                .enqueue(&trace_event("overflow"))
+                .unwrap_err()
+                .to_string()
+                .contains("limit")
+        );
+    }
+
+    #[test]
     fn rejected_event_moves_to_dead_letter_without_blocking_queue() {
         let directory = tempfile::tempdir().unwrap();
         let spool = TraceSpool::open(&directory.path().join("trace-spool.db"), 100).unwrap();
@@ -656,28 +965,67 @@ mod tests {
         assert_eq!(spool.stats().unwrap(), (1, 1));
     }
 
+    #[tokio::test]
+    async fn enrichment_preserves_seen_event_and_dead_letter_fails_readiness() {
+        let directory = tempfile::tempdir().unwrap();
+        let spool = TraceSpool::open(&directory.path().join("trace-spool.db"), 100).unwrap();
+        let original = trace_event("original");
+        spool.enqueue(&original).unwrap();
+        let mut enriched = original.clone();
+        enriched.source_graph_digest =
+            Some("0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc".into());
+        spool.replace_pending(&enriched).unwrap();
+
+        assert_eq!(spool.load_batch(10).unwrap(), [enriched]);
+        let seen_json = spool
+            .connection
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT event_json FROM trace_spool_seen WHERE event_id=?",
+                [&original.event_id],
+                |row| row.get::<_, String>(0),
+            )
+            .unwrap();
+        assert_eq!(
+            serde_json::from_str::<TraceEventV2>(&seen_json).unwrap(),
+            original
+        );
+
+        spool
+            .quarantine_trace(&original.trace_id, "missing cache provenance")
+            .unwrap();
+        assert_eq!(spool.stats().unwrap(), (0, 1));
+        assert_eq!(
+            trace_readiness(State(spool)).await,
+            StatusCode::SERVICE_UNAVAILABLE
+        );
+    }
+
     fn trace_event(event_id: &str) -> TraceEventV2 {
         TraceEventV2 {
             schema_version: TRACE_EVENT_V2.into(),
             event_id: event_id.into(),
-            trace_id: "resolver-trace".into(),
+            trace_id: format!("resolver-trace-{event_id}"),
+            sequence: 1,
             correlation_id: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                 .into(),
             parent_event_id: None,
-            kind: TraceEventKind::ResolverResponse,
+            kind: TraceEventKind::ClientQuery,
             observer_server_id: "operator/r1".into(),
             target_server_id: None,
             target_endpoint: None,
             target_correlation_id: None,
+            attempt: None,
             query_digest: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
                 .into(),
-            response_digest: Some(
-                "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc".into(),
-            ),
+            response_digest: None,
+            cache_object_digest: None,
             observed_at: 1_800_000_000,
             dnssec_status: DnssecStatus::Secure,
             ttl_expires_at: None,
             source_graph_digest: None,
+            failure_reason: None,
         }
     }
 }
