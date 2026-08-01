@@ -185,6 +185,8 @@ jobs:
       - name: Verify pinned real Resolver image
         run: |
           test "$(docker image inspect resolver-identity-knot-trace:ci --format '{{.Config.User}}')" = 10003:10003
+          docker run --rm --entrypoint /bin/sh resolver-identity-knot-trace:ci -c \
+            "ldd /usr/sbin/kresd | tee /tmp/kresd-ldd && ! grep -q 'not found' /tmp/kresd-ldd"
           docker run --rm --entrypoint /usr/sbin/kresd resolver-identity-knot-trace:ci -V 2>&1 |
             grep -q 'Knot Resolver, version 6.3.0'
           container="$(docker create resolver-identity-knot-trace:ci)"
