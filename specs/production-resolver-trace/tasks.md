@@ -7,7 +7,7 @@
 - [x] Remove time-window association and validate strict event sequences.
 - [x] Integrate resolver and producer into resolver-link delivery.
 - [x] Add unit, negative, packaging, and real Knot tests.
-- [x] Run the 32-concurrency development acceptance with real Knot Resolver.
-- [ ] Generate `acceptance.json` from command results.
-- [ ] Run full CI and secret/history audit.
-- [ ] Commit, push, and create Draft PR against `norn-field-delivery`.
+- [x] Run the 128-concurrency acceptance with real Knot Resolver.
+- [x] Generate `acceptance.json` from command results.
+- [x] Run full CI and secret/history audit.
+- [x] Commit, push, and create Draft PR against `norn-field-delivery`.
