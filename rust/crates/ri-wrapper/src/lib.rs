@@ -15,7 +15,7 @@ use serde::{Serialize, de::DeserializeOwned};
 use thiserror::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpStream, UdpSocket};
-use tokio::sync::{OwnedSemaphorePermit, Semaphore};
+use tokio::sync::{Mutex as AsyncMutex, OwnedSemaphorePermit, Semaphore};
 use tokio::time::timeout;
 
 pub const MAX_DNS_MESSAGE_SIZE: usize = 65_535;
@@ -44,6 +44,7 @@ pub struct WrapperConfig {
     pub transaction_id_reuse_delay: Duration,
     pub max_agent_response_bytes: usize,
     pub max_inflight: usize,
+    pub max_concurrent_verifications: usize,
     pub registry_max_staleness_seconds: i64,
 }
 
@@ -55,6 +56,8 @@ pub struct WrapperState {
     metrics: Arc<Metrics>,
     transaction_ids: Arc<TransactionIdPool>,
     registry_store: EvidenceStore,
+    context_registration: Arc<AsyncMutex<()>>,
+    verification_permits: Arc<Semaphore>,
 }
 
 #[derive(Default)]
@@ -81,8 +84,8 @@ pub enum WrapperError {
     UpstreamTimeout,
     #[error("Agent request failed: {0}")]
     AgentHttp(#[from] reqwest::Error),
-    #[error("Agent returned {0}")]
-    AgentStatus(reqwest::StatusCode),
+    #[error("Agent returned {0}: {1}")]
+    AgentStatus(reqwest::StatusCode, String),
     #[error("Agent response exceeds configured limit")]
     AgentResponseTooLarge,
     #[error("Agent response is not valid JSON: {0}")]
@@ -110,7 +113,6 @@ struct EvidenceGraphRequest<'a> {
     challenge: &'a str,
     query_digest: &'a str,
     response_digest: &'a str,
-    expected_observed_at: Option<i64>,
     visited_server_ids: Vec<String>,
 }
 
@@ -127,6 +129,13 @@ impl WrapperState {
         if config.max_inflight == 0 || config.max_inflight > usize::from(u16::MAX) {
             return Err(WrapperError::MalformedDns(
                 "max_inflight must be between 1 and 65535".into(),
+            ));
+        }
+        if config.max_concurrent_verifications == 0
+            || config.max_concurrent_verifications > config.max_inflight
+        {
+            return Err(WrapperError::MalformedDns(
+                "max_concurrent_verifications must be between 1 and max_inflight".into(),
             ));
         }
         if config.transaction_id_reuse_delay < Duration::from_secs(5)
@@ -147,14 +156,18 @@ impl WrapperState {
             ));
         }
         let transaction_ids = Arc::new(TransactionIdPool::new(config.transaction_id_reuse_delay));
+        let max_inflight = config.max_inflight;
+        let max_concurrent_verifications = config.max_concurrent_verifications;
         Ok(Self {
-            permits: Arc::new(Semaphore::new(config.max_inflight)),
+            permits: Arc::new(Semaphore::new(max_inflight)),
             config,
             issuer_keys,
             client,
             metrics: Arc::new(Metrics::default()),
             transaction_ids,
             registry_store,
+            context_registration: Arc::new(AsyncMutex::new(())),
+            verification_permits: Arc::new(Semaphore::new(max_concurrent_verifications)),
         })
     }
 
@@ -208,17 +221,23 @@ impl WrapperState {
             let context_query_digest = query_digest.clone();
             let expires_at =
                 registered_at.saturating_add(i64::try_from(context_ttl).unwrap_or(i64::MAX));
-            self.with_store(move |store| {
-                store.register_query_context(
-                    &context_trace_id,
-                    &context_correlation_id,
-                    &context_query_digest,
-                    registered_at,
-                    expires_at,
-                )?;
-                Ok(())
-            })
-            .await?;
+            {
+                // SQLite has one writer. Serialize this small boundary write so
+                // a burst cannot make sibling requests exhaust busy_timeout while
+                // Trace ingestion and graph claims are also committing.
+                let _registration = Arc::clone(&self.context_registration).lock_owned().await;
+                self.with_store(move |store| {
+                    store.register_query_context(
+                        &context_trace_id,
+                        &context_correlation_id,
+                        &context_query_digest,
+                        registered_at,
+                        expires_at,
+                    )?;
+                    Ok(())
+                })
+                .await?;
+            }
             let response = match timeout(
                 self.config.upstream_timeout,
                 query_upstream(&forwarded_query, upstream),
@@ -265,6 +284,14 @@ impl WrapperState {
         query_digest: &str,
         response_digest: &str,
     ) -> Result<(), WrapperError> {
+        let deadline = tokio::time::Instant::now() + self.config.agent_timeout;
+        let _verification = tokio::time::timeout_at(
+            deadline,
+            Arc::clone(&self.verification_permits).acquire_owned(),
+        )
+        .await
+        .map_err(|_| WrapperError::AgentTimeout)?
+        .map_err(|_| WrapperError::AgentTimeout)?;
         let challenge = random_hex(32);
         let request = EvidenceGraphRequest {
             trace_id,
@@ -272,11 +299,10 @@ impl WrapperState {
             challenge: &challenge,
             query_digest,
             response_digest,
-            expected_observed_at: None,
             visited_server_ids: vec![],
         };
-        let response = timeout(
-            self.config.agent_timeout,
+        let response = tokio::time::timeout_at(
+            deadline,
             self.client
                 .post(format!(
                     "{}/v2/evidence-graph",
@@ -289,7 +315,9 @@ impl WrapperState {
         .await
         .map_err(|_| WrapperError::AgentTimeout)??;
         if !response.status().is_success() {
-            return Err(WrapperError::AgentStatus(response.status()));
+            let status = response.status();
+            let detail = decode_error_limited(response, 4_096).await;
+            return Err(WrapperError::AgentStatus(status, detail));
         }
         let graph = decode_json_limited::<QueryEvidenceGraphV2>(
             response,
@@ -392,6 +420,21 @@ impl WrapperState {
             .await
             .map_err(|error| WrapperError::BlockingTask(error.to_string()))?
     }
+}
+
+async fn decode_error_limited(response: reqwest::Response, limit: usize) -> String {
+    let mut stream = response.bytes_stream();
+    let mut body = Vec::new();
+    while let Some(chunk) = stream.next().await {
+        let Ok(chunk) = chunk else {
+            return "unreadable error body".into();
+        };
+        if body.len().saturating_add(chunk.len()) > limit {
+            return "error body exceeded 4096 bytes".into();
+        }
+        body.extend_from_slice(&chunk);
+    }
+    String::from_utf8(body).unwrap_or_else(|_| "non-UTF-8 error body".into())
 }
 
 fn registry_is_fresh(

@@ -4,8 +4,9 @@
 
 ## P0
 
-- [ ] 现场 Resolver 插件生成可靠内部 `trace_id`，按规范生成 `correlation_id` 和
-  `target_correlation_id`，并通过并发相同报文、缓存和重试测试。
+- [x] Knot Resolver 6.3.0 插件生成可靠内部 `trace_id`，按规范生成
+  `correlation_id` 和 `target_correlation_id`，并通过真实并发、缓存和重试测试。
+  其他 Resolver 仍需单独实现和验收。
 - [ ] Root、TLD、Authority 事件来自实际 socket 目标，不是静态配置推测。
 - [ ] `public-hybrid` 的 DNSSEC 状态来自验证型 Resolver。
 - [ ] 所有 Recursive/Forwarder 有 Agent；受控严格模式下所有 Authority 也有 Agent。
@@ -50,6 +51,6 @@
 
 ## 当前仓库状态
 
-Rust 数据面和自动化测试基线已实现。真实 Resolver Trace 插件、真实链和角色账户、
-现场证书/防火墙/监控、备份恢复与容量数据仍是现场 P0。因此仓库代码可以进入
-单链路集成和 shadow 阶段，但不能仅凭当前仓库宣称已经完成真实生产上线。
+Rust 数据面和 Knot Resolver 6.3.0 Trace 已实现。真实链和角色账户、现场证书、
+防火墙、监控、备份恢复与容量数据仍是现场 P0。因此该代码可进入 Knot 单链路
+Shadow 部署，但不能仅凭仓库验收宣称已完成真实生产上线。

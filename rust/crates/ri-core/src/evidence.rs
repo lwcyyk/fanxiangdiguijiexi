@@ -60,6 +60,14 @@ pub enum DnssecStatus {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TraceEventKind {
     ClientQuery,
+    ClientResponse,
+    UpstreamQuery,
+    UpstreamResponse,
+    UpstreamTimeout,
+    UpstreamRetry,
+    TransportSwitch,
+    ResolutionFailed,
+    // Legacy producer values remain readable during rolling upgrades.
     ResolverQuery,
     ResolverResponse,
     AuthorityQuery,
@@ -68,10 +76,12 @@ pub enum TraceEventKind {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct TraceEventV2 {
     pub schema_version: String,
     pub event_id: String,
     pub trace_id: String,
+    pub sequence: u64,
     pub correlation_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_event_id: Option<String>,
@@ -83,15 +93,21 @@ pub struct TraceEventV2 {
     pub target_endpoint: Option<DnsEndpoint>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub target_correlation_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub attempt: Option<u32>,
     pub query_digest: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_digest: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_object_digest: Option<String>,
     pub observed_at: i64,
     pub dnssec_status: DnssecStatus,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ttl_expires_at: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_graph_digest: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub failure_reason: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

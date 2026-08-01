@@ -18,6 +18,8 @@ client -> Rust Wrapper -> Recursive R1
 - `ri-wrapper`：UDP/TCP DNS、帧/问题核对、资源上限、证据与 Registry 双重复验；
 - `ri-agent`：从实际 Trace 构图、目标响应证明、R1/R2 子图递归合并、mTLS；
 - `ri-trace-adapter`：Unix Socket、producer UID、SQLite 持久队列、批量 mTLS 续传；
+- `ri-knot-trace-producer`：绑定 Knot Resolver 6.3.0 内部请求 UID，输出严格有序、
+  持久确认的真实查询事件，不使用 qname 或时间窗口关联；
 - `ri-chain-adapter`：统一链身份、最终检查点、Registry 快照和历史区块哈希接口，
   已实现 EVM、Go-Norn，并通过标准 Sidecar 协议扩展新的链适配器；
 - `ri-registry-sync`：通过多链适配器完成 identity/root/endpoint 核验和原子同步；
@@ -115,6 +117,8 @@ PYTHONPATH=src python3 tools/manage_v2_registry.py --help
 - [Sepolia 部署规格](specs/public-testnet-preproduction/requirements.md)
 - [多链 Registry 兼容层](docs/runbooks/multichain-registry-adapter.md)
 - [多链适配器规格](specs/multichain-registry-adapter/requirements.md)
+- [Knot Resolver Trace 运行手册](docs/runbooks/production-resolver-trace.md)
+- [Knot Resolver Trace 规格](specs/production-resolver-trace/requirements.md)
 - [生产就绪门禁](docs/production_readiness.md)
 - [安全边界](docs/security_boundary.md)
 - [V2 API](docs/api.md)
@@ -123,7 +127,7 @@ PYTHONPATH=src python3 tools/manage_v2_registry.py --help
 
 仓库已具备 Rust V2 数据面和单链路集成基线，但真实生产上线仍必须完成现场 P0：
 
-1. 为实际 Resolver 接入内部 Trace 生产插件，提供可靠解析上下文 ID；
+1. 现场 Resolver 必须使用已验收的 Knot Resolver 6.3.0 集成；其他 Resolver 需另行适配；
 2. 部署真实 Registry 并拆分治理/发布/端点/撤销角色；
 3. 独立核验 chain ID、contract address 和 runtime code hash；
 4. 配置现场 TLS/mTLS、防火墙、日志和磁盘告警；

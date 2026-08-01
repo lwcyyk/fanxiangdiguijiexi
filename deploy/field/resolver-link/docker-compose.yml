@@ -12,6 +12,49 @@ x-runtime: &runtime
       max-file: ${RI_DOCKER_LOG_MAX_FILES:-5}
 
 services:
+  resolver:
+    image: ${RI_KNOT_IMAGE:?pin patched Knot Resolver image digest}
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    command: ["-n", "-c", "/run/config/kresd.conf", "/var/cache/knot-resolver"]
+    environment:
+      RI_KNOT_TRACE_HOOK_SOCKET: /run/resolver-identity/trace/knot-hook.sock
+      RI_TRACE_ACK_TIMEOUT_MS: ${RI_TRACE_ACK_TIMEOUT_MS:-100}
+    group_add: ["${RI_TRACE_PRODUCER_GID:?required}"]
+    volumes:
+      - ./config/kresd.conf:/run/config/kresd.conf:ro
+      - ${RI_TRACE_SOCKET_HOST_DIR:?required}:/run/resolver-identity/trace
+      - ${RI_FIELD_DATA_DIR:?required}/knot-cache:/var/cache/knot-resolver
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    ports:
+      - "${RI_RESOLVER_BIND_ADDRESS:?required}:53:1053/udp"
+      - "${RI_RESOLVER_BIND_ADDRESS:?required}:53:1053/tcp"
+    networks: [resolver-egress]
+    logging:
+      driver: json-file
+      options:
+        max-size: ${RI_DOCKER_LOG_MAX_SIZE:-50m}
+        max-file: ${RI_DOCKER_LOG_MAX_FILES:-5}
+
+  trace-producer:
+    <<: *runtime
+    command: ["/usr/local/bin/ri-knot-trace-producer"]
+    environment:
+      RI_KNOT_TRACE_HOOK_SOCKET: /run/resolver-identity/trace/knot-hook.sock
+      RI_KNOT_TRACE_HOOK_SOCKET_MODE: "0660"
+      RI_KNOT_TRACE_EXPECTED_UID: ${RI_KNOT_RESOLVER_UID:-10003}
+      RI_TRACE_SOCKET: /run/resolver-identity/trace/events.sock
+      RI_AGENT_SERVER_ID: ${RI_AGENT_SERVER_ID:?required}
+      RI_TRACE_MAX_CONTEXTS: ${RI_TRACE_MAX_CONTEXTS:-65536}
+      RI_TRACE_ACK_TIMEOUT_MS: ${RI_TRACE_ACK_TIMEOUT_MS:-100}
+    volumes:
+      - ${RI_TRACE_SOCKET_HOST_DIR:?required}:/run/resolver-identity/trace
+    network_mode: none
+
   registry-sync:
     <<: *runtime
     command: ["/usr/local/bin/ri-registry-sync"]
@@ -44,6 +87,8 @@ services:
       - ./config/identities-v2.json:/run/config/identities-v2.json:ro
       - ./config/issuer-keys.json:/run/config/issuer-keys.json:ro
       - ${RI_NORN_CLIENT_TLS_DIR:?required}:/run/norn-tls:ro
+    ports:
+      - "${RI_MANAGEMENT_BIND_ADDRESS:?required}:9109:9109/tcp"
     networks: [registry-egress]
 
   agent:
@@ -62,6 +107,7 @@ services:
       RI_AGENT_PEER_TOKEN_FILE: /run/secrets/agent_peer_token
       RI_DATABASE: /var/lib/resolver-identity/evidence-v2.db
       RI_REGISTRY_MAX_STALENESS_SECONDS: ${RI_REGISTRY_MAX_STALENESS_SECONDS:-15}
+      RI_TRACE_WAIT_MILLIS: ${RI_TRACE_WAIT_MILLIS:?required}
       RI_AGENT_TLS_CERT_FILE: /run/agent-tls/agent.crt
       RI_AGENT_TLS_KEY_FILE: /run/agent-tls/agent.key
       RI_AGENT_TLS_CLIENT_CA_FILE: /run/agent-tls/client-ca.crt
@@ -73,6 +119,8 @@ services:
       - ./config/issuer-keys.json:/run/config/issuer-keys.json:ro
       - ${RI_RESOLVER_SECRET_DIR:?required}:/run/secrets:ro
       - ${RI_AGENT_TLS_DIR:?required}:/run/agent-tls:ro
+    ports:
+      - "${RI_MANAGEMENT_BIND_ADDRESS:?required}:8443:8443/tcp"
     networks: [link-control, agent-egress]
 
   trace-adapter:
@@ -82,10 +130,12 @@ services:
       RI_ENVIRONMENT: production
       RI_TRACE_SOCKET: /run/resolver-identity/trace/events.sock
       RI_TRACE_PRODUCER_UID: ${RI_TRACE_PRODUCER_UID:?required}
+      RI_DATABASE: /var/lib/resolver-identity/evidence-v2.db
       RI_TRACE_SPOOL_DATABASE: /var/lib/resolver-identity/trace-spool.db
       RI_TRACE_AGENT_URL: https://agent:8443
       RI_TRACE_INGEST_TOKEN_FILE: /run/secrets/trace_ingest_token
       RI_TRACE_MONITORING_BIND: 0.0.0.0:9110
+      RI_TRACE_CACHE_PROVENANCE_WAIT_MS: ${RI_TRACE_CACHE_PROVENANCE_WAIT_MS:-2000}
       RI_TRACE_TLS_CLIENT_CERT_FILE: /run/agent-tls/trace-client.crt
       RI_TRACE_TLS_CLIENT_KEY_FILE: /run/agent-tls/trace-client.key
       RI_TRACE_TLS_CA_FILE: /run/agent-tls/agent-ca.crt
@@ -95,6 +145,8 @@ services:
       - ${RI_FIELD_DATA_DIR:?required}:/var/lib/resolver-identity
       - ${RI_RESOLVER_SECRET_DIR:?required}:/run/secrets:ro
       - ${RI_AGENT_TLS_DIR:?required}:/run/agent-tls:ro
+    ports:
+      - "${RI_MANAGEMENT_BIND_ADDRESS:?required}:9110:9110/tcp"
     networks: [link-control]
 
   wrapper:
@@ -113,6 +165,8 @@ services:
       RI_DATABASE: /var/lib/resolver-identity/evidence-v2.db
       RI_WRAPPER_UPSTREAMS: ${RI_WRAPPER_UPSTREAMS:-}
       RI_REGISTRY_MAX_STALENESS_SECONDS: ${RI_REGISTRY_MAX_STALENESS_SECONDS:-15}
+      RI_WRAPPER_AGENT_TIMEOUT_MS: ${RI_WRAPPER_AGENT_TIMEOUT_MS:?required}
+      RI_WRAPPER_MAX_CONCURRENT_VERIFICATIONS: ${RI_WRAPPER_MAX_CONCURRENT_VERIFICATIONS:?required}
       RI_WRAPPER_TLS_CLIENT_CERT_FILE: /run/agent-tls/wrapper-client.crt
       RI_WRAPPER_TLS_CLIENT_KEY_FILE: /run/agent-tls/wrapper-client.key
       RI_WRAPPER_TLS_CA_FILE: /run/agent-tls/agent-ca.crt
@@ -124,7 +178,9 @@ services:
     ports:
       - "${DNS_BIND_ADDRESS:?required}:${DNS_PORT:-53}:1053/udp"
       - "${DNS_BIND_ADDRESS:?required}:${DNS_PORT:-53}:1053/tcp"
+      - "${RI_MANAGEMENT_BIND_ADDRESS:?required}:9108:9108/tcp"
     networks: [dns-ingress, link-control, resolver-egress]
+    depends_on: [resolver]
 
 networks:
   dns-ingress:

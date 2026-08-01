@@ -172,9 +172,51 @@ jobs:
       - name: Verify Rust production image policy
         run: |
           test "$(docker image inspect resolver-identity-rust:ci --format '{{.Config.User}}')" = resolver-rust
-          for binary in ri-agent ri-wrapper ri-trace-adapter ri-registry-sync; do
+          for binary in ri-agent ri-wrapper ri-trace-adapter ri-registry-sync ri-knot-trace-producer; do
             docker run --rm --entrypoint /bin/sh resolver-identity-rust:ci -c "test -x /usr/local/bin/$binary"
           done
+
+  knot-trace-image:
+    runs-on: ubuntu-24.04
+    needs: [rust, field-delivery]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - run: docker build --pull --file docker/Dockerfile.knot-trace --tag resolver-identity-knot-trace:ci .
+      - name: Verify pinned real Resolver image
+        run: |
+          test "$(docker image inspect resolver-identity-knot-trace:ci --format '{{.Config.User}}')" = 10003:10003
+          docker run --rm --entrypoint /bin/sh resolver-identity-knot-trace:ci -c \
+            "ldd /usr/sbin/kresd | tee /tmp/kresd-ldd && ! grep -q 'not found' /tmp/kresd-ldd"
+          docker run --rm --entrypoint /usr/sbin/kresd resolver-identity-knot-trace:ci -V 2>&1 |
+            grep -q 'Knot Resolver, version 6.3.0'
+          container="$(docker create resolver-identity-knot-trace:ci)"
+          trap 'docker rm --force "$container" >/dev/null 2>&1 || true' EXIT
+          docker cp "$container:/usr/sbin/kresd" /tmp/kresd-trace
+          grep -a -q 'RI_KNOT_TRACE_HOOK_SOCKET' /tmp/kresd-trace
+
+  production-trace-evidence:
+    runs-on: ubuntu-24.04
+    needs: [rust, python, field-delivery]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - name: Validate script-generated production Trace evidence
+        run: |
+          python3 - <<'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+          from tools.manage_norn_field_delivery import _trace_acceptance_ready
+
+          path = Path("specs/production-resolver-trace/acceptance.json")
+          evidence = json.loads(path.read_text(encoding="utf-8"))
+          source = evidence["source_commit"]
+          subprocess.run(["git", "cat-file", "-e", f"{source}^{{commit}}"], check=True)
+          assert _trace_acceptance_ready(path, source)
+          assert evidence["temporary_environment_cleaned"] is True
+          assert evidence["production_trace_ready"] is True
+          PY
 
   management-image:
     runs-on: ubuntu-24.04
@@ -195,7 +237,7 @@ jobs:
     name: release candidate gate
     runs-on: ubuntu-24.04
     if: always()
-    needs: [rust, python, solidity, compose, field-delivery, legacy-python-image, rust-production-image, management-image]
+    needs: [rust, python, solidity, compose, field-delivery, legacy-python-image, rust-production-image, knot-trace-image, production-trace-evidence, management-image]
     steps:
       - name: Require every release-candidate check
         env:
@@ -206,11 +248,13 @@ jobs:
           FIELD_RESULT: ${{ needs.field-delivery.result }}
           LEGACY_IMAGE_RESULT: ${{ needs.legacy-python-image.result }}
           RUST_IMAGE_RESULT: ${{ needs.rust-production-image.result }}
+          KNOT_IMAGE_RESULT: ${{ needs.knot-trace-image.result }}
+          TRACE_EVIDENCE_RESULT: ${{ needs.production-trace-evidence.result }}
           MANAGEMENT_IMAGE_RESULT: ${{ needs.management-image.result }}
         run: |
           for result in \
             "$RUST_RESULT" "$PYTHON_RESULT" "$SOLIDITY_RESULT" "$COMPOSE_RESULT" \
             "$FIELD_RESULT" "$LEGACY_IMAGE_RESULT" "$RUST_IMAGE_RESULT" \
-            "$MANAGEMENT_IMAGE_RESULT"; do
+            "$KNOT_IMAGE_RESULT" "$TRACE_EVIDENCE_RESULT" "$MANAGEMENT_IMAGE_RESULT"; do
             test "$result" = success
           done

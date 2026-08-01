@@ -60,7 +60,6 @@ async fn hybrid_graph_uses_entire_resolver_trace_not_only_final_digest() {
             challenge: CHALLENGE.into(),
             query_digest: QUERY_DIGEST.into(),
             response_digest: FINAL_RESPONSE.into(),
-            expected_observed_at: Some(now),
             visited_server_ids: vec![],
         })
         .await
@@ -111,7 +110,6 @@ async fn strict_graph_fails_closed_without_target_agent() {
             challenge: CHALLENGE.into(),
             query_digest: QUERY_DIGEST.into(),
             response_digest: FINAL_RESPONSE.into(),
-            expected_observed_at: Some(now),
             visited_server_ids: vec![],
         })
         .await
@@ -120,22 +118,141 @@ async fn strict_graph_fails_closed_without_target_agent() {
 }
 
 #[tokio::test]
+async fn timed_out_upstream_is_causally_closed_before_retry_succeeds() {
+    let fixture = fixture(VerificationMode::PublicHybrid);
+    let timestamp = now();
+    let correlation = trace_correlation("retry-trace");
+    let root_endpoint = endpoint("198.41.0.4");
+    let target_one = ri_core::sha256_hex("target-attempt-one");
+    let target_two = ri_core::sha256_hex("target-attempt-two");
+
+    let mut client = event(
+        "retry-client",
+        "retry-trace",
+        TraceEventKind::ClientQuery,
+        "operator/r1",
+        None,
+        QUERY_DIGEST,
+        None,
+        timestamp,
+    );
+    client.sequence = 1;
+    client.target_correlation_id = None;
+    client.attempt = None;
+
+    let mut first = event(
+        "retry-first-query",
+        "retry-trace",
+        TraceEventKind::UpstreamQuery,
+        "operator/r1",
+        Some(root_endpoint.clone()),
+        AUTH_QUERY,
+        None,
+        timestamp,
+    );
+    first.sequence = 2;
+    first.parent_event_id = Some(client.event_id.clone());
+    first.correlation_id = correlation.clone();
+    first.target_correlation_id = Some(target_one.clone());
+
+    let mut timed_out = first.clone();
+    timed_out.event_id = "retry-timeout".into();
+    timed_out.sequence = 3;
+    timed_out.parent_event_id = Some(first.event_id.clone());
+    timed_out.kind = TraceEventKind::UpstreamTimeout;
+    timed_out.failure_reason = Some("transport-failure".into());
+
+    let mut retry = event(
+        "retry-marker",
+        "retry-trace",
+        TraceEventKind::UpstreamRetry,
+        "operator/r1",
+        Some(root_endpoint.clone()),
+        QUERY_DIGEST,
+        None,
+        timestamp,
+    );
+    retry.sequence = 4;
+    retry.parent_event_id = Some(timed_out.event_id.clone());
+    retry.target_correlation_id = None;
+    retry.attempt = Some(2);
+    retry.failure_reason = Some("send".into());
+
+    let mut second = event(
+        "retry-second-query",
+        "retry-trace",
+        TraceEventKind::UpstreamQuery,
+        "operator/r1",
+        Some(root_endpoint),
+        AUTH_QUERY,
+        None,
+        timestamp,
+    );
+    second.sequence = 5;
+    second.parent_event_id = Some(retry.event_id.clone());
+    second.target_correlation_id = Some(target_two.clone());
+    second.attempt = Some(2);
+
+    let mut response = second.clone();
+    response.event_id = "retry-second-response".into();
+    response.sequence = 6;
+    response.parent_event_id = Some(second.event_id.clone());
+    response.kind = TraceEventKind::UpstreamResponse;
+    response.response_digest = Some(AUTH_RESPONSE.into());
+
+    let mut terminal = event(
+        "retry-terminal",
+        "retry-trace",
+        TraceEventKind::ClientResponse,
+        "operator/r1",
+        None,
+        QUERY_DIGEST,
+        Some(FINAL_RESPONSE),
+        timestamp,
+    );
+    terminal.sequence = 7;
+    terminal.parent_event_id = Some(response.event_id.clone());
+    terminal.target_correlation_id = None;
+    terminal.attempt = None;
+    terminal.cache_object_digest = Some(FINAL_RESPONSE.into());
+
+    for trace_event in [client, first, timed_out, retry, second, response, terminal] {
+        fixture.store.put_trace_event(&trace_event).unwrap();
+    }
+    let graph = fixture
+        .state
+        .build_graph(&EvidenceGraphRequest {
+            trace_id: "retry-wrapper".into(),
+            correlation_id: correlation,
+            challenge: CHALLENGE.into(),
+            query_digest: QUERY_DIGEST.into(),
+            response_digest: FINAL_RESPONSE.into(),
+            visited_server_ids: vec![],
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(graph.edges.len(), 1);
+    assert_eq!(graph.edges[0].query_digest, AUTH_QUERY);
+    assert_eq!(graph.edges[0].response_digest, AUTH_RESPONSE);
+}
+
+#[tokio::test]
 async fn cache_hit_requires_source_graph_in_current_registry_generation() {
     let fixture = fixture(VerificationMode::PublicHybrid);
     let timestamp = now() - 1;
-    fixture
-        .store
-        .put_trace_event(&event(
-            "source-final",
-            "source-trace",
-            TraceEventKind::ResolverResponse,
-            "operator/r1",
-            Some(endpoint("192.0.2.53")),
-            QUERY_DIGEST,
-            Some(FINAL_RESPONSE),
-            timestamp,
-        ))
-        .unwrap();
+    let mut source_final = event(
+        "source-final",
+        "source-trace",
+        TraceEventKind::ClientResponse,
+        "operator/r1",
+        None,
+        QUERY_DIGEST,
+        Some(FINAL_RESPONSE),
+        timestamp,
+    );
+    source_final.cache_object_digest = Some(FINAL_RESPONSE.into());
+    fixture.store.put_trace_event(&source_final).unwrap();
     fixture
         .store
         .put_trace_event(&event(
@@ -157,7 +274,6 @@ async fn cache_hit_requires_source_graph_in_current_registry_generation() {
             challenge: CHALLENGE.into(),
             query_digest: QUERY_DIGEST.into(),
             response_digest: FINAL_RESPONSE.into(),
-            expected_observed_at: Some(timestamp),
             visited_server_ids: vec![],
         })
         .await
@@ -165,19 +281,18 @@ async fn cache_hit_requires_source_graph_in_current_registry_generation() {
     let source_digest = object_hash(&source_graph).unwrap();
 
     let timestamp = now();
-    fixture
-        .store
-        .put_trace_event(&event(
-            "cached-final",
-            "cached-trace",
-            TraceEventKind::ResolverResponse,
-            "operator/r1",
-            Some(endpoint("192.0.2.53")),
-            QUERY_DIGEST,
-            Some(FINAL_RESPONSE),
-            timestamp,
-        ))
-        .unwrap();
+    let mut cached_final = event(
+        "cached-final",
+        "cached-trace",
+        TraceEventKind::ClientResponse,
+        "operator/r1",
+        None,
+        QUERY_DIGEST,
+        Some(FINAL_RESPONSE),
+        timestamp,
+    );
+    cached_final.cache_object_digest = Some(FINAL_RESPONSE.into());
+    fixture.store.put_trace_event(&cached_final).unwrap();
     let mut cache_hit = event(
         "cached-hit",
         "cached-trace",
@@ -188,6 +303,7 @@ async fn cache_hit_requires_source_graph_in_current_registry_generation() {
         Some(FINAL_RESPONSE),
         timestamp,
     );
+    cache_hit.cache_object_digest = Some(FINAL_RESPONSE.into());
     fixture.store.put_trace_event(&cache_hit).unwrap();
     let request = EvidenceGraphRequest {
         trace_id: "cached-wrapper-trace".into(),
@@ -195,7 +311,6 @@ async fn cache_hit_requires_source_graph_in_current_registry_generation() {
         challenge: "another-challenge-with-at-least-32-characters".into(),
         query_digest: QUERY_DIGEST.into(),
         response_digest: FINAL_RESPONSE.into(),
-        expected_observed_at: Some(timestamp),
         visited_server_ids: vec![],
     };
     let error = fixture.state.build_graph(&request).await.unwrap_err();
@@ -293,7 +408,6 @@ async fn recursive_agent_graph_merges_r1_r2_and_root() {
             key_id: "r2-agent-key".into(),
             mode: VerificationMode::PublicHybrid,
             max_age_seconds: 30,
-            trace_lookback_seconds: 10,
             trace_wait_millis: 10,
             max_cache_ttl_seconds: 3_600,
             registry_max_staleness_seconds: 15,
@@ -305,7 +419,7 @@ async fn recursive_agent_graph_merges_r1_r2_and_root() {
         },
         r2_store,
         issuer_keys.clone(),
-        reqwest::Client::new(),
+        reqwest::Client::builder().no_proxy().build().unwrap(),
     );
     let server = tokio::spawn(async move {
         axum::serve(listener, router(r2_state)).await.unwrap();
@@ -347,7 +461,6 @@ async fn recursive_agent_graph_merges_r1_r2_and_root() {
             key_id: "r1-agent-key".into(),
             mode: VerificationMode::PublicHybrid,
             max_age_seconds: 30,
-            trace_lookback_seconds: 10,
             trace_wait_millis: 10,
             max_cache_ttl_seconds: 3_600,
             registry_max_staleness_seconds: 15,
@@ -359,7 +472,7 @@ async fn recursive_agent_graph_merges_r1_r2_and_root() {
         },
         r1_store,
         issuer_keys,
-        reqwest::Client::new(),
+        reqwest::Client::builder().no_proxy().build().unwrap(),
     );
     let graph = r1_state
         .build_graph(&EvidenceGraphRequest {
@@ -368,7 +481,6 @@ async fn recursive_agent_graph_merges_r1_r2_and_root() {
             challenge: CHALLENGE.into(),
             query_digest: QUERY_DIGEST.into(),
             response_digest: FINAL_RESPONSE.into(),
-            expected_observed_at: Some(timestamp),
             visited_server_ids: vec![],
         })
         .await
@@ -416,11 +528,61 @@ async fn response_attestation_uses_local_observation_time() {
             query_digest: QUERY_DIGEST.into(),
             response_digest: FINAL_RESPONSE.into(),
             endpoint: endpoint("192.0.2.53"),
-            observed_at: observed_at - 1,
         })
         .await
         .unwrap();
     assert_eq!(attestation.observed_at, observed_at);
+}
+
+#[tokio::test]
+async fn response_attestation_accepts_knot_terminal_event_without_fake_target_endpoint() {
+    let fixture = fixture(VerificationMode::ControlledStrict);
+    let observed_at = now() - 1;
+    let mut query = event(
+        "knot-query",
+        "knot-response-trace",
+        TraceEventKind::ClientQuery,
+        "operator/r1",
+        None,
+        QUERY_DIGEST,
+        None,
+        observed_at,
+    );
+    query.sequence = 1;
+    query.target_correlation_id = None;
+    query.attempt = None;
+    query.ttl_expires_at = None;
+    let mut response = event(
+        "knot-response",
+        "knot-response-trace",
+        TraceEventKind::ClientResponse,
+        "operator/r1",
+        None,
+        QUERY_DIGEST,
+        Some(FINAL_RESPONSE),
+        observed_at,
+    );
+    response.sequence = 2;
+    response.parent_event_id = Some(query.event_id.clone());
+    response.target_correlation_id = None;
+    response.attempt = None;
+    fixture.store.put_trace_events(&[query, response]).unwrap();
+
+    let attestation = fixture
+        .state
+        .attest_response(&ResponseAttestationRequest {
+            trace_id: "wrapper-trace-for-knot-response".into(),
+            correlation_id: trace_correlation("knot-response-trace"),
+            challenge: CHALLENGE.into(),
+            query_digest: QUERY_DIGEST.into(),
+            response_digest: FINAL_RESPONSE.into(),
+            endpoint: endpoint("192.0.2.53"),
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(attestation.observed_at, observed_at);
+    assert_eq!(attestation.endpoint, endpoint("192.0.2.53"));
 }
 
 #[tokio::test]
@@ -430,13 +592,16 @@ async fn trace_ingestion_requires_token_and_local_observer() {
     let mut trace = event(
         "ingested",
         "resolver-trace",
-        TraceEventKind::ResolverQuery,
+        TraceEventKind::ClientQuery,
         "operator/r1",
-        Some(endpoint("198.41.0.4")),
+        None,
         AUTH_QUERY,
-        Some(AUTH_RESPONSE),
+        None,
         now(),
     );
+    trace.sequence = 1;
+    trace.target_correlation_id = None;
+    trace.ttl_expires_at = None;
     let unauthorized = app
         .clone()
         .oneshot(json_request("/v2/trace-events", &trace, None))
@@ -457,7 +622,7 @@ async fn trace_ingestion_requires_token_and_local_observer() {
     assert_eq!(wrong_observer.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
     trace.observer_server_id = "operator/r1".into();
-    trace.target_correlation_id = None;
+    trace.parent_event_id = Some("impossible-parent".into());
     let incomplete = app
         .clone()
         .oneshot(json_request(
@@ -469,7 +634,7 @@ async fn trace_ingestion_requires_token_and_local_observer() {
         .unwrap();
     assert_eq!(incomplete.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
-    trace.target_correlation_id = Some(ri_core::sha256_hex("target:ingested"));
+    trace.parent_event_id = None;
     let accepted = app
         .oneshot(json_request(
             "/v2/trace-events",
@@ -491,7 +656,6 @@ async fn evidence_endpoints_enforce_caller_role_token() {
         challenge: CHALLENGE.into(),
         query_digest: QUERY_DIGEST.into(),
         response_digest: FINAL_RESPONSE.into(),
-        expected_observed_at: Some(now()),
         visited_server_ids: vec![],
     };
 
@@ -605,7 +769,6 @@ fn fixture(mode: VerificationMode) -> Fixture {
             key_id: "r1-agent-key".into(),
             mode,
             max_age_seconds: 30,
-            trace_lookback_seconds: 10,
             trace_wait_millis: 10,
             max_cache_ttl_seconds: 3_600,
             registry_max_staleness_seconds: 15,
@@ -617,7 +780,7 @@ fn fixture(mode: VerificationMode) -> Fixture {
         },
         store.clone(),
         issuer_keys,
-        reqwest::Client::new(),
+        reqwest::Client::builder().no_proxy().build().unwrap(),
     );
     Fixture { state, store }
 }
@@ -694,6 +857,7 @@ fn event(
         schema_version: TRACE_EVENT_V2.into(),
         event_id: event_id.into(),
         trace_id: trace_id.into(),
+        sequence: 0,
         correlation_id: trace_correlation(trace_id),
         parent_event_id: None,
         kind,
@@ -701,12 +865,15 @@ fn event(
         target_server_id: None,
         target_endpoint,
         target_correlation_id: Some(ri_core::sha256_hex(format!("target:{event_id}"))),
+        attempt: Some(1),
         query_digest: query_digest.into(),
         response_digest: response_digest.map(Into::into),
+        cache_object_digest: None,
         observed_at,
         dnssec_status: DnssecStatus::Secure,
         ttl_expires_at: Some(observed_at + 60),
         source_graph_digest: None,
+        failure_reason: None,
     }
 }
 

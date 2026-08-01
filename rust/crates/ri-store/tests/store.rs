@@ -51,6 +51,7 @@ fn stores_identity_endpoint_lookup_and_trace_events() {
         schema_version: TRACE_EVENT_V2.into(),
         event_id: "event-1".into(),
         trace_id: "trace-1".into(),
+        sequence: 0,
         correlation_id: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
         parent_event_id: None,
         kind: TraceEventKind::ResolverQuery,
@@ -60,12 +61,15 @@ fn stores_identity_endpoint_lookup_and_trace_events() {
         target_correlation_id: Some(
             "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".into(),
         ),
+        attempt: None,
         query_digest: "0xquery".into(),
         response_digest: Some("0xresponse".into()),
+        cache_object_digest: None,
         observed_at: 1_800_000_000,
         dnssec_status: DnssecStatus::Secure,
         ttl_expires_at: Some(1_800_000_300),
         source_graph_digest: None,
+        failure_reason: None,
     };
     store.put_trace_event(&event).unwrap();
     store.put_trace_event(&event).unwrap();
@@ -116,7 +120,7 @@ fn registry_generation_invalidates_cached_graphs() {
 }
 
 #[test]
-fn registered_query_context_only_claims_new_trace_events_once() {
+fn registered_query_context_uses_row_boundary_not_time_window_and_claims_once() {
     let directory = tempfile::tempdir().unwrap();
     let store = EvidenceStore::open(directory.path().join("evidence.db")).unwrap();
     let correlation = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -152,23 +156,6 @@ fn registered_query_context_only_claims_new_trace_events_once() {
     let mut delayed = response_event("delayed-old", correlation, query, response);
     delayed.observed_at = 1_799_999_999;
     store.put_trace_event(&delayed).unwrap();
-    assert!(
-        store
-            .claim_registered_trace_anchor(
-                "request-1",
-                "operator/r1",
-                correlation,
-                query,
-                response,
-                1_800_000_000,
-            )
-            .unwrap()
-            .is_none()
-    );
-
-    store
-        .put_trace_event(&response_event("new", correlation, query, response))
-        .unwrap();
     let claimed = store
         .claim_registered_trace_anchor(
             "request-1",
@@ -180,7 +167,7 @@ fn registered_query_context_only_claims_new_trace_events_once() {
         )
         .unwrap()
         .unwrap();
-    assert_eq!(claimed.event_id, "new");
+    assert_eq!(claimed.event_id, "delayed-old");
     let claimed_again = store
         .claim_registered_trace_anchor(
             "request-1",
@@ -202,10 +189,35 @@ fn registered_query_context_only_claims_new_trace_events_once() {
             1_800_000_100,
         )
         .unwrap();
+    store
+        .put_trace_event(&response_event("new", correlation, query, response))
+        .unwrap();
+    let claimed = store
+        .claim_registered_trace_anchor(
+            "request-2",
+            "operator/r1",
+            correlation,
+            query,
+            response,
+            1_800_000_000,
+        )
+        .unwrap()
+        .unwrap();
+    assert_eq!(claimed.event_id, "new");
+
+    store
+        .register_query_context(
+            "request-3",
+            correlation,
+            query,
+            1_800_000_000,
+            1_800_000_100,
+        )
+        .unwrap();
     assert!(
         store
             .claim_registered_trace_anchor(
-                "request-2",
+                "request-3",
                 "operator/r1",
                 correlation,
                 query,
@@ -214,6 +226,80 @@ fn registered_query_context_only_claims_new_trace_events_once() {
             )
             .unwrap()
             .is_none()
+    );
+}
+
+#[test]
+fn production_trace_events_are_immutable_ordered_and_terminal() {
+    let directory = tempfile::tempdir().unwrap();
+    let store = EvidenceStore::open(directory.path().join("evidence.db")).unwrap();
+    let first = production_event(1, TraceEventKind::ClientQuery, None);
+    store.put_trace_event(&first).unwrap();
+
+    let out_of_order = production_event(3, TraceEventKind::ClientResponse, Some("event-1"));
+    assert!(
+        store
+            .put_trace_event(&out_of_order)
+            .unwrap_err()
+            .to_string()
+            .contains("out of order")
+    );
+
+    let terminal = production_event(2, TraceEventKind::ClientResponse, Some("event-1"));
+    store.put_trace_event(&terminal).unwrap();
+    let mut conflict = terminal.clone();
+    conflict.response_digest =
+        Some("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".into());
+    assert!(
+        store
+            .put_trace_event(&conflict)
+            .unwrap_err()
+            .to_string()
+            .contains("immutable")
+    );
+
+    let after_terminal = production_event(3, TraceEventKind::ClientResponse, Some("event-2"));
+    assert!(
+        store
+            .put_trace_event(&after_terminal)
+            .unwrap_err()
+            .to_string()
+            .contains("terminal")
+    );
+    assert_eq!(store.trace_events("production-trace").unwrap().len(), 2);
+}
+
+#[test]
+fn concurrent_trace_writers_do_not_lose_events_or_report_database_locks() {
+    let directory = tempfile::tempdir().unwrap();
+    let store = EvidenceStore::open(directory.path().join("evidence.db")).unwrap();
+    std::thread::scope(|scope| {
+        for worker in 0..16 {
+            let store = store.clone();
+            scope.spawn(move || {
+                for index in 0..16 {
+                    let id = format!("worker-{worker}-event-{index}");
+                    let correlation = format!("0x{worker:02x}{index:02x}{:060x}", 0);
+                    store
+                        .put_trace_event(&response_event(
+                            &id,
+                            &correlation,
+                            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                        ))
+                        .unwrap();
+                }
+            });
+        }
+    });
+    let connection = Connection::open(directory.path().join("evidence.db")).unwrap();
+    assert_eq!(
+        connection
+            .query_row("SELECT COUNT(*) FROM ri_v2_trace_events", [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .unwrap(),
+        256
     );
 }
 
@@ -241,8 +327,6 @@ fn response_claim_requires_all_expected_endpoint_fields() {
                 response_digest: response,
                 endpoint: Some(&expected),
                 allow_authority_response: true,
-                not_before: 1_799_999_999,
-                not_after: 1_800_000_001,
             })
             .unwrap()
             .is_none()
@@ -496,6 +580,7 @@ fn response_event(
         schema_version: TRACE_EVENT_V2.into(),
         event_id: event_id.into(),
         trace_id: format!("resolver-{event_id}"),
+        sequence: 0,
         correlation_id: correlation_id.into(),
         parent_event_id: None,
         kind: TraceEventKind::ResolverResponse,
@@ -503,12 +588,45 @@ fn response_event(
         target_server_id: None,
         target_endpoint: None,
         target_correlation_id: None,
+        attempt: None,
         query_digest: query_digest.into(),
         response_digest: Some(response_digest.into()),
+        cache_object_digest: None,
         observed_at: 1_800_000_000,
         dnssec_status: DnssecStatus::Secure,
         ttl_expires_at: None,
         source_graph_digest: None,
+        failure_reason: None,
+    }
+}
+
+fn production_event(
+    sequence: u64,
+    kind: TraceEventKind,
+    parent_event_id: Option<&str>,
+) -> TraceEventV2 {
+    TraceEventV2 {
+        schema_version: TRACE_EVENT_V2.into(),
+        event_id: format!("event-{sequence}"),
+        trace_id: "production-trace".into(),
+        sequence,
+        correlation_id: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
+        parent_event_id: parent_event_id.map(Into::into),
+        kind,
+        observer_server_id: "operator/r1".into(),
+        target_server_id: None,
+        target_endpoint: None,
+        target_correlation_id: None,
+        attempt: None,
+        query_digest: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".into(),
+        response_digest: (kind == TraceEventKind::ClientResponse)
+            .then(|| "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc".into()),
+        cache_object_digest: None,
+        observed_at: 1_800_000_000,
+        dnssec_status: DnssecStatus::Secure,
+        ttl_expires_at: None,
+        source_graph_digest: None,
+        failure_reason: None,
     }
 }
 

@@ -16,20 +16,20 @@
   "challenge": "at-least-32-random-characters",
   "query_digest": "0x<32-byte-sha256>",
   "response_digest": "0x<32-byte-sha256>",
-  "expected_observed_at": null,
   "visited_server_ids": []
 }
 ```
 
 该端点只接受本机 Wrapper token，并要求 Wrapper 已在共享 Store 登记一次性查询
-上下文。Wrapper 调用必须令 `expected_observed_at` 为 `null`；Agent 只能占用登记
-时间和登记行边界之后产生的本地 final response。调用方不能提交路径、节点或切换
-匹配模式。响应为已签名 `QueryEvidenceGraphV2`。
+上下文。Agent 只能占用登记行边界之后产生、尚未被其他请求占用且精确匹配
+correlation/query/response 的本地最终响应。调用方不能提交路径、节点或切换匹配
+模式。响应为已签名 `QueryEvidenceGraphV2`。
 
 ### `POST /v2/downstream-evidence-graph`
 
-只接受相邻 Agent 的 peer token，用于递归子图获取；请求必须携带父级实际 DNS 事件
-的 `expected_observed_at`，目标 Agent 只匹配该时间边界附近的响应。
+只接受相邻 Agent 的 peer token，用于递归子图获取；请求必须携带父级真实 Resolver
+事件生成的 `target_correlation_id`，目标 Agent 只接受精确
+correlation/query/response 绑定，不使用时间、qname 或“最近响应”进行关联。
 `visited_server_ids` 由 Agent 维护以阻断环路。它与 Wrapper 端点分离，peer token
 不能调用本地 Wrapper 端点。
 

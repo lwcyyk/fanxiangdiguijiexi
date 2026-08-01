@@ -4,6 +4,7 @@ import copy
 import importlib.util
 import json
 import os
+import stat
 import subprocess
 import tarfile
 from pathlib import Path
@@ -54,6 +55,9 @@ def _inventory(tmp_path: Path, version: str = "0.3.0-test") -> dict:
         resolver["secret_dir"] = str(tmp_path / f"resolver-secrets-{index}")
         resolver["agent_tls_dir"] = str(tmp_path / f"resolver-agent-tls-{index}")
         resolver["norn_tls_dir"] = str(tmp_path / f"resolver-norn-tls-{index}")
+        resolver["existing_resolver_config"] = str(
+            tmp_path / f"existing-resolver-{index}" / "kresd.conf"
+        )
     return inventory
 
 
@@ -67,8 +71,20 @@ def _extract_package(release: Path, kind: str, destination: Path) -> Path:
 
 
 def _lifecycle_env(install_root: Path) -> dict[str, str]:
+    bin_dir = install_root.parent / "test-bin"
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    docker = bin_dir / "docker"
+    docker.write_text(
+        "#!/usr/bin/env sh\n"
+        "set -eu\n"
+        "# Lifecycle simulation validates invocation; CI validates real Compose.\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    docker.chmod(docker.stat().st_mode | stat.S_IXUSR)
     return {
         **os.environ,
+        "PATH": f"{bin_dir}:{os.environ['PATH']}",
         "RI_INSTALL_ROOT": str(install_root),
         "RI_FIELD_SIMULATION": "true",
         "RI_FIELD_MIN_FREE_MB": "1",
@@ -117,6 +133,12 @@ def test_peer_id_parser_ignores_bootstrap_errors_and_keeps_full_multihash():
                 wrapper_upstreams=["udp://10.70.30.10:53"]
             ),
             "must not configure Wrapper",
+        ),
+        (
+            lambda value: value["resolvers"][0].update(
+                wrapper_upstreams=["udp://10.70.30.11:53"]
+            ),
+            "only the local Knot TCP endpoint",
         ),
         (
             lambda value: value["release"]["images"].update(
@@ -180,6 +202,41 @@ def test_rendered_release_contains_three_complete_secret_free_packages(tmp_path)
             stdout=subprocess.DEVNULL,
         )
 
+
+def test_release_trace_readiness_requires_script_generated_acceptance(tmp_path):
+    inventory = _inventory(tmp_path)
+    evidence = {
+        "schema_version": field.TRACE_ACCEPTANCE_SCHEMA,
+        "source_commit": inventory["release"]["git_commit"],
+        "resolver_name": field.TRACE_RESOLVER_NAME,
+        "resolver_version": field.TRACE_RESOLVER_VERSION,
+        "resolver_upstream_commit": field.TRACE_RESOLVER_COMMIT,
+        "production_trace_ready": True,
+        "generated_by": "tools/run_production_trace_acceptance.py",
+        "secret_scan_clean": True,
+        "cross_talk_count": 0,
+        "time_window_matching": False,
+        "failure_closed": True,
+        "results": {key: "passed" for key in field.TRACE_REQUIRED_RESULTS},
+    }
+    acceptance_file = tmp_path / "acceptance.json"
+    acceptance_file.write_text(json.dumps(evidence), encoding="utf-8")
+    release = field.render(
+        inventory,
+        tmp_path / "qualified",
+        trace_acceptance=acceptance_file,
+    )
+    assert field.verify_release(release)["production_trace_ready"] is True
+
+    evidence["cross_talk_count"] = 1
+    acceptance_file.write_text(json.dumps(evidence), encoding="utf-8")
+    with pytest.raises(field.DeliveryError, match="cross-talk"):
+        field.render(
+            inventory,
+            tmp_path / "rejected",
+            trace_acceptance=acceptance_file,
+        )
+
     secret_requirements = json.loads(
         (release / "secret-requirements.json").read_text(encoding="utf-8")
     )
@@ -189,17 +246,36 @@ def test_rendered_release_contains_three_complete_secret_free_packages(tmp_path)
         for requirement in secret_requirements["hosts"].values()
     )
 
+    resolver_env = (
+        release / "hosts" / "resolver-L01-r1" / "config" / ".env"
+    ).read_text(encoding="utf-8")
+    assert "RI_TRACE_WAIT_MILLIS='5000'" in resolver_env
+    assert "RI_WRAPPER_AGENT_TIMEOUT_MS='7500'" in resolver_env
+    assert "RI_WRAPPER_MAX_CONCURRENT_VERIFICATIONS='32'" in resolver_env
+
 
 def test_adapter_access_and_role_boundaries_are_encoded_in_compose():
     compose = (
         REPO_ROOT / "deploy" / "field" / "resolver-link" / "docker-compose.yml"
     ).read_text(encoding="utf-8")
     registry = compose.split("  registry-sync:", 1)[1].split("  agent:", 1)[0]
+    resolver = compose.split("  resolver:", 1)[1].split("  trace-producer:", 1)[0]
+    producer = compose.split("  trace-producer:", 1)[1].split("  registry-sync:", 1)[0]
     agent = compose.split("  agent:", 1)[1].split("  trace-adapter:", 1)[0]
     wrapper = compose.split("  wrapper:", 1)[1].split("networks:", 1)[0]
 
     assert "RI_CHAIN_RPC_URLS" in registry
     assert "RI_NORN_GENESIS_BLOCK_HASH" in registry
+    assert "RI_KNOT_TRACE_HOOK_SOCKET" in resolver
+    assert "RI_TRACE_SOCKET:" not in resolver
+    assert "RI_TRACE_SOCKET=" not in resolver
+    assert "network_mode: none" in producer
+    assert "RI_KNOT_TRACE_EXPECTED_UID" in producer
+    assert "ri-knot-trace-producer" in producer
+    assert '"${RI_MANAGEMENT_BIND_ADDRESS:?required}:8443:8443/tcp"' in agent
+    assert '"${RI_MANAGEMENT_BIND_ADDRESS:?required}:9108:9108/tcp"' in wrapper
+    assert '"${RI_RESOLVER_BIND_ADDRESS:?required}:53:1053/udp"' in resolver
+    assert "/var/cache/knot-resolver" in resolver
     for section in (agent, wrapper):
         assert "RI_CHAIN_RPC" not in section
         assert "RI_NORN_" not in section
@@ -329,6 +405,73 @@ def test_upgrade_failure_rolls_back_and_uninstall_preserves_data(tmp_path):
     assert not data_dir.exists()
 
 
+def test_resolver_lifecycle_backs_up_and_preserves_existing_configuration(tmp_path):
+    inventory = _inventory(tmp_path, "0.3.0-trace-backup")
+    existing = Path(inventory["resolvers"][0]["existing_resolver_config"])
+    existing.parent.mkdir(parents=True)
+    existing.write_text("-- original resolver configuration\n", encoding="utf-8")
+    release = field.render(inventory, tmp_path / "artifacts")
+    package = _extract_package(release, "resolver-link", tmp_path / "extract-resolver")
+    config = release / "hosts" / "resolver-L01-r1" / "config"
+    install_root = tmp_path / "install-resolver"
+    environment = _lifecycle_env(install_root)
+
+    subprocess.run(
+        [str(package / "install.sh"), "--config-dir", str(config)],
+        env=environment,
+        check=True,
+    )
+    backup = install_root / "state" / "resolver-config" / "original.conf"
+    assert backup.read_text(encoding="utf-8") == existing.read_text(encoding="utf-8")
+
+    subprocess.run([str(package / "uninstall.sh")], env=environment, check=True)
+    assert existing.read_text(encoding="utf-8") == "-- original resolver configuration\n"
+    assert backup.is_file()
+    trace_dir = Path(inventory["resolvers"][0]["trace_socket"])
+    assert trace_dir.is_dir()
+    assert stat.S_IMODE(trace_dir.stat().st_mode) == 0o2770
+
+
+def test_modified_generated_resolver_configuration_fails_before_activation(tmp_path):
+    inventory = _inventory(tmp_path, "0.3.0-trace-invalid-config")
+    existing = Path(inventory["resolvers"][0]["existing_resolver_config"])
+    existing.parent.mkdir(parents=True)
+    existing.write_text("-- original resolver configuration\n", encoding="utf-8")
+    release = field.render(inventory, tmp_path / "artifacts")
+    package = _extract_package(release, "resolver-link", tmp_path / "extract-resolver")
+    config = release / "hosts" / "resolver-L01-r1" / "config"
+    (config / "kresd.conf").write_text("error('unapproved')\n", encoding="utf-8")
+    install_root = tmp_path / "install-resolver"
+
+    result = subprocess.run(
+        [str(package / "install.sh"), "--config-dir", str(config)],
+        env=_lifecycle_env(install_root),
+        check=False,
+    )
+    assert result.returncode != 0
+    assert not (install_root / "current").exists()
+    assert existing.read_text(encoding="utf-8") == "-- original resolver configuration\n"
+
+
+def test_resolver_install_rejects_agent_timeout_below_trace_wait(tmp_path):
+    inventory = _inventory(tmp_path, "0.3.0-trace-timeout-order")
+    release = field.render(inventory, tmp_path / "artifacts")
+    package = _extract_package(release, "resolver-link", tmp_path / "extract-resolver")
+    config = release / "hosts" / "resolver-L01-r1" / "config"
+    with (config / ".env").open("a", encoding="utf-8") as handle:
+        handle.write("RI_WRAPPER_AGENT_TIMEOUT_MS=4999\n")
+
+    result = subprocess.run(
+        [str(package / "install.sh"), "--config-dir", str(config)],
+        env=_lifecycle_env(tmp_path / "install-resolver"),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "timeout must exceed" in result.stderr
+
+
 def test_offline_image_archives_are_optional_and_checksummed(tmp_path):
     inventory = _inventory(tmp_path)
     archives = tmp_path / "images"
@@ -347,4 +490,4 @@ def test_offline_image_archives_are_optional_and_checksummed(tmp_path):
             encoding="utf-8"
         )
     )
-    assert len(archive_manifest["archives"]) == 4
+    assert len(archive_manifest["archives"]) == len(field.IMAGE_KEYS)
