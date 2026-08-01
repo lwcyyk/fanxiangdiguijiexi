@@ -107,6 +107,7 @@ services:
       RI_AGENT_PEER_TOKEN_FILE: /run/secrets/agent_peer_token
       RI_DATABASE: /var/lib/resolver-identity/evidence-v2.db
       RI_REGISTRY_MAX_STALENESS_SECONDS: ${RI_REGISTRY_MAX_STALENESS_SECONDS:-15}
+      RI_TRACE_WAIT_MILLIS: ${RI_TRACE_WAIT_MILLIS:?required}
       RI_AGENT_TLS_CERT_FILE: /run/agent-tls/agent.crt
       RI_AGENT_TLS_KEY_FILE: /run/agent-tls/agent.key
       RI_AGENT_TLS_CLIENT_CA_FILE: /run/agent-tls/client-ca.crt
@@ -164,6 +165,8 @@ services:
       RI_DATABASE: /var/lib/resolver-identity/evidence-v2.db
       RI_WRAPPER_UPSTREAMS: ${RI_WRAPPER_UPSTREAMS:-}
       RI_REGISTRY_MAX_STALENESS_SECONDS: ${RI_REGISTRY_MAX_STALENESS_SECONDS:-15}
+      RI_WRAPPER_AGENT_TIMEOUT_MS: ${RI_WRAPPER_AGENT_TIMEOUT_MS:?required}
+      RI_WRAPPER_MAX_CONCURRENT_VERIFICATIONS: ${RI_WRAPPER_MAX_CONCURRENT_VERIFICATIONS:?required}
       RI_WRAPPER_TLS_CLIENT_CERT_FILE: /run/agent-tls/wrapper-client.crt
       RI_WRAPPER_TLS_CLIENT_KEY_FILE: /run/agent-tls/wrapper-client.key
       RI_WRAPPER_TLS_CA_FILE: /run/agent-tls/agent-ca.crt

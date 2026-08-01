@@ -167,6 +167,16 @@ field_static_health() {
         field_die "management services must bind a dedicated non-loopback address"
       [[ "${RI_TRACE_PRODUCER_UID:?}" != "${RI_KNOT_RESOLVER_UID:?}" ]] ||
         field_die "Knot Resolver and Trace Producer must use different UIDs"
+      [[ "${RI_TRACE_WAIT_MILLIS:?}" =~ ^[1-9][0-9]{0,5}$ ]] ||
+        field_die "RI_TRACE_WAIT_MILLIS must be a positive integer below 1000000"
+      [[ "${RI_WRAPPER_AGENT_TIMEOUT_MS:?}" =~ ^[1-9][0-9]{0,5}$ ]] ||
+        field_die "RI_WRAPPER_AGENT_TIMEOUT_MS must be a positive integer below 1000000"
+      ((RI_WRAPPER_AGENT_TIMEOUT_MS > RI_TRACE_WAIT_MILLIS)) ||
+        field_die "Wrapper Agent timeout must exceed the Agent Trace wait budget"
+      [[ "${RI_WRAPPER_MAX_CONCURRENT_VERIFICATIONS:?}" =~ ^[1-9][0-9]{0,3}$ ]] ||
+        field_die "RI_WRAPPER_MAX_CONCURRENT_VERIFICATIONS must be between 1 and 9999"
+      ((RI_WRAPPER_MAX_CONCURRENT_VERIFICATIONS <= 512)) ||
+        field_die "Wrapper verification concurrency must not exceed max_inflight 512"
       [[ -f "${release_root}/config/kresd.conf" ]] ||
         field_die "generated Knot Resolver configuration is missing"
       cmp --silent "${release_root}/kresd.conf" "${release_root}/config/kresd.conf" ||

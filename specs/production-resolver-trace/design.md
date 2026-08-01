@@ -72,6 +72,14 @@ boundary. Downstream Agent requests use the exact correlation and DNS digests,
 plus single-use event claiming. No request contains or evaluates an
 `expected_observed_at` association window.
 
+SQLite polling first performs a read-only candidate probe. It reserves the
+single SQLite writer only after a terminal event exists and then rechecks and
+claims that event in one immediate transaction. Wrapper serializes its short
+context-boundary writes and independently bounds concurrent Agent
+verifications; Resolver execution and Trace ingestion remain concurrent. This
+prevents validation bursts from starving the terminal events they are waiting
+for.
+
 Graph edges are built only from a successfully paired
 `UPSTREAM_QUERY`/`UPSTREAM_RESPONSE`. Timeout and switch events are retained as
 auditable failure-path evidence but do not become successful identity edges.

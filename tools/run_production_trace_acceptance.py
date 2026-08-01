@@ -433,7 +433,7 @@ def service_environments(root: Path, seed: Path) -> dict[str, dict[str, str]]:
             "RI_AGENT_PEER_TOKEN_FILE": str(seed / "agent_peer_token"),
             "RI_ISSUER_KEYS_FILE": str(seed / "issuer-keys.json"),
             "RI_AGENT_MAX_AGE_SECONDS": "60",
-            "RI_TRACE_WAIT_MILLIS": "1000",
+            "RI_TRACE_WAIT_MILLIS": "5000",
             "RI_REGISTRY_MAX_STALENESS_SECONDS": "300",
             "RI_TRACE_RETENTION_SECONDS": "3600",
         },
@@ -476,9 +476,10 @@ def service_environments(root: Path, seed: Path) -> dict[str, dict[str, str]]:
             # Knot still exercises UDP, retries, and TCP fallback upstream.
             "RI_WRAPPER_UPSTREAMS": "tcp://127.0.0.1:15354",
             "RI_WRAPPER_UPSTREAM_TIMEOUT_MS": "15000",
-            "RI_WRAPPER_AGENT_TIMEOUT_MS": "5000",
+            "RI_WRAPPER_AGENT_TIMEOUT_MS": "7500",
             "RI_WRAPPER_TRANSACTION_ID_REUSE_DELAY_MS": "5000",
             "RI_WRAPPER_MAX_INFLIGHT": "2048",
+            "RI_WRAPPER_MAX_CONCURRENT_VERIFICATIONS": "32",
             "RI_REGISTRY_MAX_STALENESS_SECONDS": "300",
         },
     }

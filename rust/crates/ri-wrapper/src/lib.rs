@@ -15,7 +15,7 @@ use serde::{Serialize, de::DeserializeOwned};
 use thiserror::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpStream, UdpSocket};
-use tokio::sync::{OwnedSemaphorePermit, Semaphore};
+use tokio::sync::{Mutex as AsyncMutex, OwnedSemaphorePermit, Semaphore};
 use tokio::time::timeout;
 
 pub const MAX_DNS_MESSAGE_SIZE: usize = 65_535;
@@ -44,6 +44,7 @@ pub struct WrapperConfig {
     pub transaction_id_reuse_delay: Duration,
     pub max_agent_response_bytes: usize,
     pub max_inflight: usize,
+    pub max_concurrent_verifications: usize,
     pub registry_max_staleness_seconds: i64,
 }
 
@@ -55,6 +56,8 @@ pub struct WrapperState {
     metrics: Arc<Metrics>,
     transaction_ids: Arc<TransactionIdPool>,
     registry_store: EvidenceStore,
+    context_registration: Arc<AsyncMutex<()>>,
+    verification_permits: Arc<Semaphore>,
 }
 
 #[derive(Default)]
@@ -128,6 +131,13 @@ impl WrapperState {
                 "max_inflight must be between 1 and 65535".into(),
             ));
         }
+        if config.max_concurrent_verifications == 0
+            || config.max_concurrent_verifications > config.max_inflight
+        {
+            return Err(WrapperError::MalformedDns(
+                "max_concurrent_verifications must be between 1 and max_inflight".into(),
+            ));
+        }
         if config.transaction_id_reuse_delay < Duration::from_secs(5)
             || config.transaction_id_reuse_delay > Duration::from_secs(300)
         {
@@ -146,14 +156,18 @@ impl WrapperState {
             ));
         }
         let transaction_ids = Arc::new(TransactionIdPool::new(config.transaction_id_reuse_delay));
+        let max_inflight = config.max_inflight;
+        let max_concurrent_verifications = config.max_concurrent_verifications;
         Ok(Self {
-            permits: Arc::new(Semaphore::new(config.max_inflight)),
+            permits: Arc::new(Semaphore::new(max_inflight)),
             config,
             issuer_keys,
             client,
             metrics: Arc::new(Metrics::default()),
             transaction_ids,
             registry_store,
+            context_registration: Arc::new(AsyncMutex::new(())),
+            verification_permits: Arc::new(Semaphore::new(max_concurrent_verifications)),
         })
     }
 
@@ -207,17 +221,23 @@ impl WrapperState {
             let context_query_digest = query_digest.clone();
             let expires_at =
                 registered_at.saturating_add(i64::try_from(context_ttl).unwrap_or(i64::MAX));
-            self.with_store(move |store| {
-                store.register_query_context(
-                    &context_trace_id,
-                    &context_correlation_id,
-                    &context_query_digest,
-                    registered_at,
-                    expires_at,
-                )?;
-                Ok(())
-            })
-            .await?;
+            {
+                // SQLite has one writer. Serialize this small boundary write so
+                // a burst cannot make sibling requests exhaust busy_timeout while
+                // Trace ingestion and graph claims are also committing.
+                let _registration = Arc::clone(&self.context_registration).lock_owned().await;
+                self.with_store(move |store| {
+                    store.register_query_context(
+                        &context_trace_id,
+                        &context_correlation_id,
+                        &context_query_digest,
+                        registered_at,
+                        expires_at,
+                    )?;
+                    Ok(())
+                })
+                .await?;
+            }
             let response = match timeout(
                 self.config.upstream_timeout,
                 query_upstream(&forwarded_query, upstream),
@@ -264,6 +284,14 @@ impl WrapperState {
         query_digest: &str,
         response_digest: &str,
     ) -> Result<(), WrapperError> {
+        let deadline = tokio::time::Instant::now() + self.config.agent_timeout;
+        let _verification = tokio::time::timeout_at(
+            deadline,
+            Arc::clone(&self.verification_permits).acquire_owned(),
+        )
+        .await
+        .map_err(|_| WrapperError::AgentTimeout)?
+        .map_err(|_| WrapperError::AgentTimeout)?;
         let challenge = random_hex(32);
         let request = EvidenceGraphRequest {
             trace_id,
@@ -273,8 +301,8 @@ impl WrapperState {
             response_digest,
             visited_server_ids: vec![],
         };
-        let response = timeout(
-            self.config.agent_timeout,
+        let response = tokio::time::timeout_at(
+            deadline,
             self.client
                 .post(format!(
                     "{}/v2/evidence-graph",

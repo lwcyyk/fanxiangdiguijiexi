@@ -73,12 +73,18 @@ RI_TRACE_SOCKET_HOST_DIR=/run/resolver-identity/L01-r1
 RI_TRACE_MAX_CONTEXTS=65536
 RI_TRACE_ACK_TIMEOUT_MS=100
 RI_TRACE_CACHE_PROVENANCE_WAIT_MS=2000
+RI_TRACE_WAIT_MILLIS=5000
+RI_WRAPPER_AGENT_TIMEOUT_MS=7500
+RI_WRAPPER_MAX_CONCURRENT_VERIFICATIONS=32
 RI_WRAPPER_UPSTREAMS=tcp://<本机Knot地址>:53
 ```
 
 Wrapper 到受控 Knot 固定使用单一 TCP Endpoint，使一个 Wrapper 请求对应一个完整
 Resolver Trace；客户端入口仍支持 UDP/TCP，Knot 对权威上游仍实际使用 UDP、重试和
-TCP 回退。Inventory 校验会拒绝 UDP+TCP 双条目和非本机 Knot Endpoint。
+TCP 回退。Wrapper 可以并发暂存 DNS 响应，但最多同时向 Agent 提交 32 个验证请求，
+避免 SQLite 单写者在突发流量下发生写锁饥饿；该值必须通过现场容量测试确定，不能
+任意调高。Agent Trace 等待窗口为 5 秒，Wrapper Agent 超时为 7.5 秒，安装门禁会拒绝
+前者不小于后者的配置。Inventory 校验会拒绝 UDP+TCP 双条目和非本机 Knot Endpoint。
 
 ## 5. 安装、升级与回滚
 

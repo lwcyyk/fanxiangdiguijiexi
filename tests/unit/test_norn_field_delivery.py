@@ -246,6 +246,13 @@ def test_release_trace_readiness_requires_script_generated_acceptance(tmp_path):
         for requirement in secret_requirements["hosts"].values()
     )
 
+    resolver_env = (
+        release / "hosts" / "resolver-L01-r1" / "config" / ".env"
+    ).read_text(encoding="utf-8")
+    assert "RI_TRACE_WAIT_MILLIS='5000'" in resolver_env
+    assert "RI_WRAPPER_AGENT_TIMEOUT_MS='7500'" in resolver_env
+    assert "RI_WRAPPER_MAX_CONCURRENT_VERIFICATIONS='32'" in resolver_env
+
 
 def test_adapter_access_and_role_boundaries_are_encoded_in_compose():
     compose = (
@@ -444,6 +451,25 @@ def test_modified_generated_resolver_configuration_fails_before_activation(tmp_p
     assert result.returncode != 0
     assert not (install_root / "current").exists()
     assert existing.read_text(encoding="utf-8") == "-- original resolver configuration\n"
+
+
+def test_resolver_install_rejects_agent_timeout_below_trace_wait(tmp_path):
+    inventory = _inventory(tmp_path, "0.3.0-trace-timeout-order")
+    release = field.render(inventory, tmp_path / "artifacts")
+    package = _extract_package(release, "resolver-link", tmp_path / "extract-resolver")
+    config = release / "hosts" / "resolver-L01-r1" / "config"
+    with (config / ".env").open("a", encoding="utf-8") as handle:
+        handle.write("RI_WRAPPER_AGENT_TIMEOUT_MS=4999\n")
+
+    result = subprocess.run(
+        [str(package / "install.sh"), "--config-dir", str(config)],
+        env=_lifecycle_env(tmp_path / "install-resolver"),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "timeout must exceed" in result.stderr
 
 
 def test_offline_image_archives_are_optional_and_checksummed(tmp_path):

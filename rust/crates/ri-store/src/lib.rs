@@ -44,6 +44,14 @@ CREATE INDEX IF NOT EXISTS ri_v2_trace_events_trace_idx
 CREATE UNIQUE INDEX IF NOT EXISTS ri_v2_trace_events_sequence_idx
   ON ri_v2_trace_events(trace_id, CAST(json_extract(event_json,'$.sequence') AS INTEGER))
   WHERE CAST(json_extract(event_json,'$.sequence') AS INTEGER) > 0;
+CREATE INDEX IF NOT EXISTS ri_v2_trace_events_response_match_idx
+  ON ri_v2_trace_events(
+    json_extract(event_json,'$.observer_server_id'),
+    json_extract(event_json,'$.correlation_id'),
+    json_extract(event_json,'$.query_digest'),
+    json_extract(event_json,'$.response_digest'),
+    json_extract(event_json,'$.kind')
+  );
 CREATE TABLE IF NOT EXISTS ri_v2_query_contexts (
   request_trace_id TEXT PRIMARY KEY,
   correlation_id TEXT NOT NULL,
@@ -513,59 +521,32 @@ impl EvidenceStore {
         now: i64,
     ) -> Result<Option<TraceEventV2>, StoreError> {
         let mut connection = self.connect()?;
+        let (_, candidate) = registered_trace_candidate(
+            &connection,
+            request_trace_id,
+            server_id,
+            correlation_id,
+            query_digest,
+            response_digest,
+            now,
+        )?;
+        if candidate.is_none() {
+            return Ok(None);
+        }
+
+        // Polling for an asynchronously ingested terminal event must not take a
+        // SQLite write reservation. Recheck inside an immediate transaction only
+        // after a read-only probe found a candidate, then claim it atomically.
         let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let context = transaction
-            .query_row(
-                r#"SELECT correlation_id,query_digest,min_event_rowid,registered_at,expires_at,
-                          consumed_event_id
-                   FROM ri_v2_query_contexts WHERE request_trace_id=?"#,
-                [request_trace_id],
-                |row| {
-                    Ok((
-                        row.get::<_, String>(0)?,
-                        row.get::<_, String>(1)?,
-                        row.get::<_, i64>(2)?,
-                        row.get::<_, i64>(3)?,
-                        row.get::<_, i64>(4)?,
-                        row.get::<_, Option<String>>(5)?,
-                    ))
-                },
-            )
-            .optional()?
-            .ok_or_else(|| {
-                StoreError::InvalidData("registered query context was not found".into())
-            })?;
-        if context.0 != correlation_id || context.1 != query_digest || context.4 < now {
-            return Err(StoreError::InvalidData(
-                "registered query context does not match or has expired".into(),
-            ));
-        }
-        if context.5.is_some() {
-            return Err(StoreError::InvalidData(
-                "registered query context has already been consumed".into(),
-            ));
-        }
-        let candidate = transaction
-            .query_row(
-                r#"SELECT event_id,event_json FROM ri_v2_trace_events
-                   WHERE rowid>=?
-                     AND json_extract(event_json,'$.observer_server_id')=?
-                     AND json_extract(event_json,'$.correlation_id')=?
-                     AND json_extract(event_json,'$.query_digest')=?
-                     AND json_extract(event_json,'$.response_digest')=?
-                     AND json_extract(event_json,'$.kind') IN
-                         ('CLIENT_RESPONSE','RESOLVER_RESPONSE')
-                   ORDER BY rowid DESC LIMIT 1"#,
-                params![
-                    context.2,
-                    server_id,
-                    correlation_id,
-                    query_digest,
-                    response_digest
-                ],
-                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-            )
-            .optional()?;
+        let (_, candidate) = registered_trace_candidate(
+            &transaction,
+            request_trace_id,
+            server_id,
+            correlation_id,
+            query_digest,
+            response_digest,
+            now,
+        )?;
         let Some((event_id, event_json)) = candidate else {
             transaction.commit()?;
             return Ok(None);
@@ -590,54 +571,11 @@ impl EvidenceStore {
         request: &TraceResponseMatch<'_>,
     ) -> Result<Option<TraceEventV2>, StoreError> {
         let mut connection = self.connect()?;
-        let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let mut statement = transaction.prepare(
-            r#"SELECT event_id,event_json FROM ri_v2_trace_events
-               WHERE json_extract(event_json,'$.observer_server_id')=?
-                 AND json_extract(event_json,'$.correlation_id')=?
-                 AND json_extract(event_json,'$.query_digest')=?
-                 AND json_extract(event_json,'$.response_digest')=?
-                 AND json_extract(event_json,'$.kind') IN
-                     ('CLIENT_RESPONSE','UPSTREAM_RESPONSE',
-                      'RESOLVER_RESPONSE','AUTHORITY_RESPONSE')
-               ORDER BY rowid"#,
-        )?;
-        let rows = statement.query_map(
-            params![
-                request.server_id,
-                request.correlation_id,
-                request.query_digest,
-                request.response_digest
-            ],
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-        )?;
-        let mut candidates = Vec::new();
-        for row in rows {
-            let (event_id, event_json) = row?;
-            let event: TraceEventV2 = serde_json::from_str(&event_json)?;
-            let kind_matches = match event.kind {
-                // A resolver-internal ClientResponse represents the response
-                // emitted by this server. The Agent separately proves that the
-                // requested service endpoint is bound to its local identity;
-                // the event must not invent an outbound target endpoint.
-                ri_core::TraceEventKind::ClientResponse => true,
-                ri_core::TraceEventKind::UpstreamResponse => request.endpoint.is_some(),
-                ri_core::TraceEventKind::ResolverResponse => true,
-                ri_core::TraceEventKind::AuthorityResponse => request.allow_authority_response,
-                _ => false,
-            };
-            let endpoint_matches = event.kind == ri_core::TraceEventKind::ClientResponse
-                || request.endpoint.is_none_or(|expected| {
-                    event
-                        .target_endpoint
-                        .as_ref()
-                        .is_some_and(|candidate| expected.matches(candidate).unwrap_or(false))
-                });
-            if kind_matches && endpoint_matches {
-                candidates.push((event_id, event));
-            }
+        if matching_response_candidates(&connection, request)?.is_empty() {
+            return Ok(None);
         }
-        drop(statement);
+        let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let candidates = matching_response_candidates(&transaction, request)?;
         for (event_id, event) in candidates {
             let existing = transaction
                 .query_row(
@@ -1297,6 +1235,121 @@ impl EvidenceStore {
         connection.pragma_update(None, "foreign_keys", "ON")?;
         Ok(connection)
     }
+}
+
+type RegisteredQueryContext = (String, String, i64, i64, i64, Option<String>);
+
+fn registered_trace_candidate(
+    connection: &Connection,
+    request_trace_id: &str,
+    server_id: &str,
+    correlation_id: &str,
+    query_digest: &str,
+    response_digest: &str,
+    now: i64,
+) -> Result<(RegisteredQueryContext, Option<(String, String)>), StoreError> {
+    let context = connection
+        .query_row(
+            r#"SELECT correlation_id,query_digest,min_event_rowid,registered_at,expires_at,
+                      consumed_event_id
+               FROM ri_v2_query_contexts WHERE request_trace_id=?"#,
+            [request_trace_id],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, i64>(2)?,
+                    row.get::<_, i64>(3)?,
+                    row.get::<_, i64>(4)?,
+                    row.get::<_, Option<String>>(5)?,
+                ))
+            },
+        )
+        .optional()?
+        .ok_or_else(|| StoreError::InvalidData("registered query context was not found".into()))?;
+    if context.0 != correlation_id || context.1 != query_digest || context.4 < now {
+        return Err(StoreError::InvalidData(
+            "registered query context does not match or has expired".into(),
+        ));
+    }
+    if context.5.is_some() {
+        return Err(StoreError::InvalidData(
+            "registered query context has already been consumed".into(),
+        ));
+    }
+    let candidate = connection
+        .query_row(
+            r#"SELECT event_id,event_json FROM ri_v2_trace_events
+               WHERE rowid>=?
+                 AND json_extract(event_json,'$.observer_server_id')=?
+                 AND json_extract(event_json,'$.correlation_id')=?
+                 AND json_extract(event_json,'$.query_digest')=?
+                 AND json_extract(event_json,'$.response_digest')=?
+                 AND json_extract(event_json,'$.kind') IN
+                     ('CLIENT_RESPONSE','RESOLVER_RESPONSE')
+               ORDER BY rowid DESC LIMIT 1"#,
+            params![
+                context.2,
+                server_id,
+                correlation_id,
+                query_digest,
+                response_digest
+            ],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )
+        .optional()?;
+    Ok((context, candidate))
+}
+
+fn matching_response_candidates(
+    connection: &Connection,
+    request: &TraceResponseMatch<'_>,
+) -> Result<Vec<(String, TraceEventV2)>, StoreError> {
+    let mut statement = connection.prepare(
+        r#"SELECT event_id,event_json FROM ri_v2_trace_events
+           WHERE json_extract(event_json,'$.observer_server_id')=?
+             AND json_extract(event_json,'$.correlation_id')=?
+             AND json_extract(event_json,'$.query_digest')=?
+             AND json_extract(event_json,'$.response_digest')=?
+             AND json_extract(event_json,'$.kind') IN
+                 ('CLIENT_RESPONSE','UPSTREAM_RESPONSE',
+                  'RESOLVER_RESPONSE','AUTHORITY_RESPONSE')
+           ORDER BY rowid"#,
+    )?;
+    let rows = statement.query_map(
+        params![
+            request.server_id,
+            request.correlation_id,
+            request.query_digest,
+            request.response_digest
+        ],
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+    )?;
+    let mut candidates = Vec::new();
+    for row in rows {
+        let (event_id, event_json) = row?;
+        let event: TraceEventV2 = serde_json::from_str(&event_json)?;
+        let kind_matches = match event.kind {
+            // A resolver-internal ClientResponse represents the response emitted
+            // by this server; its local identity endpoint is checked separately.
+            ri_core::TraceEventKind::ClientResponse => true,
+            ri_core::TraceEventKind::UpstreamResponse => request.endpoint.is_some(),
+            ri_core::TraceEventKind::ResolverResponse => true,
+            ri_core::TraceEventKind::AuthorityResponse => request.allow_authority_response,
+            _ => false,
+        };
+        let endpoint_matches = event.kind == ri_core::TraceEventKind::ClientResponse
+            || request.endpoint.is_none_or(|expected| {
+                event
+                    .target_endpoint
+                    .as_ref()
+                    .is_some_and(|candidate| expected.matches(candidate).unwrap_or(false))
+            });
+        if kind_matches && endpoint_matches {
+            candidates.push((event_id, event));
+        }
+    }
+    Ok(candidates)
 }
 
 fn claim_event(
