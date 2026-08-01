@@ -25,7 +25,8 @@
 | `ri-wrapper` | Rust/Tokio | UDP/TCP DNS、并发/连接上限、证据与本地 Registry 复验 |
 | `ri-agent` | Rust/Axum | Trace 查询、逐跳响应证明、递归子图合并和 Ed25519 签名 |
 | `ri-trace-adapter` | Rust/Tokio | Unix Socket、UID 校验、持久落盘和批量 mTLS 续传 |
-| `ri-registry-sync` | Rust | 在最终区块核验链、合约、对象、Root 和 endpoint |
+| `ri-chain-adapter` | Rust | 统一链身份、最终检查点、Registry 快照和回滚检测；内置 EVM/Norn |
+| `ri-registry-sync` | Rust | 独立核验身份、适配器快照、Root 和 endpoint 后原子写入 SQLite |
 | `ri-store` | Rust/SQLite | V2 身份、Trace、图和 Registry 快照；WAL、事务和代际失效 |
 | Admin/Publisher | Python + Web3 | 低频制品签发和分角色合约写入，不进入 DNS 热路径 |
 | Registry | Solidity | 身份锚、Root、端点绑定、撤销和角色隔离 |
@@ -99,14 +100,19 @@ R1 为迭代解析器时，R1 Trace 会形成 `R1 -> Root/TLD/Authority` 的观�
 
 `ri-registry-sync` 每轮执行以下操作：
 
-1. 核对 `eth_chainId`；
-2. 取得 `finalized` 区块；不支持 finality tag 时使用显式确认数；
-3. 在该区块读取 Registry runtime code，使用本地 Keccak-256 与固定哈希比较；
+1. 根据 `RI_CHAIN_ADAPTER` 选择 EVM、Go-Norn 或标准外部 sidecar；
+2. 核对不可变链身份、Registry 定位和实现/schema 哈希；
+3. 取得原生 finalized 检查点，或按适配器声明的确认数规则推导检查点；
 4. 验证 identity issuer Ed25519 签名；
 5. 核对 `resolverIdKey`、object hash、version、validUntil 和状态；
 6. 核对 identity 所属 Root 状态；
 7. 对每个完整 V2 endpoint 计算绑定键并核对合约映射；
 8. 原子写入本地 SQLite，并在变化、撤销或不一致时推动缓存代际失效。
+
+EVM 适配器固定 `eth_chainId` 和 runtime code hash，并在指定区块执行
+`eth_call`。Go-Norn 适配器固定创世块哈希，通过两个 mTLS 只读节点核对已确认
+`set` 交易和签名快照。其他链通过标准 sidecar 协议返回签名归一化快照和历史
+块哈希；两个 sidecar 不一致时失败关闭。
 
 链路主机只有只读 RPC 权限，不保存任何 Registry 写入私钥。
 整批 identity 全部核验成功且区块哈希二次确认后才提交一个 SQLite 事务；低于已记录

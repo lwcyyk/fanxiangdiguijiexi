@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "crates/ri-core",
+  "crates/ri-chain-adapter",
   "crates/ri-store",
   "crates/ri-agent",
   "crates/ri-wrapper",
@@ -16,6 +17,7 @@ license = "Apache-2.0"
 rust-version = "1.97"
 
 [workspace.dependencies]
+async-trait = "0.1.89"
 base64 = "0.22.1"
 axum = "0.8.9"
 axum-server = { version = "0.8.0", features = ["tls-rustls"] }
@@ -32,9 +34,11 @@ url = "2.5.8"
 rusqlite = { version = "0.40.1", features = ["bundled"] }
 tempfile = "3.26.0"
 reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls", "stream"] }
+prost = "0.13.5"
 rustls = "0.23.40"
 rustls-pki-types = { version = "1.14.1", features = ["std"] }
 tokio = { version = "1.49.0", features = ["io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tonic = { version = "0.13.1", features = ["tls-ring", "tls-webpki-roots", "transport"] }
 tower = { version = "0.5.3", features = ["limit"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt"] }

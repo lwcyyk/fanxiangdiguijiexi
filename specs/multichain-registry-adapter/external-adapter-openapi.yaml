@@ -1,0 +1,67 @@
+openapi: 3.1.0
+info:
+  title: Resolver Identity External Chain Adapter Protocol
+  version: 1.0.0
+  description: >-
+    Read-only protocol implemented by chain-specific sidecars. The sidecar
+    derives finalized state from its native chain and returns a normalized,
+    Ed25519-signed Resolver Identity snapshot. Deployments expose two fixed,
+    independent HTTPS origins with mutual TLS. Clients reject redirects and
+    response fields cannot select another upstream.
+servers:
+  - url: https://sidecar-a.example.invalid
+  - url: https://sidecar-b.example.invalid
+security:
+  - mutualTLS: []
+paths:
+  /v1/registry/snapshot:
+    get:
+      operationId: getRegistrySnapshot
+      responses:
+        "200":
+          description: Latest finalized normalized Registry snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: ./external-adapter-schema.json
+        "503":
+          description: Native chain is unavailable, stale, or not finalized.
+  /v1/blocks/{number}:
+    get:
+      operationId: getFinalizedBlock
+      parameters:
+        - name: number
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Canonical finalized block identifier.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - number
+                  - hash
+                  - finality_type
+                properties:
+                  number:
+                    type: integer
+                    minimum: 1
+                  hash:
+                    type: string
+                    pattern: ^0x[0-9a-f]{64}$
+                  finality_type:
+                    const: external-signed-checkpoint
+        "404":
+          description: Block is unknown or outside retained history.
+        "503":
+          description: Native chain is unavailable or not finalized.
+components:
+  securitySchemes:
+    mutualTLS:
+      type: mutualTLS

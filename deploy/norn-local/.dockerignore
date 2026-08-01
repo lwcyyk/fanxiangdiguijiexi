@@ -1,0 +1,5 @@
+private/
+runtime.env
+*.db
+*.db-shm
+*.db-wal

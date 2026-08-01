@@ -5,6 +5,7 @@ import base64
 import binascii
 import json
 import os
+import time
 from pathlib import Path
 from typing import Callable
 
@@ -21,6 +22,12 @@ from resolver_identity.crypto.signatures import (
 )
 from resolver_identity.models.endpoint import ResolverEndpoint
 
+NORN_REGISTRY_SNAPSHOT_V1 = "resolver-identity-norn-registry-snapshot-v1"
+EXTERNAL_REGISTRY_SNAPSHOT_V1 = "resolver-identity-external-registry-snapshot-v1"
+NORN_REGISTRY_SCHEMA_HASH_V1 = (
+    "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499"
+)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Prepare and apply DNS identity V2 Registry plans")
@@ -34,6 +41,48 @@ def main() -> None:
     verify_identities = subparsers.add_parser("verify-identities")
     verify_identities.add_argument("--identities", required=True)
     verify_identities.add_argument("--issuer-keys", required=True)
+
+    norn = subparsers.add_parser("prepare-norn-snapshot")
+    norn.add_argument("--plan", required=True)
+    norn.add_argument("--expected-plan-hash", required=True)
+    norn.add_argument("--chain-id", required=True, type=int)
+    norn.add_argument("--genesis-block-hash", required=True)
+    norn.add_argument("--registry-address", required=True)
+    norn.add_argument("--registry-key", required=True)
+    norn.add_argument("--snapshot-version", required=True, type=int)
+    norn.add_argument("--checkpoint-height", required=True, type=int)
+    norn.add_argument("--checkpoint-hash", required=True)
+    norn.add_argument("--valid-until", required=True, type=int)
+    norn.add_argument("--issuer", required=True)
+    norn.add_argument("--key-id", required=True)
+    norn.add_argument("--private-key-file", required=True)
+    norn.add_argument("--issuer-keys", required=True)
+    norn.add_argument("--output", required=True)
+
+    verify_norn = subparsers.add_parser("verify-norn-snapshot")
+    verify_norn.add_argument("--snapshot", required=True)
+    verify_norn.add_argument("--issuer-keys", required=True)
+
+    external = subparsers.add_parser("prepare-external-snapshot")
+    external.add_argument("--plan", required=True)
+    external.add_argument("--expected-plan-hash", required=True)
+    external.add_argument("--driver", required=True)
+    external.add_argument("--chain-identity", required=True)
+    external.add_argument("--registry-locator", required=True)
+    external.add_argument("--registry-schema-hash", required=True)
+    external.add_argument("--generation", required=True, type=int)
+    external.add_argument("--checkpoint-height", required=True, type=int)
+    external.add_argument("--checkpoint-hash", required=True)
+    external.add_argument("--valid-until", required=True, type=int)
+    external.add_argument("--issuer", required=True)
+    external.add_argument("--key-id", required=True)
+    external.add_argument("--private-key-file", required=True)
+    external.add_argument("--issuer-keys", required=True)
+    external.add_argument("--output", required=True)
+
+    verify_external = subparsers.add_parser("verify-external-snapshot")
+    verify_external.add_argument("--snapshot", required=True)
+    verify_external.add_argument("--issuer-keys", required=True)
 
     prepare = subparsers.add_parser("prepare")
     prepare.add_argument("--identities", required=True)
@@ -74,6 +123,104 @@ def main() -> None:
             Path(args.issuer_keys),
         )
         print(json.dumps({"verified_identity_count": len(identities)}))
+        return
+    if args.command == "prepare-norn-snapshot":
+        snapshot = build_norn_snapshot(
+            load_plan(Path(args.plan), args.expected_plan_hash),
+            chain_id=args.chain_id,
+            genesis_block_hash=args.genesis_block_hash,
+            registry_address=args.registry_address,
+            registry_key=args.registry_key,
+            snapshot_version=args.snapshot_version,
+            checkpoint_height=args.checkpoint_height,
+            checkpoint_hash=args.checkpoint_hash,
+            valid_until=args.valid_until,
+            issuer=args.issuer,
+            key_id=args.key_id,
+        )
+        private_key = Path(args.private_key_file).read_text(encoding="utf-8").strip()
+        snapshot["signature"] = sign_object_ed25519(snapshot, private_key)
+        keys = IssuerKeyRegistry.from_file(args.issuer_keys)
+        if not verify_object_signature_with_registry(snapshot, keys):
+            raise ValueError("new Norn snapshot does not verify with issuer bundle")
+        write_json_atomic(Path(args.output), snapshot)
+        print(
+            json.dumps(
+                {
+                    "schema_version": snapshot["schema_version"],
+                    "snapshot_version": snapshot["snapshot_version"],
+                    "state_root": snapshot["state_root"],
+                    "identity_count": len(snapshot["entries"]),
+                    "checkpoint_height": snapshot["checkpoint_height"],
+                }
+            )
+        )
+        return
+    if args.command == "verify-norn-snapshot":
+        snapshot = json.loads(Path(args.snapshot).read_text(encoding="utf-8"))
+        validate_norn_snapshot_shape(snapshot)
+        keys = IssuerKeyRegistry.from_file(args.issuer_keys)
+        if not verify_object_signature_with_registry(snapshot, keys):
+            raise ValueError("Norn snapshot signature verification failed")
+        print(
+            json.dumps(
+                {
+                    "verified": True,
+                    "snapshot_version": snapshot["snapshot_version"],
+                    "identity_count": len(snapshot["entries"]),
+                }
+            )
+        )
+        return
+    if args.command == "prepare-external-snapshot":
+        snapshot = build_external_snapshot(
+            load_plan(Path(args.plan), args.expected_plan_hash),
+            driver=args.driver,
+            chain_identity=args.chain_identity,
+            registry_locator=args.registry_locator,
+            registry_schema_hash=args.registry_schema_hash,
+            generation=args.generation,
+            checkpoint_height=args.checkpoint_height,
+            checkpoint_hash=args.checkpoint_hash,
+            valid_until=args.valid_until,
+            issuer=args.issuer,
+            key_id=args.key_id,
+        )
+        private_key = Path(args.private_key_file).read_text(encoding="utf-8").strip()
+        snapshot["signature"] = sign_object_ed25519(snapshot, private_key)
+        keys = IssuerKeyRegistry.from_file(args.issuer_keys)
+        if not verify_object_signature_with_registry(snapshot, keys):
+            raise ValueError("new external snapshot does not verify with issuer bundle")
+        write_json_atomic(Path(args.output), snapshot)
+        print(
+            json.dumps(
+                {
+                    "schema_version": snapshot["schema_version"],
+                    "adapter": snapshot["target"]["adapter"],
+                    "generation": snapshot["generation"],
+                    "state_root": snapshot["state_root"],
+                    "identity_count": len(snapshot["entries"]),
+                    "checkpoint_height": snapshot["checkpoint"]["number"],
+                }
+            )
+        )
+        return
+    if args.command == "verify-external-snapshot":
+        snapshot = json.loads(Path(args.snapshot).read_text(encoding="utf-8"))
+        validate_external_snapshot_shape(snapshot)
+        keys = IssuerKeyRegistry.from_file(args.issuer_keys)
+        if not verify_object_signature_with_registry(snapshot, keys):
+            raise ValueError("external snapshot signature verification failed")
+        print(
+            json.dumps(
+                {
+                    "verified": True,
+                    "adapter": snapshot["target"]["adapter"],
+                    "generation": snapshot["generation"],
+                    "identity_count": len(snapshot["entries"]),
+                }
+            )
+        )
         return
     if args.command == "prepare":
         previous_plan = (
@@ -187,6 +334,262 @@ def sign_identities(input_path: Path, private_key_path: Path, output_path: Path)
         validate_identity_structure(identity)
         identity["signature"] = sign_object_ed25519(identity, private_key)
     write_json_atomic(output_path, {"identities": identities})
+
+
+def build_norn_snapshot(
+    plan: dict,
+    *,
+    chain_id: int,
+    genesis_block_hash: str,
+    registry_address: str,
+    registry_key: str,
+    snapshot_version: int,
+    checkpoint_height: int,
+    checkpoint_hash: str,
+    valid_until: int,
+    issuer: str,
+    key_id: str,
+) -> dict:
+    published_at = int(time.time())
+    snapshot = {
+        "schema_version": NORN_REGISTRY_SNAPSHOT_V1,
+        "chain_id": chain_id,
+        "genesis_block_hash": normalize_fixed_hex(genesis_block_hash, 32),
+        "registry_address": normalize_fixed_hex(registry_address, 20),
+        "registry_key": registry_key,
+        "registry_schema_hash": NORN_REGISTRY_SCHEMA_HASH_V1,
+        "snapshot_version": snapshot_version,
+        "checkpoint_height": checkpoint_height,
+        "checkpoint_hash": normalize_fixed_hex(checkpoint_hash, 32),
+        "state_root": normalize_fixed_hex(plan["state_root"], 32),
+        "root_status": "ACTIVE",
+        "published_at": published_at,
+        "valid_until": valid_until,
+        "issuer": issuer,
+        "key_id": key_id,
+        "entries": [
+            {
+                field: entry[field]
+                for field in (
+                    "server_id",
+                    "resolver_id_key",
+                    "object_hash",
+                    "object_version",
+                    "valid_until",
+                    "status",
+                    "endpoint_keys",
+                )
+            }
+            for entry in sorted(plan["entries"], key=lambda item: item["server_id"])
+        ],
+    }
+    validate_norn_snapshot_shape(snapshot)
+    return snapshot
+
+
+def validate_norn_snapshot_shape(snapshot: dict) -> None:
+    if snapshot.get("schema_version") != NORN_REGISTRY_SNAPSHOT_V1:
+        raise ValueError("Norn snapshot schema_version is invalid")
+    if snapshot.get("registry_schema_hash") != NORN_REGISTRY_SCHEMA_HASH_V1:
+        raise ValueError("Norn snapshot schema hash is invalid")
+    if (
+        int(snapshot.get("chain_id", 0)) <= 0
+        or int(snapshot.get("snapshot_version", 0)) <= 0
+        or int(snapshot.get("checkpoint_height", 0)) <= 0
+        or int(snapshot.get("published_at", 0)) <= 0
+        or int(snapshot.get("valid_until", 0)) <= int(snapshot.get("published_at", 0))
+        or snapshot.get("root_status") != "ACTIVE"
+        or not str(snapshot.get("registry_key", "")).strip()
+        or not str(snapshot.get("issuer", "")).strip()
+        or not str(snapshot.get("key_id", "")).strip()
+        or not snapshot.get("entries")
+    ):
+        raise ValueError("Norn snapshot required fields are invalid")
+    normalize_fixed_hex(snapshot["genesis_block_hash"], 32)
+    normalize_fixed_hex(snapshot["registry_address"], 20)
+    normalize_fixed_hex(snapshot["checkpoint_hash"], 32)
+    normalize_fixed_hex(snapshot["state_root"], 32)
+    server_ids = [entry["server_id"] for entry in snapshot["entries"]]
+    if server_ids != sorted(set(server_ids)):
+        raise ValueError("Norn snapshot entries must be sorted by unique server_id")
+
+
+def build_external_snapshot(
+    plan: dict,
+    *,
+    driver: str,
+    chain_identity: str,
+    registry_locator: str,
+    registry_schema_hash: str,
+    generation: int,
+    checkpoint_height: int,
+    checkpoint_hash: str,
+    valid_until: int,
+    issuer: str,
+    key_id: str,
+) -> dict:
+    published_at = int(time.time())
+    registry_schema_hash = normalize_fixed_hex(registry_schema_hash, 32)
+    snapshot = {
+        "schema_version": EXTERNAL_REGISTRY_SNAPSHOT_V1,
+        "target": {
+            "adapter": "external",
+            "chain_identity": chain_identity,
+            "registry_locator": registry_locator,
+            "registry_schema_hash": registry_schema_hash,
+            "adapter_metadata": {
+                "adapter_type": "external",
+                "driver": driver,
+                "snapshot_signer_issuer": issuer,
+                "snapshot_signer_key_id": key_id,
+            },
+        },
+        "checkpoint": {
+            "number": checkpoint_height,
+            "hash": normalize_fixed_hex(checkpoint_hash, 32),
+            "finality_type": "external-signed-checkpoint",
+        },
+        "generation": generation,
+        "state_root": normalize_fixed_hex(plan["state_root"], 32),
+        "root_status": "ACTIVE",
+        "published_at": published_at,
+        "valid_until": valid_until,
+        "issuer": issuer,
+        "key_id": key_id,
+        "entries": [
+            {
+                field: entry[field]
+                for field in (
+                    "server_id",
+                    "resolver_id_key",
+                    "object_hash",
+                    "object_version",
+                    "valid_until",
+                    "status",
+                    "endpoint_keys",
+                )
+            }
+            for entry in sorted(plan["entries"], key=lambda item: item["server_id"])
+        ],
+    }
+    validate_external_snapshot_shape(snapshot)
+    return snapshot
+
+
+def validate_external_snapshot_shape(snapshot: dict) -> None:
+    if snapshot.get("schema_version") != EXTERNAL_REGISTRY_SNAPSHOT_V1:
+        raise ValueError("external snapshot schema_version is invalid")
+    target = snapshot.get("target")
+    checkpoint = snapshot.get("checkpoint")
+    if not isinstance(target, dict) or not isinstance(checkpoint, dict):
+        raise ValueError("external snapshot target or checkpoint is missing")
+    adapter_metadata = target.get("adapter_metadata")
+    if not isinstance(adapter_metadata, dict):
+        raise ValueError("external snapshot adapter metadata is missing")
+    adapter = str(target.get("adapter", ""))
+    driver = str(adapter_metadata.get("driver", ""))
+    if (
+        not driver
+        or len(driver) > 23
+        or any(not (char.islower() or char.isdigit() or char == "-") for char in driver)
+    ):
+        raise ValueError("external snapshot adapter driver is invalid")
+    expected_target = {
+        "adapter": adapter,
+        "chain_identity": str(target.get("chain_identity", "")),
+        "registry_locator": str(target.get("registry_locator", "")),
+        "registry_schema_hash": normalize_fixed_hex(
+            target.get("registry_schema_hash", ""),
+            32,
+        ),
+        "adapter_metadata": {
+            "adapter_type": "external",
+            "driver": driver,
+            "snapshot_signer_issuer": str(
+                adapter_metadata.get("snapshot_signer_issuer", "")
+            ),
+            "snapshot_signer_key_id": str(
+                adapter_metadata.get("snapshot_signer_key_id", "")
+            ),
+        },
+    }
+    text_fields = (
+        expected_target["chain_identity"],
+        expected_target["registry_locator"],
+        expected_target["adapter_metadata"]["snapshot_signer_issuer"],
+        expected_target["adapter_metadata"]["snapshot_signer_key_id"],
+    )
+    if (
+        target != expected_target
+        or adapter != "external"
+        or any(not value.strip() or len(value) > 256 for value in text_fields)
+        or expected_target["adapter_metadata"]["snapshot_signer_issuer"]
+        != str(snapshot.get("issuer", ""))
+        or expected_target["adapter_metadata"]["snapshot_signer_key_id"]
+        != str(snapshot.get("key_id", ""))
+        or expected_target["registry_schema_hash"] == "0x" + "00" * 32
+        or int(snapshot.get("generation", 0)) <= 0
+        or int(checkpoint.get("number", 0)) <= 0
+        or checkpoint.get("finality_type") != "external-signed-checkpoint"
+        or int(snapshot.get("published_at", 0)) <= 0
+        or int(snapshot.get("valid_until", 0)) <= int(snapshot.get("published_at", 0))
+        or snapshot.get("root_status") != "ACTIVE"
+        or not str(snapshot.get("issuer", "")).strip()
+        or not str(snapshot.get("key_id", "")).strip()
+        or not snapshot.get("entries")
+        or len(snapshot["entries"]) > 10_000
+    ):
+        raise ValueError("external snapshot required fields are invalid")
+    normalize_fixed_hex(checkpoint.get("hash", ""), 32)
+    normalize_fixed_hex(snapshot.get("state_root", ""), 32)
+    expected_entry_fields = {
+        "server_id",
+        "resolver_id_key",
+        "object_hash",
+        "object_version",
+        "valid_until",
+        "status",
+        "endpoint_keys",
+    }
+    all_endpoint_keys: set[str] = set()
+    server_ids: list[str] = []
+    for entry in snapshot["entries"]:
+        if not isinstance(entry, dict) or set(entry) != expected_entry_fields:
+            raise ValueError("external snapshot entry fields are invalid")
+        server_id = str(entry["server_id"])
+        status = str(entry["status"])
+        endpoint_keys = entry["endpoint_keys"]
+        if (
+            not server_id
+            or len(server_id) > 256
+            or not status
+            or len(status) > 32
+            or int(entry["object_version"]) <= 0
+            or int(entry["valid_until"]) <= 0
+            or not isinstance(endpoint_keys, list)
+            or not 1 <= len(endpoint_keys) <= 32
+            or len(endpoint_keys) != len(set(endpoint_keys))
+            or normalize_fixed_hex(entry["resolver_id_key"], 32)
+            != resolver_id_key(server_id)
+        ):
+            raise ValueError("external snapshot entry values are invalid")
+        normalize_fixed_hex(entry["object_hash"], 32)
+        for endpoint_key in endpoint_keys:
+            normalized_endpoint = normalize_fixed_hex(endpoint_key, 32)
+            if normalized_endpoint in all_endpoint_keys:
+                raise ValueError("external snapshot endpoint ownership is ambiguous")
+            all_endpoint_keys.add(normalized_endpoint)
+        server_ids.append(server_id)
+    if server_ids != sorted(set(server_ids)):
+        raise ValueError("external snapshot entries must be sorted by unique server_id")
+
+
+def normalize_fixed_hex(value: str, size: int) -> str:
+    normalized = str(value).lower()
+    raw = normalized[2:] if normalized.startswith("0x") else ""
+    if len(raw) != size * 2 or any(char not in "0123456789abcdef" for char in raw):
+        raise ValueError(f"value must be 0x-prefixed {size}-byte hex")
+    return "0x" + raw
 
 
 def load_identities(identity_path: Path, issuer_path: Path) -> list[dict]:

@@ -8,8 +8,9 @@ use ri_agent::{AgentConfig, AgentState, EvidenceGraphRequest, ResponseAttestatio
 use ri_core::evidence::{DNS_SERVER_IDENTITY_V2, TRACE_EVENT_V2};
 use ri_core::{
     AgentBindingV2, DnsEndpoint, DnsServerIdentityV2, DnsServerRole, DnssecStatus,
-    IssuerKeyRegistry, RegistryReferenceV2, TraceEventKind, TraceEventV2, VerificationMode,
-    ed25519_public_key_b64, object_hash, sign_ed25519,
+    IssuerKeyRegistry, RegistryAdapterMetadataV2, RegistryFinalityTypeV2, RegistryReferenceV2,
+    TraceEventKind, TraceEventV2, VerificationMode, ed25519_public_key_b64, object_hash,
+    sign_ed25519,
 };
 use ri_store::EvidenceStore;
 use tower::ServiceExt;
@@ -653,13 +654,21 @@ fn identity(
 
 fn registry(identity: &DnsServerIdentityV2) -> RegistryReferenceV2 {
     RegistryReferenceV2 {
-        chain_id: 31_337,
-        contract_address: "0x1111111111111111111111111111111111111111".into(),
-        contract_code_hash: "0x2222222222222222222222222222222222222222222222222222222222222222"
+        chain_adapter: "evm".into(),
+        chain_identity: "eip155:31337".into(),
+        registry_locator: "evm:0x1111111111111111111111111111111111111111".into(),
+        registry_schema_hash: "0x2222222222222222222222222222222222222222222222222222222222222222"
             .into(),
-        finalized_block: 100,
-        finalized_block_hash: "0x3333333333333333333333333333333333333333333333333333333333333333"
+        adapter_metadata: RegistryAdapterMetadataV2::Evm {
+            chain_id: 31_337,
+            contract_address: "0x1111111111111111111111111111111111111111".into(),
+            runtime_code_hash: "0x2222222222222222222222222222222222222222222222222222222222222222"
+                .into(),
+        },
+        checkpoint_height: 100,
+        checkpoint_hash: "0x3333333333333333333333333333333333333333333333333333333333333333"
             .into(),
+        finality_type: RegistryFinalityTypeV2::EvmFinalized,
         state_root: "0x4444444444444444444444444444444444444444444444444444444444444444".into(),
         object_hash: object_hash(identity).unwrap(),
         object_version: identity.object_version,

@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://resolver-identity.local/schemas/external-registry-snapshot-v1.json",
+  "title": "Resolver Identity External Registry Snapshot V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "target",
+    "checkpoint",
+    "generation",
+    "state_root",
+    "root_status",
+    "published_at",
+    "valid_until",
+    "issuer",
+    "key_id",
+    "entries",
+    "signature"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "resolver-identity-external-registry-snapshot-v1"
+    },
+    "target": {
+      "$ref": "#/$defs/target"
+    },
+    "checkpoint": {
+      "$ref": "#/$defs/checkpoint"
+    },
+    "generation": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "state_root": {
+      "$ref": "#/$defs/bytes32"
+    },
+    "root_status": {
+      "const": "ACTIVE"
+    },
+    "published_at": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "valid_until": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "issuer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "key_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10000,
+      "items": {
+        "$ref": "#/$defs/entry"
+      }
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^base64:ed25519:"
+    }
+  },
+  "$defs": {
+    "bytes20": {
+      "type": "string",
+      "pattern": "^0x[0-9a-f]{40}$"
+    },
+    "bytes32": {
+      "type": "string",
+      "pattern": "^0x[0-9a-f]{64}$"
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter",
+        "chain_identity",
+        "registry_locator",
+        "registry_schema_hash",
+        "adapter_metadata"
+      ],
+      "properties": {
+        "adapter": {
+          "const": "external"
+        },
+        "chain_identity": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "registry_locator": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "registry_schema_hash": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "adapter_metadata": {
+          "$ref": "#/$defs/externalMetadata"
+        }
+      }
+    },
+    "externalMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter_type",
+        "driver",
+        "snapshot_signer_issuer",
+        "snapshot_signer_key_id"
+      ],
+      "properties": {
+        "adapter_type": {
+          "const": "external"
+        },
+        "driver": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,23}$"
+        },
+        "snapshot_signer_issuer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "snapshot_signer_key_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    },
+    "checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "number",
+        "hash",
+        "finality_type"
+      ],
+      "properties": {
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "hash": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "finality_type": {
+          "const": "external-signed-checkpoint"
+        }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "server_id",
+        "resolver_id_key",
+        "object_hash",
+        "object_version",
+        "valid_until",
+        "status",
+        "endpoint_keys"
+      ],
+      "properties": {
+        "server_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "resolver_id_key": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "object_hash": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "object_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "valid_until": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "SUSPENDED",
+            "REVOKED",
+            "EXPIRED"
+          ]
+        },
+        "endpoint_keys": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/bytes32"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://resolver-identity.local/schemas/norn-registry-snapshot-v1.json",
+  "title": "Resolver Identity Go-Norn Registry Snapshot V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "chain_id",
+    "genesis_block_hash",
+    "registry_address",
+    "registry_key",
+    "registry_schema_hash",
+    "snapshot_version",
+    "checkpoint_height",
+    "checkpoint_hash",
+    "state_root",
+    "root_status",
+    "published_at",
+    "valid_until",
+    "issuer",
+    "key_id",
+    "entries",
+    "signature"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "resolver-identity-norn-registry-snapshot-v1"
+    },
+    "chain_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "genesis_block_hash": {
+      "$ref": "#/$defs/bytes32"
+    },
+    "registry_address": {
+      "type": "string",
+      "pattern": "^0x[0-9a-f]{40}$"
+    },
+    "registry_key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "registry_schema_hash": {
+      "const": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499"
+    },
+    "snapshot_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "checkpoint_height": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "checkpoint_hash": {
+      "$ref": "#/$defs/bytes32"
+    },
+    "state_root": {
+      "$ref": "#/$defs/bytes32"
+    },
+    "root_status": {
+      "const": "ACTIVE"
+    },
+    "published_at": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "valid_until": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "issuer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "key_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/entry"
+      }
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^base64:ed25519:"
+    }
+  },
+  "$defs": {
+    "bytes32": {
+      "type": "string",
+      "pattern": "^0x[0-9a-f]{64}$"
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "server_id",
+        "resolver_id_key",
+        "object_hash",
+        "object_version",
+        "valid_until",
+        "status",
+        "endpoint_keys"
+      ],
+      "properties": {
+        "server_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resolver_id_key": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "object_hash": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "object_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "valid_until": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "SUSPENDED",
+            "REVOKED",
+            "EXPIRED"
+          ]
+        },
+        "endpoint_keys": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/bytes32"
+          }
+        }
+      }
+    }
+  }
+}

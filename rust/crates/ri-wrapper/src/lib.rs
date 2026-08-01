@@ -363,7 +363,7 @@ impl WrapperState {
                     })?;
                 if local_identity != node.identity
                     || !same_registry_state(&local_registry, &node.registry)
-                    || node.registry.finalized_block > local_registry.finalized_block
+                    || node.registry.checkpoint_height > local_registry.checkpoint_height
                 {
                     return Err(WrapperError::RegistryMismatch(format!(
                         "{} differs from the local Registry snapshot",

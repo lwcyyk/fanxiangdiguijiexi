@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   rust:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: rust
@@ -23,50 +23,61 @@ jobs:
       - run: cargo audit --deny warnings
 
   python:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.13"]
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.13.11"
           cache: pip
-      - run: python -m pip install '.[dev,web3]'
+          cache-dependency-path: requirements-ci.lock
+      - run: python -m pip install --disable-pip-version-check --require-hashes -r requirements-ci.lock
+      - run: python -m pip install --disable-pip-version-check --no-deps --no-build-isolation -e .
       - run: ruff check src tests tools
+      - run: python3 -m pytest -q
       - run: coverage run -m pytest -q
       - run: coverage report
       - run: python -m compileall -q src tests tools
-      - if: matrix.python-version == '3.13'
-        run: pip-audit -r requirements-production.lock --require-hashes
-      - if: matrix.python-version == '3.13'
-        run: pip-audit -r requirements-production.lock --require-hashes --format cyclonedx-json --output resolver-identity-sbom.cdx.json
-      - if: matrix.python-version == '3.13'
+      - run: pip-audit -r requirements-production.lock --require-hashes
+      - run: pip-audit -r requirements-production.lock --require-hashes --format cyclonedx-json --output resolver-identity-sbom.cdx.json
+      - name: Verify Python lock files are unchanged
         run: |
-          cp requirements-production.lock /tmp/requirements-production.hashed.lock
-          python -m piptools compile pyproject.toml --extra web3 --strip-extras --generate-hashes --no-upgrade --output-file /tmp/requirements-production.hashed.lock --quiet
-          diff -u requirements-production.lock /tmp/requirements-production.hashed.lock
-      - if: matrix.python-version == '3.13'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+          lock_dir="$(mktemp --directory)"
+          trap 'rm -rf "$lock_dir"' EXIT
+          cp pyproject.toml requirements-production.lock requirements-ci.lock "$lock_dir/"
+          (
+            cd "$lock_dir"
+            python -m piptools compile pyproject.toml --extra web3 --strip-extras --generate-hashes --no-upgrade --output-file requirements-production.lock --quiet
+            python -m piptools compile pyproject.toml --extra dev --extra web3 --strip-extras --generate-hashes --allow-unsafe --no-upgrade --output-file requirements-ci.lock --quiet
+          )
+          diff -u requirements-production.lock "$lock_dir/requirements-production.lock"
+          diff -u requirements-ci.lock "$lock_dir/requirements-ci.lock"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: resolver-identity-sbom
           path: resolver-identity-sbom.cdx.json
           if-no-files-found: error
 
   solidity:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1
+        with:
+          version: v1.7.1
+      - run: forge fmt --check
+        working-directory: contracts
+      - run: forge build
+        working-directory: contracts
       - run: forge test -vvv
         working-directory: contracts
 
   compose:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - run: |
+      - name: Legacy Compose compatibility
+        run: |
           cp .env.legacy-python.example .env.legacy-python
           cp deploy/issuer-keys.example.json deploy/issuer-keys.json
           mkdir -p deploy/secrets
@@ -75,22 +86,32 @@ jobs:
           printf 'placeholder' > deploy/secrets/issuer_private_key_b64
           printf 'placeholder' > deploy/secrets/web3_private_key
           docker compose --env-file .env.legacy-python -f docker-compose.legacy-python.yml config --quiet
-      - run: |
           mkdir -p docker/state
           touch docker/state/agent-r1.env docker/state/agent-r2.env docker/state/web3.env
           docker compose -f docker-compose.multi-resolver.yml config --quiet
-      - run: |
+      - name: EVM, Norn, and External production Compose
+        run: |
           cp deploy/link/identities-v2.example.json deploy/link/identities-v2.json
           mkdir -p deploy/link/secrets deploy/link/tls
           printf 'placeholder' > deploy/link/secrets/agent_private_key
           printf 'placeholder' > deploy/link/secrets/trace_ingest_token
           printf 'placeholder' > deploy/link/secrets/agent_wrapper_token
           printf 'placeholder' > deploy/link/secrets/agent_peer_token
-          docker compose --env-file deploy/link/.env.example -f deploy/link/docker-compose.yml config --quiet
+          compose() {
+            docker run --rm \
+              --volume "$PWD:/workspace" \
+              --workdir /workspace \
+              docker@sha256:4fa0ee1f3a7e4354c4ea34558b6d4ee32859baf4973d4c8ccc8e7fe3dd730c04 \
+              docker compose "$@"
+          }
+          test "$(compose version --short)" = "5.0.0"
+          compose --env-file deploy/link/.env.example -f deploy/link/docker-compose.yml config --quiet
+          compose --env-file deploy/link/.env.norn.example -f deploy/link/docker-compose.yml config --quiet
+          compose --env-file deploy/link/.env.external.example -f deploy/link/docker-compose.yml config --quiet
 
   legacy-python-image:
     name: legacy Python compatibility image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [python, solidity, compose]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -104,7 +125,7 @@ jobs:
           docker run --rm --entrypoint python resolver-identity-legacy:ci -c "from pathlib import Path; assert not Path('tools/run_security_experiments.py').exists()"
 
   rust-production-image:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [rust, compose]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -115,3 +136,14 @@ jobs:
           for binary in ri-agent ri-wrapper ri-trace-adapter ri-registry-sync; do
             docker run --rm --entrypoint /bin/sh resolver-identity-rust:ci -c "test -x /usr/local/bin/$binary"
           done
+
+  release-candidate-gate:
+    name: release candidate gate
+    runs-on: ubuntu-24.04
+    if: always()
+    needs: [rust, python, solidity, compose, legacy-python-image, rust-production-image]
+    steps:
+      - name: Require every release-candidate check
+        env:
+          RESULTS: ${{ join(needs.*.result, ',') }}
+        run: test "$RESULTS" = "success,success,success,success,success,success"

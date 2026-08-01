@@ -1,10 +1,11 @@
 use ri_core::evidence::{DNS_SERVER_IDENTITY_V2, TRACE_EVENT_V2};
 use ri_core::{
     AgentBindingV2, DnsEndpoint, DnsServerIdentityV2, DnsServerRole, DnssecStatus,
-    RegistryReferenceV2, TraceEventKind, TraceEventV2, ed25519_public_key_b64, object_hash,
-    sign_ed25519,
+    RegistryAdapterMetadataV2, RegistryFinalityTypeV2, RegistryReferenceV2, TraceEventKind,
+    TraceEventV2, ed25519_public_key_b64, object_hash, sign_ed25519,
 };
 use ri_store::{EvidenceStore, TraceResponseMatch};
+use rusqlite::{Connection, params};
 
 const PRIVATE_KEY: &str = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
 
@@ -98,8 +99,8 @@ fn registry_generation_invalidates_cached_graphs() {
     assert_eq!(store.cache_generation().unwrap(), 1);
 
     let mut newer_proof = registry(&identity, 10);
-    newer_proof.finalized_block = 101;
-    newer_proof.finalized_block_hash =
+    newer_proof.checkpoint_height = 101;
+    newer_proof.checkpoint_hash =
         "0x5555555555555555555555555555555555555555555555555555555555555555".into();
     store.put_identity(&identity, &newer_proof).unwrap();
     assert_eq!(store.cache_generation().unwrap(), 1);
@@ -257,6 +258,7 @@ fn registry_snapshot_rejects_finalized_chain_rollback_atomically() {
     store
         .apply_registry_snapshot(&[(identity.clone(), reference.clone())], 1_800_000_000)
         .unwrap();
+    let generation = store.cache_generation().unwrap();
     assert_eq!(
         store
             .registry_checkpoint()
@@ -267,7 +269,7 @@ fn registry_snapshot_rejects_finalized_chain_rollback_atomically() {
     );
 
     let mut rollback = reference.clone();
-    rollback.finalized_block = 99;
+    rollback.checkpoint_height = 99;
     rollback.snapshot_generation = 99;
     assert!(
         store
@@ -277,11 +279,24 @@ fn registry_snapshot_rejects_finalized_chain_rollback_atomically() {
             .contains("rollback")
     );
     let stored = store.get_identity(&identity.server_id).unwrap().unwrap();
-    assert_eq!(stored.1.finalized_block, 100);
+    assert_eq!(stored.1.checkpoint_height, 100);
     assert_eq!(store.registry_last_success_epoch().unwrap(), 1_800_000_000);
+    assert_eq!(store.cache_generation().unwrap(), generation);
+
+    let mut old_generation = reference.clone();
+    old_generation.snapshot_generation = 99;
+    assert!(
+        store
+            .apply_registry_snapshot(&[(identity.clone(), old_generation)], 1_800_000_001,)
+            .unwrap_err()
+            .to_string()
+            .contains("generation rollback")
+    );
+    assert_eq!(store.registry_last_success_epoch().unwrap(), 1_800_000_000);
+    assert_eq!(store.cache_generation().unwrap(), generation);
 
     let mut conflicting_hash = reference;
-    conflicting_hash.finalized_block_hash =
+    conflicting_hash.checkpoint_hash =
         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into();
     assert!(
         store
@@ -291,6 +306,184 @@ fn registry_snapshot_rejects_finalized_chain_rollback_atomically() {
             .contains("hash changed")
     );
     assert_eq!(store.registry_last_success_epoch().unwrap(), 1_800_000_000);
+    assert_eq!(store.cache_generation().unwrap(), generation);
+}
+
+#[test]
+fn registry_snapshot_rejects_adapter_target_change() {
+    let directory = tempfile::tempdir().unwrap();
+    let store = EvidenceStore::open(directory.path().join("evidence.db")).unwrap();
+    let identity = unsigned_identity();
+    let reference = registry(&identity, 100);
+    store
+        .apply_registry_snapshot(&[(identity.clone(), reference.clone())], 1_800_000_000)
+        .unwrap();
+
+    let generation = store.cache_generation().unwrap();
+    let mutations = [
+        ("chain identity", {
+            let mut value = reference.clone();
+            value.chain_identity = "eip155:1".into();
+            value
+        }),
+        ("Registry locator", {
+            let mut value = reference.clone();
+            value.registry_locator = "evm:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into();
+            value
+        }),
+        ("schema hash", {
+            let mut value = reference.clone();
+            value.registry_schema_hash =
+                "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into();
+            value
+        }),
+        ("adapter metadata", {
+            let mut value = reference;
+            value.adapter_metadata = RegistryAdapterMetadataV2::Evm {
+                chain_id: 1,
+                contract_address: "0x1111111111111111111111111111111111111111".into(),
+                runtime_code_hash:
+                    "0x2222222222222222222222222222222222222222222222222222222222222222".into(),
+            };
+            value
+        }),
+    ];
+    for (name, changed) in mutations {
+        let error = store
+            .apply_registry_snapshot(&[(identity.clone(), changed)], 1_800_000_001)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("target changed"), "{name}: {error}");
+    }
+    assert_eq!(store.registry_last_success_epoch().unwrap(), 1_800_000_000);
+    assert_eq!(store.cache_generation().unwrap(), generation);
+}
+
+#[test]
+fn schema_v2_evm_snapshot_migrates_without_data_loss() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("evidence.db");
+    let identity = unsigned_identity();
+    let old_reference = serde_json::json!({
+        "chain_id": 31337,
+        "contract_address": "0x1111111111111111111111111111111111111111",
+        "contract_code_hash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "finalized_block": 100,
+        "finalized_block_hash": "0x3333333333333333333333333333333333333333333333333333333333333333",
+        "state_root": "0x4444444444444444444444444444444444444444444444444444444444444444",
+        "object_hash": object_hash(&identity).unwrap(),
+        "object_version": 1,
+        "resolver_status": "ACTIVE",
+        "root_status": "ACTIVE",
+        "endpoint_binding_status": "MATCHED",
+        "snapshot_generation": 7
+    })
+    .to_string();
+    let connection = Connection::open(&path).unwrap();
+    connection
+        .execute_batch(
+            r#"
+            CREATE TABLE ri_v2_meta (
+              meta_key TEXT PRIMARY KEY,
+              meta_value TEXT NOT NULL,
+              updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE ri_v2_identities (
+              server_id TEXT PRIMARY KEY,
+              identity_json TEXT NOT NULL,
+              identity_hash TEXT NOT NULL,
+              object_version INTEGER NOT NULL,
+              status TEXT NOT NULL,
+              valid_until INTEGER NOT NULL,
+              registry_json TEXT NOT NULL,
+              snapshot_generation INTEGER NOT NULL,
+              updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE ri_v2_registry_snapshot (
+              snapshot_key TEXT PRIMARY KEY,
+              chain_id INTEGER NOT NULL,
+              contract_address TEXT NOT NULL,
+              contract_code_hash TEXT NOT NULL,
+              finalized_block INTEGER NOT NULL,
+              finalized_block_hash TEXT NOT NULL,
+              snapshot_generation INTEGER NOT NULL,
+              snapshot_json TEXT NOT NULL,
+              updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            INSERT INTO ri_v2_meta(meta_key,meta_value) VALUES('schema_version','2');
+            "#,
+        )
+        .unwrap();
+    connection
+        .execute(
+            r#"INSERT INTO ri_v2_identities(
+                 server_id,identity_json,identity_hash,object_version,status,valid_until,
+                 registry_json,snapshot_generation
+               ) VALUES(?,?,?,?,?,?,?,?)"#,
+            params![
+                identity.server_id,
+                serde_json::to_string(&identity).unwrap(),
+                object_hash(&identity).unwrap(),
+                1,
+                "ACTIVE",
+                identity.valid_until,
+                old_reference,
+                7,
+            ],
+        )
+        .unwrap();
+    connection
+        .execute(
+            r#"INSERT INTO ri_v2_registry_snapshot(
+                 snapshot_key,chain_id,contract_address,contract_code_hash,finalized_block,
+                 finalized_block_hash,snapshot_generation,snapshot_json
+               ) VALUES(?,?,?,?,?,?,?,?)"#,
+            params![
+                "registry-v2:operator/r1",
+                31_337,
+                "0x1111111111111111111111111111111111111111",
+                "0x2222222222222222222222222222222222222222222222222222222222222222",
+                100,
+                "0x3333333333333333333333333333333333333333333333333333333333333333",
+                7,
+                old_reference,
+            ],
+        )
+        .unwrap();
+    drop(connection);
+
+    let store = EvidenceStore::open(&path).unwrap();
+    let (_, migrated) = store.get_identity("operator/r1").unwrap().unwrap();
+    assert_eq!(migrated.chain_adapter, "evm");
+    assert_eq!(migrated.chain_identity, "eip155:31337");
+    assert!(matches!(
+        migrated.adapter_metadata,
+        RegistryAdapterMetadataV2::Evm {
+            chain_id: 31_337,
+            ..
+        }
+    ));
+    let connection = Connection::open(path).unwrap();
+    assert_eq!(
+        connection
+            .query_row(
+                "SELECT meta_value FROM ri_v2_meta WHERE meta_key='schema_version'",
+                [],
+                |row| row.get::<_, String>(0)
+            )
+            .unwrap(),
+        "3"
+    );
+    assert_eq!(
+        connection
+            .query_row(
+                "SELECT adapter_type FROM ri_v2_registry_snapshot",
+                [],
+                |row| row.get::<_, String>(0)
+            )
+            .unwrap(),
+        "evm"
+    );
 }
 
 fn response_event(
@@ -343,13 +536,21 @@ fn unsigned_identity() -> DnsServerIdentityV2 {
 
 fn registry(identity: &DnsServerIdentityV2, generation: u64) -> RegistryReferenceV2 {
     RegistryReferenceV2 {
-        chain_id: 31_337,
-        contract_address: "0x1111111111111111111111111111111111111111".into(),
-        contract_code_hash: "0x2222222222222222222222222222222222222222222222222222222222222222"
+        chain_adapter: "evm".into(),
+        chain_identity: "eip155:31337".into(),
+        registry_locator: "evm:0x1111111111111111111111111111111111111111".into(),
+        registry_schema_hash: "0x2222222222222222222222222222222222222222222222222222222222222222"
             .into(),
-        finalized_block: 100,
-        finalized_block_hash: "0x3333333333333333333333333333333333333333333333333333333333333333"
+        adapter_metadata: RegistryAdapterMetadataV2::Evm {
+            chain_id: 31_337,
+            contract_address: "0x1111111111111111111111111111111111111111".into(),
+            runtime_code_hash: "0x2222222222222222222222222222222222222222222222222222222222222222"
+                .into(),
+        },
+        checkpoint_height: 100,
+        checkpoint_hash: "0x3333333333333333333333333333333333333333333333333333333333333333"
             .into(),
+        finality_type: RegistryFinalityTypeV2::EvmFinalized,
         state_root: "0x4444444444444444444444444444444444444444444444444444444444444444".into(),
         object_hash: object_hash(identity).unwrap(),
         object_version: identity.object_version,

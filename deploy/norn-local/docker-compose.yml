@@ -1,0 +1,101 @@
+services:
+  norn-a:
+    image: ${NORN_IMAGE:-resolver-identity-go-norn:a7be734}
+    user: "${NORN_UID:?NORN_UID is required}:${NORN_GID:?NORN_GID is required}"
+    command:
+      - /usr/local/bin/norn
+      - -d
+      - /data
+      - -g
+      - -c
+      - /config/config.yml
+      - --metrics
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    ports:
+      - "127.0.0.1:45555:45555"
+    volumes:
+      - ./private/node-a:/config:ro
+      - ./private/node-a/data:/data
+    networks:
+      - norn
+    restart: unless-stopped
+
+  norn-b:
+    image: ${NORN_IMAGE:-resolver-identity-go-norn:a7be734}
+    user: "${NORN_UID:?NORN_UID is required}:${NORN_GID:?NORN_GID is required}"
+    command:
+      - /usr/local/bin/norn
+      - -d
+      - /data
+      - -c
+      - /config/config.yml
+      - --metrics
+      - -b
+      - ${NORN_BOOTSTRAP:?NORN_BOOTSTRAP must identify norn-a}
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    ports:
+      - "127.0.0.1:45556:45555"
+    volumes:
+      - ./private/node-b:/config:ro
+      - ./private/node-b/data:/data
+    networks:
+      - norn
+    restart: unless-stopped
+
+  norn-read-a:
+    image: nginx:1.27.5-bookworm@sha256:6784fb0834aa7dbbe12e3d7471e69c290df3e6ba810dc38b34ae33d3c1c05f7d
+    user: "${NORN_UID:?NORN_UID is required}:${NORN_GID:?NORN_GID is required}"
+    depends_on:
+      - norn-a
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    ports:
+      - "127.0.0.1:46555:8443"
+    volumes:
+      - ./nginx-a.conf:/etc/nginx/nginx.conf:ro
+      - ./private/tls:/tls:ro
+    networks:
+      - norn
+    restart: unless-stopped
+
+  norn-read-b:
+    image: nginx:1.27.5-bookworm@sha256:6784fb0834aa7dbbe12e3d7471e69c290df3e6ba810dc38b34ae33d3c1c05f7d
+    user: "${NORN_UID:?NORN_UID is required}:${NORN_GID:?NORN_GID is required}"
+    depends_on:
+      - norn-b
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    ports:
+      - "127.0.0.1:46556:8443"
+    volumes:
+      - ./nginx-b.conf:/etc/nginx/nginx.conf:ro
+      - ./private/tls:/tls:ro
+    networks:
+      - norn
+    restart: unless-stopped
+
+networks:
+  norn:
+    driver: bridge
