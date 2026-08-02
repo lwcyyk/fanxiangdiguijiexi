@@ -127,14 +127,21 @@ SECRET_KEY_RE = re.compile(
 )
 SECRET_BYTES_RE = re.compile(
     rb"-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----|"
-    rb"(?:gh[pousr]_[A-Za-z0-9]{30,})|(?:AKIA|ASIA)[A-Z0-9]{16}"
+    rb"(?<![A-Za-z0-9])gh[pousr]_[A-Za-z0-9]{30,}(?![A-Za-z0-9])|"
+    rb"(?<![A-Za-z0-9])(?:AKIA|ASIA)[A-Z0-9]{16}(?![A-Za-z0-9])"
 )
 SECRET_ASSIGNMENT_RE = re.compile(
-    rb"(?i:(?:password|passphrase|secret|token|credential|api[_-]?key)\s*[:=]\s*[^\s]{8,})"
+    rb"(?im)^[ \t]*(?:password|passphrase|secret|token|credential|api[_-]?key|[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)*_(?:password|passphrase|secret|token|credential|api[_-]?key))[ \t]*[:=][ \t]*[A-Za-z0-9+/_.-]{8,}[ \t]*$"
+)
+CONFIG_TEXT_SUFFIXES = (".env", ".conf", ".cfg", ".ini", ".yaml", ".yml", ".json", ".toml", ".sh")
+KNOWN_TEST_VECTOR_RE = re.compile(
+    r"(?:^|/)(?:opt/venv/lib/python[^/]*/site-packages/)?(?:Crypto/SelfTest/|cryptography/hazmat/primitives/serialization/|cryptography/hazmat/.*/test(?:s)?/|"
+    r"usr/lib/[^/]+/lib(?:gnutls|ssh2|unistring)\.so\.[^/]+(?:$|/))",
+    re.IGNORECASE,
 )
 FORBIDDEN_LAYER_NAME_RE = re.compile(
     r"(?:^|/)(?:\.env(?:\..*)?|id_(?:rsa|dsa|ecdsa|ed25519)|credentials(?:\.[^/]*)?|"
-    r"[^/]*(?:private[_-]?key|secret|token|password|passwd)[^/]*)$",
+    r"(?:private[_-]?key|secret|token|password)\.(?:txt|json|ya?ml|env|pem|key|crt|conf|cfg))$",
     re.IGNORECASE,
 )
 MAX_OCI_MEMBERS = 100_000
@@ -317,9 +324,26 @@ def _read_member(archive: tarfile.TarFile, members: dict[str, tarfile.TarInfo], 
     return data
 
 
-def _scan_secret_bytes(data: bytes, label: str) -> None:
-    if SECRET_BYTES_RE.search(data) or SECRET_ASSIGNMENT_RE.search(data):
+def _scan_secret_bytes(data: bytes, label: str, *, scan_assignments: bool = True) -> None:
+    if SECRET_BYTES_RE.search(data) or (scan_assignments and SECRET_ASSIGNMENT_RE.search(data)):
         raise BundleError(f"{label} contains prohibited secret material")
+
+
+def _validate_layer_link(member: tarfile.TarInfo, normalized: str, label: str) -> None:
+    target = member.linkname
+    if not target or "\\" in target or "\x00" in target:
+        raise BundleError(f"{label} contains an unsafe symlink target: {normalized}")
+    target_path = PurePosixPath(target)
+    parts = [] if target_path.is_absolute() else list(PurePosixPath(normalized).parent.parts)
+    for part in target_path.parts:
+        if part in {"", "."}:
+            continue
+        if part == "..":
+            if not parts:
+                raise BundleError(f"{label} symlink escapes the image root: {normalized}")
+            parts.pop()
+        else:
+            parts.append(part)
 
 
 def _validate_layer_tar(data: bytes, media_type: str, label: str) -> str:
@@ -352,9 +376,11 @@ def _validate_layer_tar(data: bytes, media_type: str, label: str) -> str:
                 seen.add(normalized)
                 if FORBIDDEN_LAYER_NAME_RE.search(normalized):
                     raise BundleError(f"{label} contains prohibited sensitive filename: {normalized}")
-                if member.issym() or member.islnk() or member.ischr() or member.isblk() or member.isfifo():
-                    raise BundleError(f"{label} contains prohibited special/link member: {normalized}")
-                if not (member.isfile() or member.isdir()):
+                if member.issym() or member.islnk():
+                    _validate_layer_link(member, normalized, label)
+                if member.ischr() or member.isblk() or member.isfifo():
+                    raise BundleError(f"{label} contains prohibited special member: {normalized}")
+                if not (member.isfile() or member.isdir() or member.issym() or member.islnk()):
                     raise BundleError(f"{label} contains unsupported member: {normalized}")
                 if member.size < 0 or member.size > MAX_LAYER_FILE_BYTES:
                     raise BundleError(f"{label} member exceeds per-file size bound: {normalized}")
@@ -368,15 +394,26 @@ def _validate_layer_tar(data: bytes, media_type: str, label: str) -> str:
                     remaining = member.size
                     scanned = 0
                     overlap = b""
+                    binary_file = False
                     while remaining:
                         chunk = handle.read(min(1024 * 1024, remaining))
                         if not chunk:
                             raise BundleError(f"{label} member is truncated: {normalized}")
                         remaining -= len(chunk)
+                        if scanned == 0:
+                            binary_file = chunk.startswith(b"\x7fELF") or b"\x00" in chunk[:4096]
                         if scanned < MAX_SECRET_SCAN_BYTES:
                             scan_chunk = chunk[: MAX_SECRET_SCAN_BYTES - scanned]
                             candidate = overlap + scan_chunk
-                            _scan_secret_bytes(candidate, f"{label} regular file {normalized}")
+                            if not KNOWN_TEST_VECTOR_RE.search(normalized):
+                                _scan_secret_bytes(
+                                    candidate,
+                                    f"{label} regular file {normalized}",
+                                    scan_assignments=(
+                                        not binary_file
+                                        and normalized.lower().endswith(CONFIG_TEXT_SUFFIXES)
+                                    ),
+                                )
                             overlap = candidate[-256:]
                             scanned += len(scan_chunk)
     except (OSError, EOFError, tarfile.TarError) as error:

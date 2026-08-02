@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -132,6 +133,30 @@ def test_strict_oci_validation_rejects_wrong_release_digest(tmp_path: Path):
     generator._make_test_oci(archive, digest)
     with pytest.raises(generator.BundleError, match="does not equal release digest"):
         generator.validate_oci_archive(archive, "sha256:" + "0" * 64, {"os": "linux", "architecture": "amd64"})
+
+
+def test_oci_layer_allows_rooted_symlinks_but_rejects_escape(tmp_path: Path):
+    def layer(linkname: str, name: str = "bin") -> bytes:
+        stream = io.BytesIO()
+        with tarfile.open(fileobj=stream, mode="w") as handle:
+            info = tarfile.TarInfo(name)
+            info.type = tarfile.SYMTYPE
+            info.linkname = linkname
+            info.mtime = 0
+            handle.addfile(info)
+        return stream.getvalue()
+
+    assert generator._validate_layer_tar(layer("usr/bin"), "application/vnd.oci.image.layer.v1.tar", "layer")
+    assert generator._validate_layer_tar(layer("/usr/bin", "etc/alternatives/awk"), "application/vnd.oci.image.layer.v1.tar", "layer")
+    with pytest.raises(generator.BundleError, match="escapes the image root"):
+        generator._validate_layer_tar(layer("../../outside", "etc/example"), "application/vnd.oci.image.layer.v1.tar", "layer")
+    stream = io.BytesIO()
+    with tarfile.open(fileobj=stream, mode="w") as handle:
+        info = tarfile.TarInfo("hardlink")
+        info.type = tarfile.LNKTYPE
+        info.linkname = "target"
+        handle.addfile(info)
+    assert generator._validate_layer_tar(stream.getvalue(), "application/vnd.oci.image.layer.v1.tar", "layer")
 
 
 def test_real_build_is_deterministic_and_named(tmp_path: Path):
