@@ -148,6 +148,37 @@ jobs:
               config --quiet
           done
 
+  easy-installer:
+    name: easy installer (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13.11"
+          cache: pip
+          cache-dependency-path: requirements-ci.lock
+      - name: Install hash-locked Python test dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --require-hashes -r requirements-ci.lock
+          python -m pip install --disable-pip-version-check --no-deps --no-build-isolation -e .
+      - name: Validate deterministic offline installer
+        run: |
+          python3 -m pytest -q tests/unit/test_domain_center_easy_installer.py tests/unit/test_norn_field_delivery.py
+          python3 tools/build_domain_center_site_bundle.py self-test
+          python3 installer/wizard.py --help >/dev/null
+          python3 -m compileall -q installer deploy/easy-install/product-kit tools/build_domain_center_site_bundle.py
+          find deploy/easy-install/product-kit installer -type f -name '*.sh' -print0 |
+            xargs -0 -r -n1 bash -n
+      - name: Verify production safety declarations
+        run: |
+          ! grep -R -E 'real_server_deployed["[:space:]]*:[[:space:]]*true|production_traffic_enabled["[:space:]]*:[[:space:]]*true' \
+            deploy/easy-install installer tools/build_domain_center_site_bundle.py docs/easy-install
+
   legacy-python-image:
     name: legacy Python compatibility image
     runs-on: ubuntu-24.04
