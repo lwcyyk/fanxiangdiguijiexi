@@ -408,7 +408,7 @@ jobs:
     name: release candidate gate
     runs-on: ubuntu-24.04
     if: always()
-    needs: [rust, python, solidity, compose, field-delivery, legacy-python-image, rust-production-image, knot-trace-image, production-trace-evidence, management-image, integration-evidence, full-rc-acceptance]
+    needs: [rust, python, solidity, compose, field-delivery, easy-installer, legacy-python-image, rust-production-image, knot-trace-image, production-trace-evidence, management-image, integration-evidence, full-rc-acceptance]
     steps:
       - name: Require every release-candidate check
         env:
@@ -417,6 +417,7 @@ jobs:
           SOLIDITY_RESULT: ${{ needs.solidity.result }}
           COMPOSE_RESULT: ${{ needs.compose.result }}
           FIELD_RESULT: ${{ needs.field-delivery.result }}
+          EASY_INSTALLER_RESULT: ${{ needs.easy-installer.result }}
           LEGACY_IMAGE_RESULT: ${{ needs.legacy-python-image.result }}
           RUST_IMAGE_RESULT: ${{ needs.rust-production-image.result }}
           KNOT_IMAGE_RESULT: ${{ needs.knot-trace-image.result }}
@@ -428,7 +429,7 @@ jobs:
         run: |
           for result in \
             "$RUST_RESULT" "$PYTHON_RESULT" "$SOLIDITY_RESULT" "$COMPOSE_RESULT" \
-            "$FIELD_RESULT" "$LEGACY_IMAGE_RESULT" "$RUST_IMAGE_RESULT" \
+            "$FIELD_RESULT" "$EASY_INSTALLER_RESULT" "$LEGACY_IMAGE_RESULT" "$RUST_IMAGE_RESULT" \
             "$KNOT_IMAGE_RESULT" "$TRACE_EVIDENCE_RESULT" "$MANAGEMENT_IMAGE_RESULT" \
             "$INTEGRATION_EVIDENCE_RESULT"; do
             test "$result" = success
