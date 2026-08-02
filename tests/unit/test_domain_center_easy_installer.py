@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -469,7 +470,8 @@ def test_r2_r3_have_no_wrapper_but_use_shared_rust_image():
 def test_cli_exposes_unambiguous_output_parent_alias():
     help_text = subprocess.run([sys.executable, str(GENERATOR_PATH), "build", "--help"], check=True, text=True, stdout=subprocess.PIPE).stdout
     assert "--output-parent" in help_text
-    assert "resolver-identity-domain-center-easy-install-<version>" in help_text
+    normalized_help = "".join(help_text.splitlines()).replace(" ", "")
+    assert "resolver-identity-domain-center-easy-install-<version>" in normalized_help
 
 
 def test_documentation_contains_required_chinese_operator_guidance():
