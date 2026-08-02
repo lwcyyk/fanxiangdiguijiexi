@@ -145,6 +145,27 @@ MAX_LAYER_FILE_BYTES = 128 * 1024 * 1024
 MAX_LAYER_UNCOMPRESSED_BYTES = 8 * 1024 * 1024 * 1024
 MAX_SECRET_SCAN_BYTES = 8 * 1024 * 1024
 EXTERNAL_EVIDENCE_REQUIRED = frozenset({"path", "sha256", "timestamp", "source_commit", "host", "role", "provenance"})
+EXPECTED_PDF_NAMES = tuple(
+    f"{name}.pdf"
+    for name in ("一页纸安装卡", "域名中心图文安装手册", "技术运维手册")
+)
+REQUIRED_TOP_LEVEL_FILES = frozenset(
+    {
+        ".domain-center-easy-bundle",
+        "SHA256SUMS",
+        "recipient-verify.sh",
+        "证据.json",
+        "00-开始/验证命令.txt",
+        "01-发布信息/release-manifest.json",
+        "02-校验与签名/README.txt",
+        "04-软件物料清单/site.spdx.json",
+        "04-软件物料清单/site.cdx.json",
+        "06-配置交接/host-inventory.json",
+        "12-验收证据/host-archives.json",
+        "12-验收证据/证据.json",
+    }
+)
+WRAPPER_ALLOWED_AGENT_ENV = frozenset({"RI_AGENT_WRAPPER_TOKEN_FILE"})
 WRAPPER_STRUCTURE_RE = re.compile(
     r"(?im)^(?:\s{0,4}wrapper\s*:|\s*command\s*:\s*.*\bri-wrapper\b|\s*profiles\s*:\s*\[[^\]\r\n]*\bfirst-hop\b|\s*[- ]+\bfirst-hop\b\s*$|\s*RI_WRAPPER_[A-Z0-9_]*\s*:)",
 )
@@ -632,7 +653,7 @@ def validate_inputs(site_path: Path, release_path: Path) -> dict[str, Any]:
             clean_requirement["blocked_by"] = sorted(blocked_by)
         if not _status_passed(status) and not blocked_by and "reason_zh" not in requirement:
             raise BundleError(f"external_requirements.{requirement_id} non-passed status requires reason_zh or blocked_by")
-        if _status_passed(status) or status == "failed":
+        if status == "passed" or (status == "failed" and "evidence" in requirement):
             evidence_record = _object(requirement.get("evidence"), f"external_requirements.{requirement_id}.evidence")
             _exact_keys(evidence_record, set(EXTERNAL_EVIDENCE_REQUIRED), set(), f"external_requirements.{requirement_id}.evidence")
             evidence_path_text = _text(evidence_record["path"], f"external_requirements.{requirement_id}.evidence.path")
@@ -663,6 +684,7 @@ def validate_inputs(site_path: Path, release_path: Path) -> dict[str, Any]:
                 "host": evidence_host,
                 "role": evidence_role,
                 "provenance": _text(evidence_record["provenance"], f"external_requirements.{requirement_id}.evidence.provenance"),
+                "_source_path": evidence_path,
             }
         elif "evidence" in requirement:
             raise BundleError(f"external_requirements.{requirement_id} must not attach evidence to an unexecuted status")
@@ -701,6 +723,64 @@ def validate_inputs(site_path: Path, release_path: Path) -> dict[str, Any]:
     }
 
 
+def _compose_code_line(raw: str) -> str:
+    """Strip a YAML comment without interpreting YAML or quoted values."""
+    quote: str | None = None
+    escaped = False
+    for index, character in enumerate(raw):
+        if escaped:
+            escaped = False
+            continue
+        if character == "\\" and quote == '"':
+            escaped = True
+            continue
+        if quote:
+            if character == quote:
+                quote = None
+            continue
+        if character in {'"', "'"}:
+            quote = character
+        elif character == "#" and (index == 0 or raw[index - 1].isspace()):
+            return raw[:index]
+    return raw
+
+
+def _contains_wrapper_structure(text: str) -> bool:
+    """Conservatively reject runnable Wrapper topology without a YAML dependency."""
+    profile_indent: int | None = None
+    for raw in text.splitlines():
+        line = _compose_code_line(raw).rstrip()
+        stripped = line.strip()
+        if not stripped:
+            continue
+        indent = len(line) - len(line.lstrip(" "))
+        if re.fullmatch(r"(?:['\"]wrapper['\"]|wrapper)\s*:\s*", stripped, re.IGNORECASE):
+            return True
+        if re.search(r"\b(?:entrypoint|command)\s*:", stripped, re.IGNORECASE) and "ri-wrapper" in stripped.lower():
+            return True
+        if "ri-wrapper" in stripped.lower() and (stripped.startswith("-") or profile_indent is not None):
+            return True
+        profile_match = re.match(r"profiles\s*:\s*(.*)$", stripped, re.IGNORECASE)
+        if profile_match:
+            profile_indent = indent
+            if re.search(r"(?:^|[\[,'\"\s-])first-hop(?:$|[\],'\"\s#])", profile_match.group(1), re.IGNORECASE):
+                return True
+            continue
+        if profile_indent is not None:
+            if indent <= profile_indent and not stripped.startswith("-"):
+                profile_indent = None
+            elif re.fullmatch(r"-\s*['\"]?first-hop['\"]?\s*", stripped, re.IGNORECASE):
+                return True
+        env_match = re.match(r"(?:-\s*)?['\"]?(RI_[A-Z0-9_]+)['\"]?\s*(?::|=)", stripped, re.IGNORECASE)
+        if env_match:
+            env_key = env_match.group(1).upper()
+            if env_key.startswith("RI_WRAPPER_") and env_key not in WRAPPER_ALLOWED_AGENT_ENV:
+                return True
+        if "DNS_BIND_ADDRESS" in stripped or re.search(r":1053:1053/(?:udp|tcp)\b", stripped, re.IGNORECASE):
+            return True
+    return False
+
+
 def _validate_role_structure(role_root: Path, role: str) -> None:
     compose = role_root / "docker-compose.yml"
     if not compose.is_file() or compose.is_symlink():
@@ -713,13 +793,14 @@ def _validate_role_structure(role_root: Path, role: str) -> None:
         value = match.group(1).strip().strip('"\'')
         if ":latest" in value.lower() or "localhost" in value.lower() or "127.0.0.1" in value:
             raise BundleError(f"{role} Compose contains prohibited image reference")
-    if role in {"r2", "r3"} and WRAPPER_STRUCTURE_RE.search(text):
+    if role in {"r2", "r3"} and _contains_wrapper_structure(text):
         raise BundleError(f"{role} structurally contains Wrapper/first-hop configuration")
     if role == "r1":
-        if re.search(r"(?m)^\s{2}wrapper:\s*$", text) is None or "profiles: [first-hop]" not in text:
-            raise BundleError("R1 must structurally contain exactly the first-hop Wrapper service")
-        if text.count("profiles: [first-hop]") != 1:
-            raise BundleError("R1 must contain exactly one first-hop profile")
+        wrapper_services = len(re.findall(r"(?m)^\s{2}(?:['\"]wrapper['\"]|wrapper)\s*:\s*$", text, re.IGNORECASE))
+        first_hop_profiles = len(re.findall(r"\bfirst-hop\b", text, re.IGNORECASE))
+        wrapper_commands = len(re.findall(r"\bri-wrapper\b", text, re.IGNORECASE))
+        if wrapper_services != 1 or first_hop_profiles != 1 or wrapper_commands < 1:
+            raise BundleError("R1 must structurally contain exactly one first-hop Wrapper service")
 
 
 def _copy_template(source: Path, destination: Path, replacements: dict[str, str]) -> None:
@@ -986,6 +1067,7 @@ def _spdx(name: str, version: str, commit: str, images: list[dict[str, str]]) ->
         "dataLicense": "CC0-1.0",
         "SPDXID": "SPDXRef-DOCUMENT",
         "name": name,
+        "comment": f"release.version={version};source.git.commit={commit}",
         "documentNamespace": f"https://resolver-identity.invalid/spdx/{namespace_seed}",
         "creationInfo": {"created": "1970-01-01T00:00:00Z", "creators": ["Tool: build_domain_center_site_bundle.py"]},
         "packages": packages,
@@ -1112,6 +1194,37 @@ def _scan_output(root: Path) -> None:
                 raise BundleError(f"delivery output contains {reason}: {path.relative_to(root)}")
 
 
+def _copy_external_evidence(root: Path, requirements: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    copied: dict[str, dict[str, Any]] = {}
+    evidence_root = root / "12-验收证据"
+    for requirement_id, requirement in sorted(requirements.items()):
+        clean = {key: value for key, value in requirement.items() if key != "evidence"}
+        evidence = requirement.get("evidence")
+        if requirement["status"] == "passed":
+            if not isinstance(evidence, dict) or not isinstance(evidence.get("_source_path"), Path):
+                raise BundleError(f"passed external evidence has no validated source file: {requirement_id}")
+            digest = evidence["sha256"]
+            source = evidence["_source_path"]
+            suffix = "".join(source.suffixes)[-32:]
+            if not re.fullmatch(r"(?:\.[A-Za-z0-9_-]+)*", suffix):
+                suffix = ""
+            filename = f"external-{digest}{suffix}"
+            target = evidence_root / filename
+            if target.exists() and _sha256(target) != digest:
+                raise BundleError(f"content-addressed evidence collision: {filename}")
+            if not target.exists():
+                shutil.copyfile(source, target)
+                target.chmod(0o644)
+            bundled = {key: value for key, value in evidence.items() if key != "_source_path"}
+            bundled["path"] = f"12-验收证据/{filename}"
+            bundled["provenance"] = f"bundled-copy:{bundled['path']}"
+            clean["evidence"] = bundled
+        elif isinstance(evidence, dict):
+            clean["evidence"] = {key: value for key, value in evidence.items() if key != "_source_path"}
+        copied[requirement_id] = clean
+    return copied
+
+
 def _write_release_handoff(root: Path, validated: dict[str, Any], host_evidence: list[dict[str, Any]]) -> None:
     _write_json(root / "01-发布信息" / "release-manifest.json", {
         "schema_version": SCHEMA,
@@ -1135,6 +1248,10 @@ def _write_release_handoff(root: Path, validated: dict[str, Any], host_evidence:
     _write_json(root / "12-验收证据" / "host-archives.json", {"hosts": host_evidence})
 
 
+def _valid_pdf(data: bytes) -> bool:
+    return len(data) > 8 and data.startswith(b"%PDF-") and data.rstrip().endswith(b"%%EOF")
+
+
 def _render_pdfs(product_kit: Path, output: Path, image: str | None) -> tuple[bool, str]:
     documents_root = Path(__file__).resolve().parents[1] / "docs" / "easy-install"
     documents = sorted(documents_root.glob("*.md")) if documents_root.is_dir() else []
@@ -1142,6 +1259,8 @@ def _render_pdfs(product_kit: Path, output: Path, image: str | None) -> tuple[bo
         return False, "PDF_BLOCKED: docs/easy-install contains no Markdown inputs"
     if image is None or IMAGE_REF_RE.fullmatch(image) is None or image.startswith("127.0.0.1"):
         return False, "PDF_BLOCKED: a non-loopback digest-pinned offline PDF builder image was not supplied"
+    if tuple(f"{document.stem}.pdf" for document in documents) != EXPECTED_PDF_NAMES:
+        return False, "PDF_BLOCKED: Markdown inputs do not match the required manual set"
     runtime = shutil.which("docker") or shutil.which("podman")
     if runtime is None:
         return False, "PDF_BLOCKED: Docker/Podman is unavailable"
@@ -1149,16 +1268,29 @@ def _render_pdfs(product_kit: Path, output: Path, image: str | None) -> tuple[bo
     if inspect.returncode != 0:
         return False, "PDF_BLOCKED: fixed PDF builder image is not present in the offline runtime"
     output.mkdir(exist_ok=True)
+    comparison = output.parent / ".pdf-determinism-check"
+    comparison.mkdir(exist_ok=True)
     for document in documents:
-        result = subprocess.run(
-            [runtime, "run", "--rm", "--network=none", "--pull=never", "--read-only", "-e", "SOURCE_DATE_EPOCH=0", "-v", f"{document.resolve()}:/input.md:ro", "-v", f"{output.resolve()}:/output", image, "/input.md", "-o", f"/output/{document.stem}.pdf"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        if result.returncode != 0 or not (output / f"{document.stem}.pdf").is_file():
+        output_name = f"{document.stem}.pdf"
+        rendered: list[bytes] = []
+        for destination in (output, comparison):
+            result = subprocess.run(
+                [runtime, "run", "--rm", "--network=none", "--pull=never", "--read-only", "-e", "SOURCE_DATE_EPOCH=0", "-v", f"{document.resolve()}:/input.md:ro", "-v", f"{destination.resolve()}:/output", image, "/input.md", "-o", f"/output/{output_name}"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            pdf_path = destination / output_name
+            if result.returncode != 0 or not pdf_path.is_file() or pdf_path.is_symlink() or not _valid_pdf(pdf_path.read_bytes()):
+                shutil.rmtree(output, ignore_errors=True)
+                shutil.rmtree(comparison, ignore_errors=True)
+                return False, f"PDF_BLOCKED: fixed offline builder produced an invalid PDF for {document.name}"
+            rendered.append(pdf_path.read_bytes())
+        if rendered[0] != rendered[1]:
             shutil.rmtree(output, ignore_errors=True)
-            return False, f"PDF_BLOCKED: fixed offline builder failed for {document.name}"
-    return True, "generated by fixed digest-pinned external container with network disabled"
+            shutil.rmtree(comparison, ignore_errors=True)
+            return False, f"PDF_BLOCKED: fixed offline builder output varies for {document.name}"
+    shutil.rmtree(comparison)
+    return True, "generated deterministically by fixed digest-pinned external container with network disabled"
 
 
 def _verify_checksum_file(root: Path, checksum_path: Path, ignored: set[str] | None = None) -> None:
@@ -1231,6 +1363,12 @@ def verify_delivery(
 ) -> dict[str, Any]:
     if not root.is_dir() or root.is_symlink():
         raise BundleError("delivery path must be a regular directory")
+    actual_top_directories = {path.name for path in root.iterdir() if path.is_dir() and not path.is_symlink()}
+    if actual_top_directories != set(TOP_LEVEL_DIRECTORIES):
+        raise BundleError("delivery top-level release tree is incomplete or has unexpected directories")
+    missing_top_files = sorted(name for name in REQUIRED_TOP_LEVEL_FILES if not (root / name).is_file() or (root / name).is_symlink())
+    if missing_top_files:
+        raise BundleError(f"delivery required release files are missing or unsafe: {missing_top_files}")
     signature_files = {"SHA256SUMS.sig"}
     _verify_checksum_file(root, root / "SHA256SUMS", signature_files if (root / "SHA256SUMS.sig").exists() else set())
     signature_result = _verify_signature(root, trusted_public_key, trusted_fingerprint)
@@ -1250,6 +1388,31 @@ def verify_delivery(
         raise BundleError("delivery evidence schema is invalid")
     if evidence.get("host_count") != 6:
         raise BundleError("delivery evidence does not describe six hosts")
+    release_manifest = _object(load_json(root / "01-发布信息" / "release-manifest.json", "release manifest"), "release manifest")
+    for key in ("version", "source_commit", "source_release_manifest_sha256"):
+        if evidence.get(key) != release_manifest.get(key):
+            raise BundleError(f"delivery evidence and release manifest {key} are not cross-bound")
+    expected_delivery_name = f"{DELIVERY_PREFIX}-{evidence.get('version')}"
+    for sbom_relative in ("04-软件物料清单/site.spdx.json", "04-软件物料清单/site.cdx.json"):
+        sbom = _object(load_json(root / sbom_relative, sbom_relative), sbom_relative)
+        if sbom_relative.endswith("spdx.json"):
+            if sbom.get("name") != expected_delivery_name or sbom.get("comment") != f"release.version={evidence['version']};source.git.commit={evidence['source_commit']}":
+                raise BundleError("SPDX SBOM release identity mismatch")
+            package_versions = {item.get("versionInfo") for item in _array(sbom.get("packages"), "SPDX packages") if isinstance(item, dict)}
+        else:
+            component = _object(_object(sbom.get("metadata"), "CycloneDX metadata").get("component"), "CycloneDX component")
+            properties = {item.get("name"): item.get("value") for item in component.get("properties", []) if isinstance(item, dict)}
+            if component.get("name") != expected_delivery_name or component.get("version") != evidence["version"] or properties.get("source.git.commit") != evidence["source_commit"]:
+                raise BundleError("CycloneDX SBOM release identity mismatch")
+            package_versions = {item.get("version") for item in _array(sbom.get("components"), "CycloneDX components") if isinstance(item, dict)}
+        release_digests = {item.get("manifest_digest") for item in release_manifest.get("images", []) if isinstance(item, dict)}
+        if package_versions != release_digests:
+            raise BundleError(f"{sbom_relative} image digests are not cross-bound to release manifest")
+    pdf = _object(evidence.get("pdf"), "delivery evidence pdf")
+    actual_pdfs = sorted(path.name for path in (root / "05-PDF手册").glob("*.pdf") if path.is_file() and not path.is_symlink())
+    pdf_valid = actual_pdfs == sorted(EXPECTED_PDF_NAMES) and all(_valid_pdf((root / "05-PDF手册" / name).read_bytes()) for name in actual_pdfs)
+    if bool(pdf.get("ready")) != pdf_valid:
+        raise BundleError("PDF readiness is inconsistent with required valid PDF manuals")
     if bool(evidence.get("signing", {}).get("signed")) != signed:
         raise BundleError("delivery evidence signing state is inconsistent")
     if evidence.get("real_server_deployed") is not False or evidence.get("production_traffic_enabled") is not False:
@@ -1268,10 +1431,17 @@ def verify_delivery(
         if status not in STATUS_VOCABULARY or status_zh not in STATUS_VOCABULARY[status]:
             raise BundleError(f"delivery evidence check has an invalid status: {check_id}")
         evidence_record = check.get("evidence")
-        if (_status_passed(status) or status == "failed") and not isinstance(evidence_record, dict):
-            raise BundleError(f"executed external evidence check lacks provenance record: {check_id}")
+        if status == "passed" and not isinstance(evidence_record, dict):
+            raise BundleError(f"passed external evidence check lacks provenance record: {check_id}")
+        if status in {"blocked", "not_run"} and evidence_record is not None:
+            raise BundleError(f"unexecuted external evidence check must not attach evidence: {check_id}")
         if isinstance(evidence_record, dict) and set(evidence_record) != EXTERNAL_EVIDENCE_REQUIRED:
             raise BundleError(f"external evidence provenance fields are incomplete: {check_id}")
+        if isinstance(evidence_record, dict):
+            evidence_relative = _safe_relative(_text(evidence_record["path"], f"evidence path {check_id}"), "evidence path").as_posix()
+            evidence_path = root / evidence_relative
+            if not evidence_relative.startswith("12-验收证据/") or not evidence_path.is_file() or evidence_path.is_symlink() or _sha256(evidence_path) != evidence_record["sha256"]:
+                raise BundleError(f"external evidence file is missing or has a digest mismatch: {check_id}")
     for check_id, raw_check in checks.items():
         for dependency in raw_check.get("blocked_by", []):
             if dependency != "external_approval" and dependency not in checks:
@@ -1350,6 +1520,7 @@ def verify_delivery(
                     prefix + "wizard.py",
                     prefix + "config/host-inventory.json",
                     prefix + "config/inventory.env",
+                    prefix + "config/.env",
                     prefix + f"product-kit/{role}/docker-compose.yml",
                     prefix + "product-kit/common/lifecycle.py",
                     prefix + "product-kit/common/load_images.py",
@@ -1522,6 +1693,9 @@ def build_delivery(
                 env_lines = [
                     f"RI_FIELD_HOST_ID={hostname}",
                     f"RI_FIELD_ROLE={role}",
+                    f"RI_FIELD_COMPOSE_PROJECT=ri-{hostname}",
+                    "RI_FIELD_NETWORK=ri-field-network",
+                    f"RI_FIELD_DATA_DIR=/var/lib/resolver-identity/{hostname}",
                     f"RI_RELEASE_VERSION={validated['version']}",
                     f"RI_SOURCE_COMMIT={validated['source_commit']}",
                 ]
@@ -1531,6 +1705,7 @@ def build_delivery(
                     if key in host:
                         env_lines.append(f"RI_INVENTORY_{key.upper()}={host[key]}")
                 _write_text(config_target / "inventory.env", "\n".join(env_lines) + "\n")
+                _write_text(config_target / ".env", "\n".join(env_lines) + "\n")
                 _write_json(config_target / "host-inventory.json", host)
                 common_target = product_root / "common"
                 _mkdir(common_target)
@@ -1577,7 +1752,7 @@ def build_delivery(
         _write_release_handoff(root, validated, host_evidence)
         pdf_ready, pdf_detail = _render_pdfs(product_kit, root / "05-PDF手册", pdf_builder_image)
         blockers = []
-        checks: dict[str, dict[str, str]] = dict(validated["external_requirements"])
+        checks: dict[str, dict[str, Any]] = _copy_external_evidence(root, validated["external_requirements"])
         if signing_key is None:
             blockers.append("SIGNING_BLOCKED: no externally supplied Ed25519 PEM was provided")
             checks["bundle_signing"] = {"status": "blocked", "status_zh": "阻断", "reason_zh": "未提供外部 Ed25519 签名密钥"}

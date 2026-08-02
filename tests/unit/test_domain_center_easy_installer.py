@@ -156,6 +156,7 @@ def test_host_archives_are_standalone_with_exact_entry_points(tmp_path: Path):
         required = {
             "README-请先阅读.txt", "expected-host.json", "wizard.py",
             "product-kit/common/lifecycle.py", "product-kit/common/load_images.py", "product-kit/common/role_entry.py",
+            "config/.env", "config/inventory.env",
             f"product-kit/{metadata['role']}/docker-compose.yml",
             *chinese, *ascii_scripts,
         }
@@ -170,6 +171,9 @@ def test_host_archives_are_standalone_with_exact_entry_points(tmp_path: Path):
             )
             assert image["config_digest"].startswith("sha256:")
         inventory_env = files[prefix + "config/inventory.env"].decode()
+        assert files[prefix + "config/.env"].decode() == inventory_env
+        assert f"RI_FIELD_COMPOSE_PROJECT=ri-{metadata['hostname']}" in inventory_env
+        assert f"RI_FIELD_DATA_DIR=/var/lib/resolver-identity/{metadata['hostname']}" in inventory_env
         for image in lock["images"]:
             assert image["import_reference"] in inventory_env
         assert files[prefix + f"product-kit/{metadata['role']}/PACKAGE-VERSION"] == b"0.3.0-test\n"
@@ -548,6 +552,37 @@ def test_passed_external_status_requires_provenance_record(tmp_path: Path):
         generator.validate_inputs(site_path, release_path)
 
 
+def test_passed_external_evidence_is_copied_and_verified_offline(tmp_path: Path):
+    site_path, release_path = _fixture(tmp_path)
+    source = tmp_path / "monitoring report.txt"
+    source.write_bytes(b"external monitoring evidence\n")
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()
+    site = json.loads(site_path.read_text(encoding="utf-8"))
+    site["external_requirements"]["monitoring"] = {
+        "status": "passed", "status_zh": "已通过",
+        "evidence": {"path": source.name, "sha256": digest, "timestamp": "2026-08-02T00:00:00Z", "source_commit": "a" * 40, "host": "site", "role": "site", "provenance": "external test system"},
+    }
+    _write_json(site_path, site)
+    delivery = generator.build_delivery(site_path, release_path, PRODUCT_KIT, tmp_path / "out", None, None)
+    evidence = json.loads((delivery / "证据.json").read_text(encoding="utf-8"))
+    record = evidence["checks"]["monitoring"]["evidence"]
+    assert record["path"] == f"12-验收证据/external-{digest}.txt"
+    assert record["provenance"].startswith("bundled-copy:")
+    bundled = delivery / record["path"]
+    assert bundled.read_bytes() == source.read_bytes()
+    source.unlink()
+    assert generator.verify_delivery(delivery, allow_blocked=True, structural_only=True)["verified"]
+
+
+def test_failed_external_status_does_not_require_fabricated_evidence(tmp_path: Path):
+    site_path, release_path = _fixture(tmp_path)
+    site = json.loads(site_path.read_text(encoding="utf-8"))
+    site["external_requirements"]["monitoring"] = {"status": "failed", "status_zh": "失败", "reason_zh": "真实检查失败"}
+    _write_json(site_path, site)
+    delivery = generator.build_delivery(site_path, release_path, PRODUCT_KIT, tmp_path / "out", None, None)
+    assert json.loads((delivery / "证据.json").read_text())["checks"]["monitoring"]["status"] == "failed"
+
+
 def test_status_vocabulary_rejects_noncanonical_aliases(tmp_path: Path):
     for alias in ("pass", "success", "pending"):
         site_path, release_path = _fixture(tmp_path / alias)
@@ -641,6 +676,32 @@ def test_signed_verify_requires_external_pin_for_authenticity(tmp_path: Path):
         generator.verify_delivery(delivery, allow_blocked=True, trusted_public_key=wrong)
     with pytest.raises(generator.BundleError, match="fingerprint"):
         generator.verify_delivery(delivery, allow_blocked=True, trusted_fingerprint="0" * 64)
+
+
+def test_wrapper_structure_scanner_handles_safe_and_unsafe_yaml_variants():
+    safe = '''services:\n  agent:\n    environment:\n      RI_AGENT_WRAPPER_TOKEN_FILE: /run/secrets/agent_wrapper_token\n'''
+    assert not generator._contains_wrapper_structure(safe)
+    unsafe = [
+        '''services:\n  "wrapper":\n    image: pinned\n''',
+        '''services:\n  x:\n    entrypoint: ["/usr/local/bin/ri-wrapper"]\n''',
+        '''services:\n  x:\n    command:\n      - /usr/local/bin/ri-wrapper\n''',
+        '''services:\n  x:\n    profiles:\n      - "first-hop"\n''',
+        '''services:\n  x:\n    profiles: ['first-hop']\n''',
+        '''services:\n  x:\n    environment:\n      "RI_WRAPPER_UPSTREAMS": tcp://resolver:53\n''',
+        '''services:\n  x:\n    ports:\n      - "${DNS_BIND_ADDRESS}:1053:1053/udp"\n''',
+    ]
+    for text in unsafe:
+        assert generator._contains_wrapper_structure(text), text
+
+
+def test_required_release_tree_sbom_and_pdf_state_are_verified(tmp_path: Path):
+    delivery = _build(tmp_path)
+    assert set(generator.TOP_LEVEL_DIRECTORIES) == {path.name for path in delivery.iterdir() if path.is_dir()}
+    spdx = json.loads((delivery / "04-软件物料清单/site.spdx.json").read_text())
+    assert spdx["comment"] == "release.version=0.3.0-test;source.git.commit=" + "a" * 40
+    evidence = json.loads((delivery / "证据.json").read_text())
+    assert evidence["pdf"]["ready"] is False
+    assert not list((delivery / "05-PDF手册").glob("*.pdf"))
 
 
 def test_r2_r3_have_no_wrapper_but_use_shared_rust_image():
