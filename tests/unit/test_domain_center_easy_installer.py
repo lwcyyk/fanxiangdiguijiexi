@@ -380,6 +380,49 @@ def test_lifecycle_install_resumes_without_image_reload_and_honors_no_start(tmp_
     assert marker["install_id"] == state["install_id"]
 
 
+def test_runtime_directories_follow_field_owner_modes_and_reject_drift(tmp_path: Path):
+    install_root = tmp_path / "install"
+    data = install_root / "data" / "r1"
+    args = SimpleNamespace(install_root=install_root, expected_host="dc-r1-01", role="r1")
+    lifecycle._ensure_owned_data(data, args, {"install_id": "install-1"})
+    assert (data.stat().st_mode & 0o7777) == 0o750
+    assert ((data / "knot-cache").stat().st_mode & 0o7777) == 0o750
+    assert ((data / "trace").stat().st_mode & 0o7777) == 0o2770
+    data.chmod(0o700)
+    with pytest.raises(lifecycle.LifecycleError, match="0750") as raised:
+        lifecycle._ensure_owned_data(data, args, {"install_id": "install-1"})
+    assert raised.value.code == "DATA006"
+
+
+def test_wrapper_upstreams_reject_local_bind_shadow_and_malformed_endpoints(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(lifecycle, "local_host_names", lambda: {"dc-r1-01", "dc-r1-01.example"})
+    monkeypatch.setattr(lifecycle, "_local_ips", lambda: {"127.0.0.1", "192.0.2.10"})
+    for upstream in ("", "udp://localhost:53", "udp://127.0.0.1:53", "udp://dc-r1-01:53", "udp://192.0.2.10:53", "udp://198.51.100.10:1053", "udp://resolver:not-a-port"):
+        with pytest.raises(lifecycle.LifecycleError) as raised:
+            lifecycle._validate_wrapper_upstreams({"RI_WRAPPER_UPSTREAMS": upstream, "DNS_BIND_ADDRESS": "192.0.2.10"})
+        assert raised.value.code == "SEC108"
+    lifecycle._validate_wrapper_upstreams({"RI_WRAPPER_UPSTREAMS": "udp://198.51.100.20:53,tcp://198.51.100.20:53", "DNS_BIND_ADDRESS": "192.0.2.10"})
+
+
+def test_activate_rechecks_machine_identity_before_destructive_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    root = tmp_path / "install"
+    target = root / "releases" / "v2"
+    (target / "config").mkdir(parents=True)
+    (target / "config" / ".env").write_text("RI_FIELD_COMPOSE_PROJECT=test\n", encoding="utf-8")
+    _write_json(target / ".installed.json", {"install_id": "install-1", "host": "dc-r1-01", "role": "r1"})
+    (root / "state").mkdir(parents=True)
+    _write_json(root / "state" / "install-state.json", {
+        "host": "dc-r1-01", "role": "r1", "install_id": "install-1", "status": "staged",
+        "staged_release": str(target), "machine_id": "a" * 32,
+    })
+    monkeypatch.setattr(lifecycle, "host_matches", lambda expected: True)
+    monkeypatch.setattr(lifecycle, "_machine_id", lambda: "b" * 32)
+    args = SimpleNamespace(install_root=root, expected_host="dc-r1-01", role="r1", secret_dir=None)
+    with pytest.raises(lifecycle.LifecycleError, match="machine-id") as raised:
+        lifecycle.activate(args)
+    assert raised.value.code == "HOST006"
+
+
 def test_failed_activation_stops_partial_release_and_restarts_previous(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     root = tmp_path / "install"
     target = root / "releases" / "v2"

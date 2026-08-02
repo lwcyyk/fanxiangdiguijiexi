@@ -176,8 +176,35 @@ def validate_images(env: dict[str, str], role: str) -> None:
             die("CFG003", f"{key} 未使用离线清单固定的本地标签", "使用包内 image-lock.json 对应的确定性导入标签；不得 pull。")
 
 
+def _validate_wrapper_upstreams(env: dict[str, str]) -> None:
+    raw = env.get("RI_WRAPPER_UPSTREAMS", "")
+    if not raw.strip():
+        die("SEC108", "R1 Wrapper 未配置上游", "提供独立 R1 上游解析器地址；不得指向 Wrapper 本身。")
+    bind = env.get("DNS_BIND_ADDRESS", "").strip().lower().rstrip(".")
+    local_names = {name.lower().rstrip(".") for name in local_host_names()}
+    local_ips = _local_ips()
+    for item in raw.split(","):
+        value = item.strip()
+        parsed = urlsplit(value)
+        host = (parsed.hostname or "").lower().rstrip(".")
+        try:
+            parsed_port = parsed.port
+        except ValueError:
+            die("SEC108", f"R1 Wrapper 上游端口无效：{value}", "使用 udp://host:53,tcp://host:53 格式。")
+        if parsed.scheme not in {"udp", "tcp"} or not host or parsed_port is None:
+            die("SEC108", f"R1 Wrapper 上游格式无效：{value}", "使用 udp://host:53,tcp://host:53 格式。")
+        if host in {"localhost", "localhost.localdomain"} or host in local_names or host in local_ips:
+            die("SEC108", "R1 Wrapper 上游指向本机，可能形成 DNS 环路", "将上游改为独立 R1/真实解析器地址。")
+        if bind and host == bind:
+            die("SEC108", "R1 Wrapper 上游指向自身 bind/VIP", "将上游改为独立 R1/真实解析器地址。")
+        if parsed_port == 1053:
+            die("SEC108", "R1 Wrapper 上游指向 shadow 1053 端口", "上游必须使用独立解析器服务端口。")
+
+
 def validate_invariants(env: dict[str, str], role: str) -> None:
     validate_images(env, role)
+    if role == "r1":
+        _validate_wrapper_upstreams(env)
     if role.startswith("norn-"):
         expected = "node-a" if role == "norn-a" else "node-b"
         if env.get("RI_NORN_ROLE") != expected:
@@ -342,6 +369,26 @@ def _local_ips() -> set[str]:
     return values
 
 
+def _machine_id() -> str:
+    path = Path("/etc/machine-id")
+    if not path.is_file() or path.is_symlink():
+        die("HOST005", "无法安全读取 /etc/machine-id", "确认主机 machine-id 是普通文件后重试。")
+    value = path.read_text(encoding="ascii").strip()
+    if not re.fullmatch(r"[0-9a-f]{32}", value):
+        die("HOST005", "主机 machine-id 格式无效", "恢复 32 位小写十六进制 machine-id 后重试。")
+    return value
+
+
+def _validate_machine_identity(metadata: dict[str, object]) -> None:
+    expected = metadata.get("machine_id")
+    if expected is None:
+        return
+    if not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{32}", expected):
+        die("HOST005", "安装包 machine-id 格式无效", "重新取得绑定本机 machine-id 的安装包。")
+    if _machine_id() != expected:
+        die("HOST006", "当前主机 machine-id 与安装包不一致", "把安装包放到绑定的主机；禁止绕过身份校验。")
+
+
 def _package_metadata(role_root: Path) -> dict[str, object]:
     path = role_root.parent.parent / "expected-host.json"
     if not path.is_file() or path.is_symlink():
@@ -405,12 +452,21 @@ def preflight(args: argparse.Namespace, role_root: Path) -> dict[str, object]:
     if not args.config_dir or not args.config_dir.is_dir() or args.config_dir.is_symlink():
         die("PRE004", "配置目录缺失或为符号链接", "使用 --config-dir 指定渲染后的本机配置目录。")
     env = load_env(args.config_dir / ".env")
-    if safe_host(env.get("RI_FIELD_HOST_ID", "")) != expected:
+    if safe_host(env.get("RI_FIELD_HOST_ID", "")) not in {expected, expected.split(".", 1)[0]}:
         die("HOST003", f"配置指定 {env.get('RI_FIELD_HOST_ID')}，安装包指定 {expected}", "重新渲染本机配置；不得修改主机校验。")
     metadata = _package_metadata(role_root)
     if metadata:
-        if safe_host(str(metadata.get("expected_host") or metadata.get("hostname") or "")) != expected or metadata.get("role") != args.role:
-            die("HOST004", "expected-host.json 与请求主机/角色不一致", "重新取得此主机专用安装包。")
+        packaged_host = safe_host(str(metadata.get("expected_host") or metadata.get("hostname") or ""))
+        declared_hostname = safe_host(str(metadata.get("hostname") or ""))
+        declared_fqdn = metadata.get("fqdn")
+        valid_hosts = {packaged_host, declared_hostname}
+        if isinstance(declared_fqdn, str):
+            valid_hosts.add(safe_host(declared_fqdn))
+        if expected not in valid_hosts:
+            die("HOST004", "expected-host.json 与请求主机不一致", "重新取得此主机专用安装包。")
+        if metadata.get("role") != args.role:
+            die("HOST004", "expected-host.json 与请求角色不一致", "重新取得此主机专用安装包。")
+        _validate_machine_identity(metadata)
     validate_invariants(env, args.role)
     if not args.secret_dir:
         die("SEC200", "未指定密钥目录", "使用 --secret-dir 指向已通过带外方式准备的目录。")
@@ -795,21 +851,71 @@ def _validate_marker(data_dir: Path, args: argparse.Namespace, state: dict[str, 
     return marker
 
 
-def _ensure_owned_data(data_dir: Path, args: argparse.Namespace, state: dict[str, object]) -> None:
+def _set_directory_owner(path: Path, uid: int | None, gid: int | None, mode: int) -> None:
+    os.chmod(path, mode)
+    if uid is None and gid is None:
+        return
+    if os.geteuid() != 0:
+        _validate_directory_owner(path, uid, gid, "运行时目录")
+        return
+    os.chown(path, uid if uid is not None else path.stat().st_uid, gid if gid is not None else path.stat().st_gid)
+
+
+def _validate_directory_owner(path: Path, uid: int | None, gid: int | None, label: str) -> None:
+    if uid is not None and path.stat().st_uid != uid:
+        die("DATA006", f"{label} UID 不符合配置：{path}", "使用批准的容器 UID/GID 创建运行时目录。")
+    if gid is not None and path.stat().st_gid != gid:
+        die("DATA006", f"{label} GID 不符合配置：{path}", "使用批准的容器 UID/GID 创建运行时目录。")
+
+
+def _configured_id(env: dict[str, str], key: str) -> int | None:
+    value = env.get(key, "").strip()
+    if not value:
+        return None
+    if not value.isdigit() or int(value) <= 0:
+        die("CFG006", f"{key} 必须是正整数", "使用固定的非特权 UID/GID。")
+    return int(value)
+
+
+def _ensure_owned_data(data_dir: Path, args: argparse.Namespace, state: dict[str, object], env: dict[str, str] | None = None) -> None:
     if not data_dir.is_absolute() or data_dir.is_symlink() or not _data_path_allowed(data_dir, args.install_root):
         die("CFG005", f"RI_FIELD_DATA_DIR 不在批准根目录：{data_dir}", "使用安装根 data、同级 data 或批准的 /var/lib 根目录。")
-    if data_dir.exists():
+    owner_uid = _configured_id(env or {}, "RI_TRACE_PRODUCER_UID")
+    owner_gid = _configured_id(env or {}, "RI_TRACE_PRODUCER_GID")
+    resolver_uid = _configured_id(env or {}, "RI_KNOT_RESOLVER_UID")
+    if owner_uid is not None and os.geteuid() != 0 and owner_uid != os.geteuid():
+        die("DATA006", "当前用户无法创建批准 UID 所属的数据目录", "以 root 安装或使用与 producer UID 一致的安装用户。")
+    data_existed = data_dir.exists()
+    if data_existed:
         if not data_dir.is_dir():
             die("DATA001", "数据路径不是目录", "重新渲染配置。")
         _validate_marker(data_dir, args, state)
-        return
-    data_dir.mkdir(parents=True, mode=0o700)
-    marker = {
-        "schema": "domain-center-data-owner-v1", "canonical_path": str(data_dir.resolve(strict=False)),
-        "host": safe_host(args.expected_host), "role": args.role, "install_id": state["install_id"],
-        "install_root": str(args.install_root.absolute()), "created_at": now(),
-    }
-    atomic_json(data_dir / DATA_MARKER, marker)
+        if (data_dir.stat().st_mode & 0o7777) != 0o0750:
+            die("DATA006", f"数据目录权限不符合 0750：{data_dir}", "按现场约定修复目录权限后重试。")
+    else:
+        data_dir.mkdir(parents=True, mode=0o750)
+        marker = {
+            "schema": "domain-center-data-owner-v1", "canonical_path": str(data_dir.resolve(strict=False)),
+            "host": safe_host(args.expected_host), "role": args.role, "install_id": state["install_id"],
+            "install_root": str(args.install_root.absolute()), "created_at": now(),
+        }
+        atomic_json(data_dir / DATA_MARKER, marker)
+    _set_directory_owner(data_dir, owner_uid, owner_gid, 0o750)
+    runtime_dirs = (data_dir / "knot-cache", data_dir / "trace") if args.role in {"r1", "r2", "r3"} else ()
+    for runtime_dir in runtime_dirs:
+        runtime_existed = runtime_dir.exists()
+        if runtime_existed and (runtime_dir.is_symlink() or not runtime_dir.is_dir()):
+            die("DATA005", f"运行时目录不安全：{runtime_dir}", "删除符号链接或非目录后重试。")
+        if runtime_existed:
+            expected_mode = 0o0750 if runtime_dir.name == "knot-cache" else 0o2770
+            if (runtime_dir.stat().st_mode & 0o7777) != expected_mode:
+                die("DATA006", f"运行时目录权限不符合 {expected_mode:04o}：{runtime_dir}", "按现场约定修复目录权限后重试。")
+        else:
+            runtime_dir.mkdir(parents=True, mode=0o750, exist_ok=True)
+        uid, gid, mode = ((resolver_uid, resolver_uid, 0o750)
+                          if runtime_dir.name == "knot-cache"
+                          else (owner_uid, owner_gid, 0o2770))
+        _set_directory_owner(runtime_dir, uid, gid, mode)
 
 
 def _read_state(root: Path) -> dict[str, object]:
@@ -835,6 +941,9 @@ def validate_active_install(args: argparse.Namespace) -> tuple[dict[str, object]
         die("HOST001", "当前主机与破坏性操作目标不一致", "在活动安装所属主机执行，禁止绕过。")
     state = _read_state(args.install_root)
     _validate_state_identity(state, args)
+    expected_machine_id = state.get("machine_id")
+    if expected_machine_id is not None and _machine_id() != expected_machine_id:
+        die("HOST006", "当前主机 machine-id 与活动安装不一致", "在绑定的主机执行，禁止绕过。")
     current = args.install_root / "current"
     if not current.is_symlink():
         die("STATE006", "没有活动安装可操作", "核对安装根和当前发布指针。")
@@ -878,14 +987,21 @@ def install(args: argparse.Namespace, role_root: Path) -> None:
         "images_sha256": images_digest, "source_commit": metadata.get("source_commit"),
         "manifest_sha256": metadata.get("release_manifest_sha256"),
     }
+    if metadata.get("machine_id") is not None:
+        identity["machine_id"] = metadata["machine_id"]
     with lock(root):
         state = _read_state(root)
         _validate_state_identity(state, args)
-        if state:
-            for key in ("version", "role_sha256", "config_sha256", "images_sha256", "source_commit", "manifest_sha256"):
-                if state.get(key) != identity[key]:
-                    die("STATE007", f"安装输入已改变：{key}", "使用新版本号安装新包，或恢复原始配置后续跑。")
-        else:
+        same_input = state and all(state.get(key) == identity[key] for key in (
+            "version", "role_sha256", "config_sha256", "images_sha256", "source_commit", "manifest_sha256",
+        ))
+        if state and not same_input:
+            if not (args.no_start and state.get("status") == "complete" and (root / "current").is_symlink()):
+                die("STATE007", "安装输入已改变：当前活动版本不能直接覆盖", "先使用 --no-start 暂存新版本，再执行 activate。")
+            state = {**identity, "install_id": state["install_id"], "phases": {},
+                     "active_release": state.get("active_release") or state.get("release"),
+                     "staged_release": None}
+        elif not state:
             state = {**identity, "install_id": str(uuid.uuid4()), "phases": {}}
         state.update({"status": "running", "status_zh": "执行中", "last_error": None})
         atomic_json(state_file, state)
@@ -903,7 +1019,7 @@ def install(args: argparse.Namespace, role_root: Path) -> None:
                 _phase(state, state_file, "images_not_requested", images_digest)
             env_values = load_env(args.config_dir / ".env")
             data_dir = Path(env_values.get("RI_FIELD_DATA_DIR", ""))
-            _ensure_owned_data(data_dir, args, state)
+            _ensure_owned_data(data_dir, args, state, env_values)
             state["data_dir"] = str(data_dir.resolve(strict=False))
             target = root / "releases" / version
             if target.exists():
@@ -933,7 +1049,7 @@ def install(args: argparse.Namespace, role_root: Path) -> None:
                     "status": "staged", "status_zh": "已暂存（未启动）",
                     "release": str(previous) if previous else None,
                     "active_release": str(previous) if previous else None,
-                    "staged_release": str(target), "activated": bool(previous),
+                    "staged_release": str(target), "activated": False,
                 })
             else:
                 activation_attempted = True
@@ -973,6 +1089,44 @@ def install(args: argparse.Namespace, role_root: Path) -> None:
             }})
             atomic_json(state_file, state)
             raise
+
+
+def activate(args: argparse.Namespace) -> None:
+    if not host_matches(args.expected_host):
+        die("HOST001", "当前主机与激活目标不一致", "在活动安装所属主机执行，禁止绕过。")
+    root = args.install_root
+    state_file = root / "state" / "install-state.json"
+    state = _read_state(root)
+    _validate_state_identity(state, args)
+    expected_machine_id = state.get("machine_id")
+    if expected_machine_id is not None and _machine_id() != expected_machine_id:
+        die("HOST006", "当前主机 machine-id 与暂存安装不一致", "在绑定的主机执行，禁止绕过。")
+    if state.get("status") != "staged" or not state.get("staged_release"):
+        die("STATE008", "没有可激活的暂存发布", "先使用相同主机包执行 --no-start 暂存。")
+    target = Path(str(state["staged_release"]))
+    current = root / "current"
+    previous = current.resolve() if current.is_symlink() else None
+    if target.parent != (root / "releases").absolute() or not target.is_dir():
+        die("STATE008", "暂存发布目录缺失或越界", "保留状态并重新生成可信主机包。")
+    marker = json.loads((target / ".installed.json").read_text(encoding="utf-8"))
+    if marker.get("install_id") != state.get("install_id") or marker.get("host") != state.get("host") or marker.get("role") != state.get("role"):
+        die("STATE008", "暂存发布与安装状态不绑定", "拒绝激活不可信发布目录。")
+    env = load_env(target / "config" / ".env")
+    secret_dir = args.secret_dir.absolute() if args.secret_dir else None
+    try:
+        start_ordered(target, args.role, env, secret_dir, state, state_file)
+        set_current(root, target)
+    except Exception:
+        if previous is not None:
+            set_current(root, previous)
+        raise
+    if previous is not None and previous != target:
+        atomic_text(root / "state" / "previous-release", f"{previous}\n")
+    state.update({"status": "complete", "status_zh": "完成", "release": str(target),
+                  "active_release": str(target), "staged_release": None, "activated": True,
+                  "last_error": None})
+    atomic_json(state_file, state)
+    print(f"激活完成：{target}")
 
 
 def status(args: argparse.Namespace) -> None:
@@ -1258,7 +1412,8 @@ def rollback(args: argparse.Namespace) -> None:
             raise
         set_current(root, previous)
         atomic_text(previous_file, f"{current}\n")
-        state.update({"release": str(previous), "status": "complete", "status_zh": "完成", "activated": True, "last_error": None})
+        state.update({"release": str(previous), "active_release": str(previous), "staged_release": None,
+                      "status": "complete", "status_zh": "完成", "activated": True, "last_error": None})
         atomic_json(root / "state" / "install-state.json", state)
         print(f"回滚完成：{previous}")
 
@@ -1284,7 +1439,7 @@ def uninstall(args: argparse.Namespace) -> None:
 
 def parser() -> argparse.ArgumentParser:
     value = argparse.ArgumentParser(description="域名中心主机生命周期工具")
-    value.add_argument("action", choices=("preflight", "prepare-secrets", "install", "status", "support", "backup", "rollback", "uninstall"))
+    value.add_argument("action", choices=("preflight", "prepare-secrets", "install", "activate", "status", "support", "backup", "rollback", "uninstall"))
     value.add_argument("--role", required=True, choices=tuple(ROLE_KIND))
     value.add_argument("--expected-host", required=True)
     value.add_argument("--install-root", required=True, type=Path)
@@ -1302,13 +1457,15 @@ def main() -> int:
     args = parser().parse_args()
     try:
         role_root = Path(__file__).resolve().parent.parent / args.role
-        if args.action in {"install", "rollback", "uninstall"} and not args.yes:
+        if args.action in {"install", "activate", "rollback", "uninstall"} and not args.yes:
             die("ARG001", "危险操作缺少 --yes", "确认变更窗口后显式传入 --yes。")
         if args.action == "preflight":
             preflight(args, role_root)
             print("预检通过。")
         elif args.action == "install":
             install(args, role_root)
+        elif args.action == "activate":
+            activate(args)
         elif args.action == "prepare-secrets":
             prepare_secrets(args)
         elif args.action == "status":

@@ -17,11 +17,14 @@
     "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "install_id": {"type": "string", "format": "uuid"},
     "phases": {"type": "object", "propertyNames": {"pattern": "^[A-Za-z0-9._-]+$"}, "additionalProperties": {"type": "object"}},
-    "status": {"enum": ["running", "complete", "failed", "uninstalled"]},
-    "status_zh": {"enum": ["执行中", "完成", "完成（未启动）", "失败", "已卸载"]},
+    "status": {"enum": ["running", "staged", "complete", "failed", "uninstalled"]},
+    "status_zh": {"enum": ["执行中", "已暂存（未启动）", "完成", "完成（未启动）", "失败", "已卸载"]},
     "last_error": {"type": ["object", "null"]},
     "data_dir": {"type": "string", "minLength": 1},
-    "release": {"type": "string", "minLength": 1},
+    "release": {"type": ["string", "null"]},
+    "active_release": {"type": ["string", "null"]},
+    "staged_release": {"type": ["string", "null"]},
+    "machine_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
     "activated": {"type": "boolean"},
     "data_purged": {"type": "boolean"}
   }

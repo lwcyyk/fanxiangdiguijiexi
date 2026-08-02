@@ -1696,6 +1696,10 @@ def build_delivery(
                     f"RI_FIELD_COMPOSE_PROJECT=ri-{hostname}",
                     "RI_FIELD_NETWORK=ri-field-network",
                     f"RI_FIELD_DATA_DIR=/var/lib/resolver-identity/{hostname}",
+                    f"RI_TRACE_SOCKET_HOST_DIR=/var/lib/resolver-identity/{hostname}/trace",
+                    "RI_TRACE_PRODUCER_UID=10002",
+                    "RI_TRACE_PRODUCER_GID=10002",
+                    "RI_KNOT_RESOLVER_UID=10003",
                     f"RI_RELEASE_VERSION={validated['version']}",
                     f"RI_SOURCE_COMMIT={validated['source_commit']}",
                 ]

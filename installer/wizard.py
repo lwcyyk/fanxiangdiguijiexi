@@ -240,7 +240,7 @@ def reject_duplicate_options(argv: list[str]) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="域名中心离线安装向导（中文、无颜色）")
     parser.add_argument("action", nargs="?", default="install", choices=(
-        "install", "preflight", "prepare-secrets", "status", "support", "backup", "rollback", "uninstall"
+        "install", "activate", "preflight", "prepare-secrets", "status", "support", "backup", "rollback", "uninstall"
     ))
     parser.add_argument("--role", choices=ROLES, help="本机角色")
     parser.add_argument("--expected-host", help="安装包指定的主机名")
@@ -271,8 +271,11 @@ def main(argv: list[str] | None = None) -> int:
         packaged_expected = metadata.get("expected_host") or metadata.get("hostname")
         packaged_expected_is_fqdn = packaged_expected is not None and "." in safe_host(str(packaged_expected))
         if metadata.get("expected_host") and metadata.get("hostname"):
-            if safe_host(str(metadata["expected_host"])) != safe_host(str(metadata["hostname"])):
-                raise InstallError("E005", "安装包 expected_host 与 hostname 不一致")
+            expected_host = safe_host(str(metadata["expected_host"]))
+            hostname = safe_host(str(metadata["hostname"]))
+            if expected_host != hostname:
+                if "." not in expected_host or expected_host.split(".", 1)[0] != hostname:
+                    raise InstallError("E005", "安装包 expected_host 未绑定 hostname")
         if packaged_expected is not None:
             expected = safe_host(str(packaged_expected))
             if args.expected_host is not None and safe_host(args.expected_host) != expected:
@@ -310,7 +313,7 @@ def main(argv: list[str] | None = None) -> int:
             command.append("--no-start")
         if args.yes:
             command.append("--yes")
-        elif args.action in {"install", "rollback", "uninstall"}:
+        elif args.action in {"install", "activate", "rollback", "uninstall"}:
             if not sys.stdin.isatty():
                 raise InstallError("E008", "危险操作需要 --yes")
             if prompt(f"确认在 {expected} 执行{args.action}？输入“是”继续") != "是":
