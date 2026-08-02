@@ -382,6 +382,52 @@ def backup(args: argparse.Namespace) -> None:
     print(f"备份完成：{archive}")
 
 
+def _redact_support_value(value: object) -> object:
+    if isinstance(value, dict):
+        result: dict[str, object] = {}
+        for key, child in value.items():
+            lowered = str(key).lower()
+            if any(token in lowered for token in ("authorization", "cookie", "password", "secret", "token", "private", "credential", "api_key")):
+                result[str(key)] = "[REDACTED]"
+            elif lowered.endswith("url") or "rpc" in lowered:
+                text = str(child)
+                text = re.sub(r"(https?://)([^/@\s]+):([^/@\s]+)@", r"\1[REDACTED]@", text)
+                text = re.sub(r"([?&](?:key|token|password|secret)=)[^&\s]+", r"\1[REDACTED]", text, flags=re.IGNORECASE)
+                result[str(key)] = text
+            else:
+                result[str(key)] = _redact_support_value(child)
+        return result
+    if isinstance(value, list):
+        return [_redact_support_value(item) for item in value]
+    return value
+
+
+def _copy_support_state(source: Path, destination: Path) -> None:
+    destination.mkdir(parents=True, exist_ok=True)
+    for path in sorted(source.rglob("*")):
+        relative = path.relative_to(source)
+        if path.is_dir():
+            (destination / relative).mkdir(parents=True, exist_ok=True)
+            continue
+        name = path.name.lower()
+        if path.is_symlink() or any(marker in name for marker in ("key", "secret", "token", "credential", "password")):
+            continue
+        target = destination / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if path.suffix == ".json":
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                continue
+            atomic_json(target, _redact_support_value(value), 0o600)
+        else:
+            data = path.read_bytes()
+            data = re.sub(rb"Bearer\s+[^\s]+", b"Bearer [REDACTED]", data, flags=re.IGNORECASE)
+            data = re.sub(rb"(https?://)([^/@\s]+):([^/@\s]+)@", rb"\1[REDACTED]@", data)
+            target.write_bytes(data[:1_000_000])
+            os.chmod(target, 0o600)
+
+
 def support(args: argparse.Namespace) -> None:
     output = args.output or Path.cwd() / "support"
     output.mkdir(parents=True, exist_ok=True)
@@ -390,14 +436,16 @@ def support(args: argparse.Namespace) -> None:
         temp = Path(temp_name)
         state = args.install_root / "state"
         if state.is_dir():
-            shutil.copytree(state, temp / "state", ignore=shutil.ignore_patterns("*.key", "*secret*", "*token*"))
+            _copy_support_state(state, temp / "state")
         atomic_text(temp / "system.txt", f"host={socket.gethostname()}\nplatform={platform.platform()}\n", 0o600)
         current = args.install_root / "current"
         if current.is_symlink() and shutil.which("docker"):
             result = compose(current.resolve(), ["ps"], check=False)
             atomic_text(temp / "compose-ps.txt", result.stdout or "", 0o600)
         with tarfile.open(archive, "w:gz") as tar:
-            tar.add(temp, arcname="support")
+            for path in sorted(temp.rglob("*")):
+                tar.add(path, arcname=Path("support") / path.relative_to(temp), recursive=False)
+    atomic_text(Path(f"{archive}.sha256"), f"{file_hash(archive)}  {archive.name}\n", 0o600)
     print(f"支持包完成（不含密钥与业务数据）：{archive}")
 
 
