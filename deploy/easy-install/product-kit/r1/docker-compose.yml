@@ -176,8 +176,8 @@ services:
       - ${RI_RESOLVER_SECRET_DIR:?required}:/run/secrets:ro
       - ${RI_AGENT_TLS_DIR:?required}:/run/agent-tls:ro
     ports:
-      - "${DNS_BIND_ADDRESS:?required}:${DNS_PORT:-53}:1053/udp"
-      - "${DNS_BIND_ADDRESS:?required}:${DNS_PORT:-53}:1053/tcp"
+      - "${DNS_BIND_ADDRESS:?required}:${DNS_SHADOW_PORT:-1053}:1053/udp"
+      - "${DNS_BIND_ADDRESS:?required}:${DNS_SHADOW_PORT:-1053}:1053/tcp"
       - "${RI_MANAGEMENT_BIND_ADDRESS:?required}:9108:9108/tcp"
     networks: [dns-ingress, link-control, resolver-egress]
     depends_on: [resolver]

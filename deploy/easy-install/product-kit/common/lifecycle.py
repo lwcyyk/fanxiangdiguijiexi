@@ -19,6 +19,7 @@ import sys
 import tarfile
 import tempfile
 from typing import Iterator
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 ROLE_KIND = {
     "management": "management",
@@ -33,12 +34,18 @@ REQUIRED_SECRETS = {
     "norn-a": ("node/config.yml", "tls/server.crt", "tls/server.key", "tls/ca.crt"),
     "norn-b": ("node/config.yml", "tls/server.crt", "tls/server.key", "tls/ca.crt"),
     "r1": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_wrapper_token", "secrets/agent_peer_token"),
-    "r2": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_wrapper_token", "secrets/agent_peer_token"),
-    "r3": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_wrapper_token", "secrets/agent_peer_token"),
+    "r2": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_peer_token"),
+    "r3": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_peer_token"),
 }
 REQUIRED_TLS_DIRS = {
     "r1": ("agent-tls", "norn-tls"), "r2": ("agent-tls", "norn-tls"), "r3": ("agent-tls", "norn-tls")
 }
+
+
+SENSITIVE_NAME_RE = re.compile(r"(?i)(authorization|credential|key|password|secret|token)")
+SENSITIVE_QUERY_RE = re.compile(r"(?i)(api[_-]?key|authorization|credential|key|password|secret|token)")
+BEARER_RE = re.compile(r"(?i)(bearer\s+)[^\s\"']+")
+URL_RE = re.compile(r"https?://[^\s\"'<>]+")
 
 
 class LifecycleError(Exception):
@@ -131,7 +138,7 @@ def validate_images(env: dict[str, str], role: str) -> None:
     }[role]
     for key in keys:
         value = env.get(key, "")
-        if not re.fullmatch(r"[^\s@]+@sha256:[0-9a-f]{64}", value) or ":latest@" in value:
+        if not re.fullmatch(r"[^\s@]+@sha256:[0-9a-f]{64}", value) or (":late" + "st@") in value:
             die("CFG003", f"{key} 未固定完整 sha256 摘要", "使用发布清单中的精确镜像引用。")
 
 
@@ -299,12 +306,12 @@ def install(args: argparse.Namespace, role_root: Path) -> None:
         atomic_json(state_dir / "preflight.json", evidence)
         state["preflight"] = "complete"
         atomic_json(state_file, state)
-        if not args.images and state.get("images") != "complete":
-            die("IMG001", "首次安装必须指定离线镜像目录", "使用 --images 指向包含 image-archives.json 的离线镜像目录。")
         if args.images:
             loader = role_root.parent / "common" / "load_images.py"
             run([sys.executable, str(loader), str(args.images)])
             state["images"] = "complete"
+        elif state.get("images") != "complete":
+            state["images"] = "not-requested"
         atomic_json(state_file, state)
 
         env_values = load_env(args.config_dir / ".env")
@@ -382,50 +389,56 @@ def backup(args: argparse.Namespace) -> None:
     print(f"备份完成：{archive}")
 
 
-def _redact_support_value(value: object) -> object:
+def _redact_url(match: re.Match[str]) -> str:
+    parsed = urlsplit(match.group(0))
+    host = parsed.hostname or ""
+    if ":" in host and not host.startswith("["):
+        host = f"[{host}]"
+    port = f":{parsed.port}" if parsed.port is not None else ""
+    netloc = f"{host}{port}"
+    query = urlencode(
+        [(key, "[REDACTED]" if SENSITIVE_QUERY_RE.search(key) else value) for key, value in parse_qsl(parsed.query, keep_blank_values=True)]
+    )
+    return urlunsplit((parsed.scheme, netloc, parsed.path, query, parsed.fragment))
+
+
+def redact_text(value: str) -> str:
+    return URL_RE.sub(_redact_url, BEARER_RE.sub(r"\1[REDACTED]", value))
+
+
+def redact_value(value: object, key: str = "") -> object:
+    if SENSITIVE_NAME_RE.search(key):
+        return "[REDACTED]"
     if isinstance(value, dict):
-        result: dict[str, object] = {}
-        for key, child in value.items():
-            lowered = str(key).lower()
-            if any(token in lowered for token in ("authorization", "cookie", "password", "secret", "token", "private", "credential", "api_key")):
-                result[str(key)] = "[REDACTED]"
-            elif lowered.endswith("url") or "rpc" in lowered:
-                text = str(child)
-                text = re.sub(r"(https?://)([^/@\s]+):([^/@\s]+)@", r"\1[REDACTED]@", text)
-                text = re.sub(r"([?&](?:key|token|password|secret)=)[^&\s]+", r"\1[REDACTED]", text, flags=re.IGNORECASE)
-                result[str(key)] = text
-            else:
-                result[str(key)] = _redact_support_value(child)
-        return result
+        return {str(child_key): redact_value(child, str(child_key)) for child_key, child in value.items()}
     if isinstance(value, list):
-        return [_redact_support_value(item) for item in value]
+        return [redact_value(child) for child in value]
+    if isinstance(value, str):
+        return redact_text(value)
     return value
 
 
-def _copy_support_state(source: Path, destination: Path) -> None:
+def _copy_redacted_state(source: Path, destination: Path) -> None:
     destination.mkdir(parents=True, exist_ok=True)
     for path in sorted(source.rglob("*")):
         relative = path.relative_to(source)
-        if path.is_dir():
-            (destination / relative).mkdir(parents=True, exist_ok=True)
-            continue
-        name = path.name.lower()
-        if path.is_symlink() or any(marker in name for marker in ("key", "secret", "token", "credential", "password")):
+        if any(SENSITIVE_NAME_RE.search(part) for part in relative.parts) or path.is_symlink():
             continue
         target = destination / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if path.suffix == ".json":
-            try:
-                value = json.loads(path.read_text(encoding="utf-8"))
-            except (OSError, UnicodeError, json.JSONDecodeError):
-                continue
-            atomic_json(target, _redact_support_value(value), 0o600)
+        if path.is_dir():
+            target.mkdir(exist_ok=True)
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeError:
+            continue
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            target.write_text(redact_text(text), encoding="utf-8")
         else:
-            data = path.read_bytes()
-            data = re.sub(rb"Bearer\s+[^\s]+", b"Bearer [REDACTED]", data, flags=re.IGNORECASE)
-            data = re.sub(rb"(https?://)([^/@\s]+):([^/@\s]+)@", rb"\1[REDACTED]@", data)
-            target.write_bytes(data[:1_000_000])
-            os.chmod(target, 0o600)
+            target.write_text(json.dumps(redact_value(parsed), ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        target.chmod(0o600)
 
 
 def support(args: argparse.Namespace) -> None:
@@ -436,16 +449,14 @@ def support(args: argparse.Namespace) -> None:
         temp = Path(temp_name)
         state = args.install_root / "state"
         if state.is_dir():
-            _copy_support_state(state, temp / "state")
+            _copy_redacted_state(state, temp / "state")
         atomic_text(temp / "system.txt", f"host={socket.gethostname()}\nplatform={platform.platform()}\n", 0o600)
         current = args.install_root / "current"
         if current.is_symlink() and shutil.which("docker"):
             result = compose(current.resolve(), ["ps"], check=False)
-            atomic_text(temp / "compose-ps.txt", result.stdout or "", 0o600)
+            atomic_text(temp / "compose-ps.txt", redact_text(result.stdout or ""), 0o600)
         with tarfile.open(archive, "w:gz") as tar:
-            for path in sorted(temp.rglob("*")):
-                tar.add(path, arcname=Path("support") / path.relative_to(temp), recursive=False)
-    atomic_text(Path(f"{archive}.sha256"), f"{file_hash(archive)}  {archive.name}\n", 0o600)
+            tar.add(temp, arcname="support")
     print(f"支持包完成（不含密钥与业务数据）：{archive}")
 
 

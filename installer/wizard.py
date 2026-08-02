@@ -94,7 +94,7 @@ def prompt(label: str, default: str = "") -> str:
 
 
 def load_package_metadata(root: Path) -> dict[str, object]:
-    candidates = (root / "package.json", root / "manifest.json", root / "EXPECTED-HOST.json")
+    candidates = (root / "expected-host.json", root / "package.json", root / "manifest.json", root / "EXPECTED-HOST.json")
     for path in candidates:
         if path.is_file():
             try:
@@ -151,6 +151,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--role", choices=ROLES, help="本机角色")
     parser.add_argument("--expected-host", help="安装包指定的主机名")
     parser.add_argument("--actual-host", help=argparse.SUPPRESS)
+    parser.add_argument("--no-start", action="store_true", help="安装但不启动服务")
     parser.add_argument("--package-root", type=Path, help="product-kit 根目录")
     parser.add_argument("--config-dir", type=Path, help="本机渲染配置目录")
     parser.add_argument("--secret-dir", type=Path, help="已准备的受限密钥目录")
@@ -166,7 +167,8 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         package_root = (args.package_root or infer_package_root(Path(__file__))).resolve()
-        metadata = load_package_metadata(package_root)
+        metadata_root = package_root.parent if package_root.name == "product-kit" else package_root
+        metadata = load_package_metadata(metadata_root)
         role = select_role(args, metadata)
         expected = args.expected_host or metadata.get("expected_host") or metadata.get("hostname")
         if not expected:
@@ -192,6 +194,8 @@ def main(argv: list[str] | None = None) -> int:
             command += ["--output", str(args.output.resolve())]
         if args.purge_data:
             command.append("--purge-data")
+        if args.no_start:
+            command.append("--no-start")
         if args.yes:
             command.append("--yes")
         elif args.action in {"install", "rollback", "uninstall"}:
