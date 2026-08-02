@@ -7,6 +7,7 @@ import argparse
 import gzip
 import hashlib
 import io
+import ipaddress
 import json
 import os
 import re
@@ -82,6 +83,13 @@ ROLE_IMAGES = {
     "r2": ("rust", "knot"),
     "r3": ("rust", "knot"),
 }
+COMPOSE_IMAGE_VARIABLES = {
+    "management": "RI_MANAGEMENT_IMAGE",
+    "norn": "RI_NORN_IMAGE",
+    "nginx": "RI_NGINX_IMAGE",
+    "rust": "RI_IMAGE",
+    "knot": "RI_KNOT_IMAGE",
+}
 CHINESE_ENTRY_POINTS = {
     "开始安装.sh": "install",
     "检查运行状态.sh": "status",
@@ -124,6 +132,23 @@ SECRET_BYTES_RE = re.compile(
     rb"-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----|"
     rb"(?:gh[pousr]_[A-Za-z0-9]{30,})|(?:AKIA|ASIA)[A-Z0-9]{16}"
 )
+SECRET_ASSIGNMENT_RE = re.compile(
+    rb"(?i:(?:password|passphrase|secret|token|credential|api[_-]?key)\s*[:=]\s*[^\s]{8,})"
+)
+FORBIDDEN_LAYER_NAME_RE = re.compile(
+    r"(?:^|/)(?:\.env(?:\..*)?|id_(?:rsa|dsa|ecdsa|ed25519)|credentials(?:\.[^/]*)?|"
+    r"[^/]*(?:private[_-]?key|secret|token|password|passwd)[^/]*)$",
+    re.IGNORECASE,
+)
+MAX_OCI_MEMBERS = 100_000
+MAX_OCI_JSON_BYTES = 16 * 1024 * 1024
+MAX_OCI_BLOB_BYTES = 16 * 1024 * 1024 * 1024
+MAX_LAYER_MEMBERS = 250_000
+MAX_LAYER_FILE_BYTES = 128 * 1024 * 1024
+MAX_LAYER_UNCOMPRESSED_BYTES = 8 * 1024 * 1024 * 1024
+MAX_SECRET_SCAN_BYTES = 8 * 1024 * 1024
+EXTERNAL_EVIDENCE_REQUIRED = frozenset({"path", "sha256", "timestamp", "source_commit", "host", "role", "provenance"})
+WRAPPER_STRUCTURE_RE = re.compile(r"(?:^|[^a-z0-9])(?:wrapper|first-hop)(?:[^a-z0-9]|$)", re.IGNORECASE)
 FORBIDDEN_OUTPUT_RE = (
     (re.compile(rb"127\.0\.0\.1"), "loopback image/reference text"),
     (re.compile(rb":latest(?:[^A-Za-z0-9_.-]|$)", re.IGNORECASE), "latest image reference"),
@@ -261,34 +286,82 @@ def _read_member(archive: tarfile.TarFile, members: dict[str, tarfile.TarInfo], 
     info = members.get(name)
     if info is None or not info.isfile():
         raise BundleError(f"OCI archive is missing regular file {name}")
+    if info.size > MAX_OCI_JSON_BYTES:
+        raise BundleError(f"OCI metadata member exceeds size bound: {name}")
     handle = archive.extractfile(info)
     if handle is None:
         raise BundleError(f"cannot read OCI member {name}")
-    return handle.read()
+    data = handle.read(MAX_OCI_JSON_BYTES + 1)
+    if len(data) != info.size or len(data) > MAX_OCI_JSON_BYTES:
+        raise BundleError(f"OCI metadata member size is inconsistent: {name}")
+    return data
+
+
+def _scan_secret_bytes(data: bytes, label: str) -> None:
+    if SECRET_BYTES_RE.search(data) or SECRET_ASSIGNMENT_RE.search(data):
+        raise BundleError(f"{label} contains prohibited secret material")
 
 
 def _validate_layer_tar(data: bytes, media_type: str, label: str) -> str:
+    diff_digest = hashlib.sha256()
+    raw_size = 0
     try:
-        raw = gzip.decompress(data) if media_type.endswith("+gzip") else data
+        raw_stream: BinaryIO = gzip.GzipFile(fileobj=io.BytesIO(data), mode="rb") if media_type.endswith("+gzip") else io.BytesIO(data)
+        while True:
+            chunk = raw_stream.read(1024 * 1024)
+            if not chunk:
+                break
+            raw_size += len(chunk)
+            if raw_size > MAX_LAYER_UNCOMPRESSED_BYTES:
+                raise BundleError(f"{label} exceeds uncompressed size bound")
+            diff_digest.update(chunk)
     except (OSError, EOFError) as error:
         raise BundleError(f"{label} is not valid gzip data: {error}") from error
+    total = 0
+    source = io.BytesIO(data)
     try:
-        with tarfile.open(fileobj=io.BytesIO(raw), mode="r:") as layer:
+        stream: BinaryIO = gzip.GzipFile(fileobj=source, mode="rb") if media_type.endswith("+gzip") else source
+        with tarfile.open(fileobj=stream, mode="r|") as layer:
             seen: set[str] = set()
-            for member in layer:
+            for index, member in enumerate(layer, 1):
+                if index > MAX_LAYER_MEMBERS:
+                    raise BundleError(f"{label} exceeds member-count bound")
                 normalized = _safe_relative(member.name, label).as_posix()
                 if normalized in seen:
                     raise BundleError(f"{label} contains duplicate member {normalized}")
                 seen.add(normalized)
-                if member.issym() or member.islnk():
-                    target = PurePosixPath(member.linkname)
-                    if member.linkname.startswith("/") or ".." in target.parts:
-                        raise BundleError(f"{label} contains escaping link {normalized}")
-                elif not (member.isfile() or member.isdir() or member.ischr() or member.isblk() or member.isfifo()):
-                    raise BundleError(f"{label} contains unsupported member {normalized}")
-    except tarfile.TarError as error:
-        raise BundleError(f"{label} is not a valid layer tar: {error}") from error
-    return hashlib.sha256(raw).hexdigest()
+                if FORBIDDEN_LAYER_NAME_RE.search(normalized):
+                    raise BundleError(f"{label} contains prohibited sensitive filename: {normalized}")
+                if member.issym() or member.islnk() or member.ischr() or member.isblk() or member.isfifo():
+                    raise BundleError(f"{label} contains prohibited special/link member: {normalized}")
+                if not (member.isfile() or member.isdir()):
+                    raise BundleError(f"{label} contains unsupported member: {normalized}")
+                if member.size < 0 or member.size > MAX_LAYER_FILE_BYTES:
+                    raise BundleError(f"{label} member exceeds per-file size bound: {normalized}")
+                total += member.size
+                if total > MAX_LAYER_UNCOMPRESSED_BYTES:
+                    raise BundleError(f"{label} exceeds uncompressed size bound")
+                if member.isfile():
+                    handle = layer.extractfile(member)
+                    if handle is None:
+                        raise BundleError(f"{label} member is unreadable: {normalized}")
+                    remaining = member.size
+                    scanned = 0
+                    overlap = b""
+                    while remaining:
+                        chunk = handle.read(min(1024 * 1024, remaining))
+                        if not chunk:
+                            raise BundleError(f"{label} member is truncated: {normalized}")
+                        remaining -= len(chunk)
+                        if scanned < MAX_SECRET_SCAN_BYTES:
+                            scan_chunk = chunk[: MAX_SECRET_SCAN_BYTES - scanned]
+                            candidate = overlap + scan_chunk
+                            _scan_secret_bytes(candidate, f"{label} regular file {normalized}")
+                            overlap = candidate[-256:]
+                            scanned += len(scan_chunk)
+    except (OSError, EOFError, tarfile.TarError) as error:
+        raise BundleError(f"{label} is not a valid bounded layer tar: {error}") from error
+    return diff_digest.hexdigest()
 
 
 def _import_reference(repository: str, digest: str) -> str:
@@ -311,7 +384,9 @@ def validate_oci_archive(
         raise BundleError(f"cannot open OCI archive {path}: {error}") from error
     with archive:
         members: dict[str, tarfile.TarInfo] = {}
-        for info in archive:
+        for member_index, info in enumerate(archive, 1):
+            if member_index > MAX_OCI_MEMBERS:
+                raise BundleError("OCI archive exceeds member-count bound")
             name = _safe_relative(info.name, f"OCI archive {path}").as_posix()
             if name in members:
                 raise BundleError(f"OCI archive contains duplicate member: {name}")
@@ -348,9 +423,17 @@ def validate_oci_archive(
         referenced: set[str] = set()
 
         def blob(descriptor: dict[str, Any], label: str) -> bytes:
+            if descriptor["size"] > MAX_OCI_BLOB_BYTES:
+                raise BundleError(f"{label} blob exceeds size bound")
             digest_hex = SHA256_RE.fullmatch(descriptor["digest"]).group(1)  # type: ignore[union-attr]
             name = f"blobs/sha256/{digest_hex}"
-            data = _read_member(archive, members, name)
+            info = members.get(name)
+            if info is None or not info.isfile() or info.size != descriptor["size"]:
+                raise BundleError(f"{label} blob is missing or has inconsistent size")
+            handle = archive.extractfile(info)
+            if handle is None:
+                raise BundleError(f"cannot read {label} blob")
+            data = handle.read(descriptor["size"] + 1)
             if len(data) != descriptor["size"] or hashlib.sha256(data).hexdigest() != digest_hex:
                 raise BundleError(f"{label} blob size or sha256 does not match its descriptor")
             referenced.add(name)
@@ -368,6 +451,17 @@ def validate_oci_archive(
         if not layer_descs:
             raise BundleError("OCI manifest must contain at least one layer")
         config = _object(load_json_bytes(blob(config_desc, "config"), "OCI config"), "OCI config")
+        _reject_secret_fields(config, "OCI config")
+        _scan_secret_bytes(_json_bytes(config), "OCI config Env/labels")
+        configured = config.get("config", {})
+        if configured is not None:
+            configured_obj = _object(configured, "OCI config.config")
+            env = configured_obj.get("Env", [])
+            if env is not None and not isinstance(env, list):
+                raise BundleError("OCI config Env must be an array")
+            labels = configured_obj.get("Labels", {})
+            if labels is not None and not isinstance(labels, dict):
+                raise BundleError("OCI config Labels must be an object")
         if config.get("os") != platform["os"] or config.get("architecture") != platform["architecture"]:
             raise BundleError("OCI config os/architecture does not match requested platform")
         if platform.get("variant") and config.get("variant") != platform["variant"]:
@@ -394,6 +488,7 @@ def validate_oci_archive(
     return {
         "archive_sha256": _sha256(path),
         "manifest_digest": expected_digest,
+        "config_digest": config_desc["digest"],
         "platform": required_platform,
         "layer_count": len(layer_descs),
     }
@@ -469,19 +564,43 @@ def validate_inputs(site_path: Path, release_path: Path) -> dict[str, Any]:
     counts = {role: 0 for role in ROLE_COUNTS}
     names: list[str] = []
     clean_hosts: list[dict[str, str]] = []
+    machine_ids: list[str] = []
+    management_ips: list[str] = []
     for index, host in enumerate(hosts):
-        _exact_keys(host, {"hostname", "role"}, set(), f"hosts[{index}]")
+        _exact_keys(host, {"hostname", "role"}, {"machine_id", "management_ip", "fqdn"}, f"hosts[{index}]")
         hostname = _text(host["hostname"], f"hosts[{index}].hostname", HOST_RE)
         role = _text(host["role"], f"hosts[{index}].role")
         if role not in ROLE_COUNTS:
             raise BundleError(f"hosts[{index}].role is not approved")
+        clean_host = {"hostname": hostname, "role": role}
+        if "fqdn" in host:
+            fqdn = _text(host["fqdn"], f"hosts[{index}].fqdn", HOST_RE).lower()
+            if "." not in fqdn or fqdn.split(".", 1)[0].lower() != hostname.split(".", 1)[0].lower():
+                raise BundleError(f"hosts[{index}].fqdn must bind the declared hostname")
+            clean_host["fqdn"] = fqdn
+        if "machine_id" in host:
+            machine_id = _text(host["machine_id"], f"hosts[{index}].machine_id")
+            if re.fullmatch(r"[0-9a-f]{32}", machine_id) is None:
+                raise BundleError(f"hosts[{index}].machine_id must be 32 lowercase hex characters")
+            machine_ids.append(machine_id)
+            clean_host["machine_id"] = machine_id
+        if "management_ip" in host:
+            management_ip = _text(host["management_ip"], f"hosts[{index}].management_ip")
+            try:
+                parsed_ip = ipaddress.ip_address(management_ip)
+            except ValueError as error:
+                raise BundleError(f"hosts[{index}].management_ip is invalid") from error
+            if parsed_ip.is_unspecified or parsed_ip.is_loopback or parsed_ip.is_multicast:
+                raise BundleError(f"hosts[{index}].management_ip is not an approved host address")
+            management_ips.append(management_ip)
+            clean_host["management_ip"] = management_ip
         counts[role] += 1
         names.append(hostname)
-        clean_hosts.append({"hostname": hostname, "role": role})
+        clean_hosts.append(clean_host)
     if counts != ROLE_COUNTS:
         raise BundleError(f"six-host role counts must equal {ROLE_COUNTS}")
-    if len(set(names)) != len(names):
-        raise BundleError("hostnames must be unique")
+    if len(set(names)) != len(names) or len(set(machine_ids)) != len(machine_ids) or len(set(management_ips)) != len(management_ips):
+        raise BundleError("hostnames, supplied machine IDs, and supplied management IPs must be unique")
     requirements = _object(site.get("external_requirements", {}), "external_requirements")
     missing_requirements = REQUIRED_EXTERNAL_ACCEPTANCE_IDS - set(requirements)
     if missing_requirements:
@@ -489,24 +608,89 @@ def validate_inputs(site_path: Path, release_path: Path) -> dict[str, Any]:
             "external_requirements is missing mandatory acceptance IDs: "
             + ", ".join(sorted(missing_requirements))
         )
-    clean_requirements: dict[str, dict[str, str]] = {}
+    clean_requirements: dict[str, dict[str, Any]] = {}
     for requirement_id, raw_requirement in sorted(requirements.items()):
         if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", requirement_id) is None:
             raise BundleError(f"external requirement id is invalid: {requirement_id!r}")
         requirement = _object(raw_requirement, f"external_requirements.{requirement_id}")
-        _exact_keys(requirement, {"status", "status_zh"}, {"reason_zh", "blocked_by"}, f"external_requirements.{requirement_id}")
+        _exact_keys(requirement, {"status", "status_zh"}, {"reason_zh", "blocked_by", "evidence"}, f"external_requirements.{requirement_id}")
         status = _text(requirement["status"], f"external_requirements.{requirement_id}.status").lower()
         status_zh = _text(requirement["status_zh"], f"external_requirements.{requirement_id}.status_zh")
         if status not in STATUS_VOCABULARY or status_zh not in STATUS_VOCABULARY[status]:
             raise BundleError(
                 f"external_requirements.{requirement_id} has an unsupported or inconsistent status/status_zh"
             )
-        clean_requirement = {"status": status, "status_zh": status_zh}
+        clean_requirement: dict[str, Any] = {"status": status, "status_zh": status_zh}
         if "reason_zh" in requirement:
             clean_requirement["reason_zh"] = _text(requirement["reason_zh"], f"external_requirements.{requirement_id}.reason_zh")
-        if "blocked_by" in requirement:
-            clean_requirement["blocked_by"] = _text(requirement["blocked_by"], f"external_requirements.{requirement_id}.blocked_by")
+        blocked_raw = requirement.get("blocked_by", [])
+        blocked_by = [blocked_raw] if isinstance(blocked_raw, str) else blocked_raw
+        if not isinstance(blocked_by, list) or not all(isinstance(item, str) and item for item in blocked_by):
+            raise BundleError(f"external_requirements.{requirement_id}.blocked_by must be a string or array of IDs")
+        if len(set(blocked_by)) != len(blocked_by):
+            raise BundleError(f"external_requirements.{requirement_id}.blocked_by contains duplicates")
+        if blocked_by:
+            clean_requirement["blocked_by"] = sorted(blocked_by)
+        if not _status_passed(status) and not blocked_by and "reason_zh" not in requirement:
+            raise BundleError(f"external_requirements.{requirement_id} non-passed status requires reason_zh or blocked_by")
+        if _status_passed(status) or status == "failed":
+            evidence_record = _object(requirement.get("evidence"), f"external_requirements.{requirement_id}.evidence")
+            _exact_keys(evidence_record, set(EXTERNAL_EVIDENCE_REQUIRED), set(), f"external_requirements.{requirement_id}.evidence")
+            evidence_path_text = _text(evidence_record["path"], f"external_requirements.{requirement_id}.evidence.path")
+            evidence_path = Path(evidence_path_text)
+            if not evidence_path.is_absolute():
+                evidence_path = (site_path.parent / evidence_path).resolve()
+            if not evidence_path.is_file() or evidence_path.is_symlink():
+                raise BundleError(f"external_requirements.{requirement_id}.evidence.path is missing or unsafe")
+            evidence_sha = _text(evidence_record["sha256"], f"external_requirements.{requirement_id}.evidence.sha256")
+            if re.fullmatch(r"[0-9a-f]{64}", evidence_sha) is None or _sha256(evidence_path) != evidence_sha:
+                raise BundleError(f"external_requirements.{requirement_id}.evidence sha256 mismatch")
+            timestamp = _text(evidence_record["timestamp"], f"external_requirements.{requirement_id}.evidence.timestamp")
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", timestamp) is None:
+                raise BundleError(f"external_requirements.{requirement_id}.evidence.timestamp must be UTC RFC3339 seconds")
+            if evidence_record["source_commit"] != commit:
+                raise BundleError(f"external_requirements.{requirement_id}.evidence.source_commit mismatch")
+            evidence_host = _text(evidence_record["host"], f"external_requirements.{requirement_id}.evidence.host")
+            evidence_role = _text(evidence_record["role"], f"external_requirements.{requirement_id}.evidence.role")
+            if evidence_host not in names and evidence_host != "site":
+                raise BundleError(f"external_requirements.{requirement_id}.evidence.host is not in inventory")
+            if evidence_role not in ROLE_COUNTS and evidence_role != "site":
+                raise BundleError(f"external_requirements.{requirement_id}.evidence.role is invalid")
+            clean_requirement["evidence"] = {
+                "path": evidence_path_text,
+                "sha256": evidence_sha,
+                "timestamp": timestamp,
+                "source_commit": commit,
+                "host": evidence_host,
+                "role": evidence_role,
+                "provenance": _text(evidence_record["provenance"], f"external_requirements.{requirement_id}.evidence.provenance"),
+            }
+        elif "evidence" in requirement:
+            raise BundleError(f"external_requirements.{requirement_id} must not attach evidence to an unexecuted status")
         clean_requirements[requirement_id] = clean_requirement
+    for requirement_id, requirement in clean_requirements.items():
+        for dependency in requirement.get("blocked_by", []):
+            if dependency == "external_approval":
+                continue
+            if dependency not in clean_requirements:
+                raise BundleError(f"external_requirements.{requirement_id}.blocked_by references missing dependency {dependency}")
+            if _status_passed(clean_requirements[dependency]["status"]):
+                raise BundleError(f"external_requirements.{requirement_id} is blocked by already-passed dependency {dependency}")
+    visiting: set[str] = set()
+    visited: set[str] = set()
+    def visit(requirement_id: str) -> None:
+        if requirement_id in visiting:
+            raise BundleError("external_requirements blocked_by contains a dependency cycle")
+        if requirement_id in visited:
+            return
+        visiting.add(requirement_id)
+        for dependency in clean_requirements[requirement_id].get("blocked_by", []):
+            if dependency != "external_approval":
+                visit(dependency)
+        visiting.remove(requirement_id)
+        visited.add(requirement_id)
+    for requirement_id in clean_requirements:
+        visit(requirement_id)
     return {
         "version": version,
         "source_commit": commit,
@@ -516,6 +700,27 @@ def validate_inputs(site_path: Path, release_path: Path) -> dict[str, Any]:
         "images": clean_images,
         "external_requirements": clean_requirements,
     }
+
+
+def _validate_role_structure(role_root: Path, role: str) -> None:
+    compose = role_root / "docker-compose.yml"
+    if not compose.is_file() or compose.is_symlink():
+        raise BundleError(f"{role} template must contain regular docker-compose.yml")
+    text = compose.read_text(encoding="utf-8")
+    lowered = text.lower()
+    if "pull_policy" in lowered or re.search(r"\b(?:docker|podman)\s+(?:image\s+)?pull\b", lowered):
+        raise BundleError(f"{role} Compose attempts a registry pull")
+    for match in re.finditer(r"(?m)^\s*image:\s*([^#\r\n]+)", text):
+        value = match.group(1).strip().strip('"\'')
+        if ":latest" in value.lower() or "localhost" in value.lower() or "127.0.0.1" in value:
+            raise BundleError(f"{role} Compose contains prohibited image reference")
+    if role in {"r2", "r3"} and WRAPPER_STRUCTURE_RE.search(text):
+        raise BundleError(f"{role} structurally contains Wrapper/first-hop configuration")
+    if role == "r1":
+        if re.search(r"(?m)^\s{2}wrapper:\s*$", text) is None or "profiles: [first-hop]" not in text:
+            raise BundleError("R1 must structurally contain exactly the first-hop Wrapper service")
+        if text.count("profiles: [first-hop]") != 1:
+            raise BundleError("R1 must contain exactly one first-hop profile")
 
 
 def _copy_template(source: Path, destination: Path, replacements: dict[str, str]) -> None:
@@ -888,10 +1093,34 @@ def _scan_output(root: Path) -> None:
                 raise BundleError(f"delivery output contains {reason}: {path.relative_to(root)}")
 
 
+def _write_release_handoff(root: Path, validated: dict[str, Any], host_evidence: list[dict[str, Any]]) -> None:
+    _write_json(root / "01-发布信息" / "release-manifest.json", {
+        "schema_version": SCHEMA,
+        "version": validated["version"],
+        "source_commit": validated["source_commit"],
+        "source_release_manifest_sha256": validated["release_manifest_sha256"],
+        "platform": validated["platform"],
+        "images": [
+            {"key": key, "manifest_digest": value["digest"], "config_digest": value["config_digest"], "local_import_reference": value["import_reference"]}
+            for key, value in sorted(validated["images"].items())
+        ],
+    })
+    _write_text(root / "02-校验与签名" / "README.txt", "先运行根目录 recipient-verify.sh，并以带外固定公钥或 SHA-256 指纹建立信任；无签名时保持阻断。\n")
+    _write_json(root / "06-配置交接" / "host-inventory.json", {"hosts": validated["hosts"]})
+    _write_text(root / "06-配置交接" / "README.txt", "此目录只含非秘密主机绑定信息；证书、Token、私钥必须通过独立安全介质交接。\n")
+    _write_text(root / "07-证书与身份" / "README.txt", "不包含秘密。现场按每主机唯一原则带外交接证书、私钥与 Token，并保持阻断直至真实核验。\n")
+    _write_text(root / "08-网络隔离" / "README.txt", "记录批准的防火墙矩阵和真实隔离测试证据；本地生成器不声明现场网络已通过。\n")
+    _write_text(root / "09-监控" / "README.txt", "记录真实告警路由、抓取目标和告警演练证据；未执行时必须为 blocked/not_run。\n")
+    _write_text(root / "10-备份恢复" / "README.txt", "记录隔离恢复演练、备份摘要和 RPO/RTO；不得把生成包当作真实恢复证据。\n")
+    _write_text(root / "11-容量与回滚" / "README.txt", "记录现场容量和回滚 RTO 结果；未执行时不得声明生产就绪。\n")
+    _write_json(root / "12-验收证据" / "host-archives.json", {"hosts": host_evidence})
+
+
 def _render_pdfs(product_kit: Path, output: Path, image: str | None) -> tuple[bool, str]:
-    documents = sorted((product_kit / "documents").glob("*.md")) if (product_kit / "documents").is_dir() else []
+    documents_root = Path(__file__).resolve().parents[1] / "docs" / "easy-install"
+    documents = sorted(documents_root.glob("*.md")) if documents_root.is_dir() else []
     if not documents:
-        return False, "PDF_BLOCKED: product-kit/documents contains no Markdown inputs"
+        return False, "PDF_BLOCKED: docs/easy-install contains no Markdown inputs"
     if image is None or IMAGE_REF_RE.fullmatch(image) is None or image.startswith("127.0.0.1"):
         return False, "PDF_BLOCKED: a non-loopback digest-pinned offline PDF builder image was not supplied"
     runtime = shutil.which("docker") or shutil.which("podman")
@@ -996,6 +1225,9 @@ def verify_delivery(
     if evidence.get("real_server_deployed") is not False or evidence.get("production_traffic_enabled") is not False:
         raise BundleError("bundle evidence must not claim real deployment or production traffic")
     checks = _object(evidence.get("checks"), "delivery evidence checks")
+    evidence_copy = root / "12-验收证据" / "证据.json"
+    if not evidence_copy.is_file() or evidence_copy.is_symlink() or evidence_copy.read_bytes() != (root / "证据.json").read_bytes():
+        raise BundleError("root evidence and 12-验收证据 copy must be byte-for-byte identical")
     missing_checks = REQUIRED_EXTERNAL_ACCEPTANCE_IDS - set(checks)
     if missing_checks:
         raise BundleError("delivery evidence omits mandatory acceptance IDs: " + ", ".join(sorted(missing_checks)))
@@ -1005,6 +1237,15 @@ def verify_delivery(
         status_zh = check.get("status_zh")
         if status not in STATUS_VOCABULARY or status_zh not in STATUS_VOCABULARY[status]:
             raise BundleError(f"delivery evidence check has an invalid status: {check_id}")
+        evidence_record = check.get("evidence")
+        if (_status_passed(status) or status == "failed") and not isinstance(evidence_record, dict):
+            raise BundleError(f"executed external evidence check lacks provenance record: {check_id}")
+        if isinstance(evidence_record, dict) and set(evidence_record) != EXTERNAL_EVIDENCE_REQUIRED:
+            raise BundleError(f"external evidence provenance fields are incomplete: {check_id}")
+    for check_id, raw_check in checks.items():
+        for dependency in raw_check.get("blocked_by", []):
+            if dependency != "external_approval" and dependency not in checks:
+                raise BundleError(f"delivery evidence blocked_by references missing check: {check_id}->{dependency}")
     mandatory_passed = all(_status_passed(checks[item]["status"]) for item in REQUIRED_EXTERNAL_ACCEPTANCE_IDS)
     all_checks_passed = mandatory_passed and all(_status_passed(item["status"]) for item in checks.values())
     if evidence.get("delivery_ready") is not (all_checks_passed and not evidence.get("blockers")):
@@ -1047,11 +1288,13 @@ def verify_delivery(
             with tarfile.open(archive_path, "r:gz") as archive:
                 names: set[str] = set()
                 files: dict[str, bytes] = {}
+                modes: dict[str, int] = {}
                 for member in archive:
                     name = _safe_relative(member.name, f"host archive {archive_path.name}").as_posix()
-                    if name in names or member.issym() or member.islnk():
-                        raise BundleError(f"unsafe/duplicate host archive member: {name}")
+                    if name in names or member.issym() or member.islnk() or not (member.isfile() or member.isdir()):
+                        raise BundleError(f"unsafe/duplicate/special host archive member: {name}")
                     names.add(name)
+                    modes[name] = stat.S_IMODE(member.mode)
                     if member.isfile():
                         handle = archive.extractfile(member)
                         if handle is None:
@@ -1066,7 +1309,7 @@ def verify_delivery(
                 metadata_name = prefix + "metadata/host.json"
                 lock_name = prefix + "images/image-lock.json"
                 metadata = _object(load_json_bytes(files.get(metadata_name, b""), metadata_name), metadata_name)
-                if metadata.get("expected_host") != hostname or metadata.get("hostname") != hostname or metadata.get("role") != role:
+                if metadata.get("hostname") != hostname or metadata.get("role") != role or metadata.get("expected_host") not in {hostname, metadata.get("fqdn")}:
                     raise BundleError(f"host archive metadata mismatch: {hostname}")
                 lock = _object(load_json_bytes(files.get(lock_name, b""), lock_name), lock_name)
                 if lock.get("schema_version") != LOCK_SCHEMA or lock.get("hostname") != hostname or lock.get("role") != role:
@@ -1075,6 +1318,8 @@ def verify_delivery(
                     prefix + "README-请先阅读.txt",
                     prefix + "expected-host.json",
                     prefix + "wizard.py",
+                    prefix + "config/host-inventory.json",
+                    prefix + "config/inventory.env",
                     prefix + f"product-kit/{role}/docker-compose.yml",
                     prefix + "product-kit/common/lifecycle.py",
                     prefix + "product-kit/common/load_images.py",
@@ -1085,6 +1330,17 @@ def verify_delivery(
                 missing_members = sorted(required_members - set(files))
                 if missing_members:
                     raise BundleError(f"host archive is not standalone; missing={missing_members}")
+                expected_launchers = {
+                    *{prefix + name for name in CHINESE_ENTRY_POINTS},
+                    *{prefix + f"scripts/{name}.sh" for name in ASCII_ENTRY_POINTS},
+                    prefix + "product-kit/common/load_images.py",
+                }
+                for launcher in expected_launchers:
+                    if modes.get(launcher, 0) != 0o755:
+                        raise BundleError(f"host archive launcher is not mode 0755: {launcher}")
+                compose_text = files[prefix + f"product-kit/{role}/docker-compose.yml"].decode("utf-8")
+                if role in {"r2", "r3"} and WRAPPER_STRUCTURE_RE.search(compose_text):
+                    raise BundleError(f"host archive {role} contains Wrapper/first-hop structure")
                 expected_host_name = prefix + "expected-host.json"
                 expected_host = _object(load_json_bytes(files.get(expected_host_name, b""), expected_host_name), expected_host_name)
                 if expected_host != metadata:
@@ -1096,12 +1352,13 @@ def verify_delivery(
                 lock_digests: list[str] = []
                 for lock_index, raw_image in enumerate(lock_images):
                     image = _object(raw_image, f"{hostname} image lock[{lock_index}]")
-                    _exact_keys(image, {"key", "reference", "import_reference", "digest", "archive", "archive_sha256"}, set(), f"{hostname} image lock[{lock_index}]")
+                    _exact_keys(image, {"key", "reference", "import_reference", "digest", "config_digest", "archive", "archive_sha256"}, set(), f"{hostname} image lock[{lock_index}]")
                     key = _text(image["key"], f"{hostname} image key")
                     reference = _text(image["reference"], f"{hostname} image reference")
                     import_reference = _text(image["import_reference"], f"{hostname} image import reference")
                     digest = _text(image["digest"], f"{hostname} image digest")
-                    if key not in ROLE_IMAGES[role] or IMAGE_REF_RE.fullmatch(reference) is None or not reference.endswith("@" + digest):
+                    config_digest = _text(image["config_digest"], f"{hostname} image config digest")
+                    if key not in ROLE_IMAGES[role] or IMAGE_REF_RE.fullmatch(reference) is None or not reference.endswith("@" + digest) or SHA256_RE.fullmatch(config_digest) is None:
                         raise BundleError(f"host archive has an invalid image lock: {hostname}")
                     if import_reference != _import_reference(reference.split("@", 1)[0], digest):
                         raise BundleError(f"host archive has invalid OCI import reference metadata: {hostname}")
@@ -1124,6 +1381,18 @@ def verify_delivery(
                 actual = {name[len(prefix):] for name in files if name != checksum_names[0]}
                 if set(listed) != actual:
                     raise BundleError(f"host archive {archive_path.name} checksum file set mismatch")
+                actual_top_launchers = {
+                    relative for relative in actual
+                    if "/" not in relative and relative.endswith(".sh")
+                }
+                if actual_top_launchers != set(CHINESE_ENTRY_POINTS):
+                    raise BundleError(f"host archive {archive_path.name} has stale/missing top-level launcher aliases")
+                actual_ascii_launchers = {
+                    relative for relative in actual
+                    if relative.startswith("scripts/") and relative.endswith(".sh")
+                }
+                if actual_ascii_launchers != {f"scripts/{name}.sh" for name in ASCII_ENTRY_POINTS}:
+                    raise BundleError(f"host archive {archive_path.name} has stale/missing ASCII launcher aliases")
                 for relative, digest in listed.items():
                     if hashlib.sha256(files[prefix + relative]).hexdigest() != digest:
                         raise BundleError(f"host archive {archive_path.name} checksum mismatch: {relative}")
@@ -1193,13 +1462,14 @@ def build_delivery(
             build_root = Path(host_temporary)
             for host in validated["hosts"]:
                 hostname, role = host["hostname"], host["role"]
+                _validate_role_structure(product_kit / ROLE_TEMPLATE[role], role)
                 host_root = build_root / hostname
                 product_root = host_root / "product-kit"
                 template_target = product_root / role
                 lock_images = []
                 for key in ROLE_IMAGES[role]:
                     image = validated["images"][key]
-                    lock_images.append({"key": key, "reference": image["reference"], "import_reference": image["import_reference"], "digest": image["digest"], "archive": f"{key}.oci.tar", "archive_sha256": image["archive_sha256"]})
+                    lock_images.append({"key": key, "reference": image["reference"], "import_reference": image["import_reference"], "digest": image["digest"], "config_digest": image["config_digest"], "archive": f"{key}.oci.tar", "archive_sha256": image["archive_sha256"]})
                 replacements = {
                     "{{HOSTNAME}}": hostname,
                     "{{ROLE}}": role,
@@ -1207,8 +1477,24 @@ def build_delivery(
                     "{{SOURCE_COMMIT}}": validated["source_commit"],
                 }
                 for image in lock_images:
-                    replacements[f"{{{{IMAGE_{image['key'].upper().replace('-', '_')}}}}}"] = image["reference"]
+                    replacements[f"{{{{IMAGE_{image['key'].upper().replace('-', '_')}}}}}"] = image["import_reference"]
                 _copy_template(product_kit / ROLE_TEMPLATE[role], template_target, replacements)
+                _validate_role_structure(template_target, role)
+                config_target = host_root / "config"
+                _mkdir(config_target)
+                env_lines = [
+                    f"RI_FIELD_HOST_ID={hostname}",
+                    f"RI_FIELD_ROLE={role}",
+                    f"RI_RELEASE_VERSION={validated['version']}",
+                    f"RI_SOURCE_COMMIT={validated['source_commit']}",
+                ]
+                for image in lock_images:
+                    env_lines.append(f"{COMPOSE_IMAGE_VARIABLES[image['key']]}={image['import_reference']}")
+                for key in ("machine_id", "management_ip", "fqdn"):
+                    if key in host:
+                        env_lines.append(f"RI_INVENTORY_{key.upper()}={host[key]}")
+                _write_text(config_target / "inventory.env", "\n".join(env_lines) + "\n")
+                _write_json(config_target / "host-inventory.json", host)
                 common_target = product_root / "common"
                 _mkdir(common_target)
                 for common_name in ("lifecycle.py", "load_images.py", "role_entry.py"):
@@ -1216,7 +1502,8 @@ def build_delivery(
                     if not common_source.is_file() or common_source.is_symlink():
                         raise BundleError(f"required package runtime is unavailable: {common_source}")
                     if common_name == "load_images.py":
-                        _write_text(common_target / common_name, _generated_image_loader())
+                        shutil.copyfile(common_source, common_target / common_name)
+                        (common_target / common_name).chmod(0o755)
                     else:
                         shutil.copy2(common_source, common_target / common_name)
                         (common_target / common_name).chmod(0o644)
@@ -1234,7 +1521,7 @@ def build_delivery(
                 _write_json(image_dir / "image-lock.json", lock)
                 metadata = host_root / "metadata"
                 _mkdir(metadata)
-                host_metadata = {"schema_version": SCHEMA, "expected_host": hostname, "hostname": hostname, "role": role, "version": validated["version"], "source_commit": validated["source_commit"], "release_manifest_sha256": validated["release_manifest_sha256"], "platform": validated["platform"]}
+                host_metadata = {"schema_version": SCHEMA, "expected_host": host.get("fqdn", hostname), "hostname": hostname, "role": role, "version": validated["version"], "source_commit": validated["source_commit"], "release_manifest_sha256": validated["release_manifest_sha256"], "platform": validated["platform"], **{key: host[key] for key in ("machine_id", "management_ip", "fqdn") if key in host}, **({"expected_ips": [host["management_ip"]]} if "management_ip" in host else {})}
                 _write_json(host_root / "expected-host.json", host_metadata)
                 _write_json(metadata / "host.json", host_metadata)
                 _write_json(metadata / "sbom.spdx.json", _spdx(hostname, validated["version"], validated["source_commit"], lock_images))
@@ -1250,6 +1537,7 @@ def build_delivery(
         sbom_dir = root / "04-软件物料清单"
         _write_json(sbom_dir / "site.spdx.json", _spdx(delivery_name, validated["version"], validated["source_commit"], all_image_records))
         _write_json(sbom_dir / "site.cdx.json", _cyclonedx(delivery_name, validated["version"], validated["source_commit"], all_image_records))
+        _write_release_handoff(root, validated, host_evidence)
         pdf_ready, pdf_detail = _render_pdfs(product_kit, root / "05-PDF手册", pdf_builder_image)
         blockers = []
         checks: dict[str, dict[str, str]] = dict(validated["external_requirements"])
@@ -1381,7 +1669,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
     for name in ("validate", "build"):
-        child = subparsers.add_parser(name)
+        child = subparsers.add_parser(name, formatter_class=lambda prog: argparse.HelpFormatter(prog, width=160))
         child.add_argument("--site-manifest", "--manifest", type=Path, required=True)
         child.add_argument("--release-manifest", type=Path, required=True)
         if name == "build":

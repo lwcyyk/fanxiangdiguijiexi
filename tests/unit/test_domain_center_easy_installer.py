@@ -77,7 +77,7 @@ def _fixture(tmp_path: Path) -> tuple[Path, Path]:
             requirement_id: {
                 "status": "blocked" if requirement_id == "resolver_trace" else "not_run",
                 "status_zh": "阻断" if requirement_id == "resolver_trace" else "未运行",
-                **({"reason_zh": "等待真实 Resolver Trace"} if requirement_id == "resolver_trace" else {}),
+                **({"reason_zh": "等待真实 Resolver Trace"} if requirement_id == "resolver_trace" else {"reason_zh": "等待外部验收"}),
                 **({"blocked_by": "resolver_trace"} if requirement_id == "production_cutover" else {}),
             }
             for requirement_id in sorted(generator.REQUIRED_EXTERNAL_ACCEPTANCE_IDS)
@@ -159,6 +159,7 @@ def test_host_archives_are_standalone_with_exact_entry_points(tmp_path: Path):
             *chinese, *ascii_scripts,
         }
         assert required <= {name[len(prefix):] for name in files}
+        assert files[prefix + "product-kit/common/load_images.py"] == IMAGE_LOADER_PATH.read_bytes()
         lock = json.loads(files[prefix + "images/image-lock.json"])
         assert lock["schema_version"] == generator.LOCK_SCHEMA
         for image in lock["images"]:
@@ -166,6 +167,10 @@ def test_host_archives_are_standalone_with_exact_entry_points(tmp_path: Path):
             assert image["import_reference"] == generator._import_reference(
                 image["reference"].split("@", 1)[0], image["digest"]
             )
+            assert image["config_digest"].startswith("sha256:")
+        inventory_env = files[prefix + "config/inventory.env"].decode()
+        for image in lock["images"]:
+            assert image["import_reference"] in inventory_env
         assert files[prefix + f"product-kit/{metadata['role']}/PACKAGE-VERSION"] == b"0.3.0-test\n"
     assert roles == set(generator.ROLE_COUNTS)
 
@@ -190,22 +195,31 @@ def test_image_lock_parser_and_full_repo_digest_check(tmp_path: Path, monkeypatc
     archive = tmp_path / "rust.oci.tar"
     archive.write_bytes(b"offline image")
     reference = "registry.internal/domain-center/rust@sha256:" + "4" * 64
+    import_reference = "registry.internal/domain-center/rust:ri-" + "4" * 16
+    config_digest = "sha256:" + "5" * 64
     lock = {
         "schema_version": generator.LOCK_SCHEMA,
         "hostname": "dc-r1-01",
         "role": "r1",
-        "images": [{"key": "rust", "reference": reference, "digest": "sha256:" + "4" * 64, "archive": archive.name, "archive_sha256": hashlib.sha256(archive.read_bytes()).hexdigest()}],
+        "images": [{"key": "rust", "reference": reference, "import_reference": import_reference, "digest": "sha256:" + "4" * 64, "config_digest": config_digest, "archive": archive.name, "archive_sha256": hashlib.sha256(archive.read_bytes()).hexdigest()}],
     }
     _write_json(tmp_path / "image-lock.json", lock)
-    assert image_loader.parse_manifest(tmp_path / "image-lock.json") == [(archive, lock["images"][0]["archive_sha256"], reference)]
+    assert image_loader.parse_manifest(tmp_path / "image-lock.json") == [(archive, lock["images"][0]["archive_sha256"], reference, import_reference, config_digest)]
 
     calls: list[list[str]] = []
+    loaded = False
     def fake_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        nonlocal loaded
         calls.append(command)
         if command[:4] == ["docker", "image", "ls", "--no-trunc"]:
             output = ""
+        elif command[:3] == ["docker", "image", "inspect"] and not loaded:
+            return subprocess.CompletedProcess(command, 1, "", "missing")
+        elif command[:2] == ["docker", "load"]:
+            loaded = True
+            output = ""
         elif command[:3] == ["docker", "image", "inspect"]:
-            output = json.dumps([reference])
+            output = json.dumps({"Id": config_digest, "RepoTags": [import_reference]})
         else:
             output = ""
         return subprocess.CompletedProcess(command, 0, output, "")
@@ -215,7 +229,7 @@ def test_image_lock_parser_and_full_repo_digest_check(tmp_path: Path, monkeypatc
     assert ["docker", "load", "--input", str(archive)] in calls
     assert not any("pull" in item for command in calls for item in command)
 
-    monkeypatch.setattr(image_loader, "inspect_digests", lambda _: {"other.invalid/rust@" + lock["images"][0]["digest"]})
+    monkeypatch.setattr(image_loader, "inspect_image", lambda _: {"Id": "sha256:" + "0" * 64, "RepoTags": []})
     monkeypatch.setattr(sys, "argv", [str(IMAGE_LOADER_PATH), str(tmp_path)])
     assert image_loader.main() == 2
 
@@ -224,25 +238,31 @@ def test_image_loader_removes_only_new_imports_on_failure(tmp_path: Path, monkey
     archive = tmp_path / "rust.oci.tar"
     archive.write_bytes(b"offline image")
     reference = "registry.internal/rust@sha256:" + "7" * 64
+    import_reference = "registry.internal/rust:ri-" + "7" * 16
+    config_digest = "sha256:" + "2" * 64
     _write_json(tmp_path / "image-lock.json", {
         "schema_version": generator.LOCK_SCHEMA,
-        "images": [{"archive": archive.name, "archive_sha256": hashlib.sha256(archive.read_bytes()).hexdigest(), "reference": reference}],
+        "hostname": "dc-r1-01",
+        "role": "r1",
+        "images": [{"key": "rust", "archive": archive.name, "archive_sha256": hashlib.sha256(archive.read_bytes()).hexdigest(), "reference": reference, "import_reference": import_reference, "digest": "sha256:" + "7" * 64, "config_digest": config_digest}],
     })
     ids = iter([{"sha256:" + "1" * 64}, {"sha256:" + "1" * 64, "sha256:" + "2" * 64}])
     removed: list[set[str]] = []
     monkeypatch.setattr(image_loader, "image_ids", lambda: next(ids))
-    monkeypatch.setattr(image_loader, "inspect_digests", lambda _: set())
+    monkeypatch.setattr(image_loader, "inspect_image", lambda _: {"Id": "sha256:" + "3" * 64, "RepoTags": []})
     monkeypatch.setattr(image_loader, "remove_images", lambda values: removed.append(values))
     monkeypatch.setattr(image_loader.subprocess, "run", lambda command, **kwargs: subprocess.CompletedProcess(command, 0, "", ""))
     monkeypatch.setattr(sys, "argv", [str(IMAGE_LOADER_PATH), str(tmp_path)])
     assert image_loader.main() == 2
-    assert removed == [{reference, "sha256:" + "2" * 64}]
+    assert removed == [{import_reference, "sha256:" + "2" * 64}]
 
 
 def test_image_lock_rejects_path_traversal(tmp_path: Path):
     _write_json(tmp_path / "image-lock.json", {
         "schema_version": generator.LOCK_SCHEMA,
-        "images": [{"archive": "../outside.tar", "archive_sha256": "b" * 64, "reference": "registry.internal/rust@sha256:" + "4" * 64}],
+        "hostname": "dc-r1-01",
+        "role": "r1",
+        "images": [{"key": "rust", "archive": "../outside.tar", "archive_sha256": "b" * 64, "reference": "registry.internal/rust@sha256:" + "4" * 64, "import_reference": "registry.internal/rust:ri-" + "4" * 16, "digest": "sha256:" + "4" * 64, "config_digest": "sha256:" + "5" * 64}],
     })
     with pytest.raises(image_loader.ImageError, match="安全"):
         image_loader.parse_manifest(tmp_path / "image-lock.json")
@@ -386,13 +406,19 @@ def test_mandatory_acceptance_ids_cannot_be_omitted(tmp_path: Path):
         generator.validate_inputs(site_path, release_path)
 
 
+def test_passed_external_status_requires_provenance_record(tmp_path: Path):
+    site_path, release_path = _fixture(tmp_path)
+    site = json.loads(site_path.read_text(encoding="utf-8"))
+    site["external_requirements"]["monitoring"] = {"status": "passed", "status_zh": "已通过"}
+    _write_json(site_path, site)
+    with pytest.raises(generator.BundleError, match="evidence"):
+        generator.validate_inputs(site_path, release_path)
+
+
 def test_user_status_vocabulary_allowed_but_all_mandatory_must_pass(tmp_path: Path):
     site_path, release_path = _fixture(tmp_path)
     site = json.loads(site_path.read_text(encoding="utf-8"))
-    for check in site["external_requirements"].values():
-        check.clear()
-        check.update({"status": "passed", "status_zh": "已通过"})
-    site["external_requirements"]["capacity"] = {"status": "pending", "status_zh": "待验收"}
+    site["external_requirements"]["capacity"] = {"status": "pending", "status_zh": "待验收", "reason_zh": "等待现场容量验收"}
     _write_json(site_path, site)
     delivery = generator.build_delivery(site_path, release_path, PRODUCT_KIT, tmp_path / "out", None, None)
     evidence = json.loads((delivery / "证据.json").read_text(encoding="utf-8"))

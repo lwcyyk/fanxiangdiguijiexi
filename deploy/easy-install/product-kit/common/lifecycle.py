@@ -171,8 +171,8 @@ def validate_images(env: dict[str, str], role: str) -> None:
     }[role]
     for key in keys:
         value = env.get(key, "")
-        if not re.fullmatch(r"[^\s@]+@sha256:[0-9a-f]{64}", value) or (":late" + "st@") in value:
-            die("CFG003", f"{key} 未固定完整 sha256 摘要", "使用发布清单中的精确镜像引用。")
+        if not re.fullmatch(r"[^\s@]+:ri-[0-9a-f]{16}", value) or (":late" + "st") in value.lower() or "localhost" in value.lower() or "127.0.0.1" in value:
+            die("CFG003", f"{key} 未使用离线清单固定的本地标签", "使用包内 image-lock.json 对应的确定性导入标签；不得 pull。")
 
 
 def validate_invariants(env: dict[str, str], role: str) -> None:
