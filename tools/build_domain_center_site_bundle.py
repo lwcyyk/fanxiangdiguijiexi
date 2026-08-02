@@ -1167,7 +1167,7 @@ def build_delivery(
     if not product_kit.is_dir() or product_kit.is_symlink():
         raise BundleError("product-kit must be an existing regular directory")
     product_kit_before = _inventory_tree(product_kit)
-    delivery_name = f"{DELIVERY_PREFIX}_{validated['version']}"
+    delivery_name = f"{DELIVERY_PREFIX}-{validated['version']}"
     destination = output_parent / delivery_name
     if destination.exists():
         if not force:
