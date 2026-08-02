@@ -43,12 +43,9 @@ REQUIRED_EXTERNAL_ACCEPTANCE_IDS = frozenset(
 )
 STATUS_VOCABULARY = {
     "passed": {"通过", "已通过", "passed"},
-    "pass": {"通过", "已通过", "pass"},
-    "success": {"通过", "已通过", "成功", "success"},
     "blocked": {"阻断", "已阻断", "blocked"},
     "not_run": {"未运行", "未执行", "not_run"},
     "failed": {"失败", "未通过", "failed"},
-    "pending": {"待处理", "待验收", "pending"},
 }
 TOP_LEVEL_DIRECTORIES = (
     "00-开始",
@@ -817,13 +814,20 @@ def _write_text(path: Path, text: str, mode: int = 0o644) -> None:
 
 
 def _status_passed(status: str) -> bool:
-    return status in {"passed", "pass", "success"}
+    return status == "passed"
 
 
 def _recipient_verify_script() -> str:
     return '''#!/bin/sh
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+MODE=release
+PINNED_KEY=
+if [ "${1:-}" = "--structural-only" ]; then
+  MODE=structural
+  shift
+fi
+[ "$#" -le 1 ] || { echo "usage: $0 [--structural-only] [externally-pinned-public-key.pem]" >&2; exit 2; }
 PINNED_KEY=${1:-}
 PINNED_FINGERPRINT=${RELEASE_KEY_SHA256:-}
 [ -f "$ROOT/SHA256SUMS" ] || { echo "missing SHA256SUMS" >&2; exit 2; }
@@ -831,25 +835,38 @@ PINNED_FINGERPRINT=${RELEASE_KEY_SHA256:-}
   cd "$ROOT"
   sha256sum --check --strict SHA256SUMS
 )
-if [ -f "$ROOT/SHA256SUMS.sig" ]; then
-  command -v openssl >/dev/null 2>&1 || { echo "openssl is required for signature verification" >&2; exit 2; }
-  KEY="$ROOT/release-public-key.pem"
-  TRUST=untrusted
-  if [ -n "$PINNED_KEY" ]; then
-    [ -f "$PINNED_KEY" ] || { echo "pinned public key is unavailable" >&2; exit 2; }
-    cmp -s "$PINNED_KEY" "$KEY" || { echo "bundle key differs from externally pinned key" >&2; exit 2; }
-    KEY="$PINNED_KEY"
-    TRUST=trusted_pinned_key
-  elif [ -n "$PINNED_FINGERPRINT" ]; then
-    ACTUAL=$(sha256sum "$KEY" | cut -d' ' -f1)
-    [ "$ACTUAL" = "$PINNED_FINGERPRINT" ] || { echo "bundle key fingerprint differs from external pin" >&2; exit 2; }
-    TRUST=trusted_pinned_fingerprint
-  fi
-  openssl pkeyutl -verify -rawin -pubin -inkey "$KEY" -in "$ROOT/SHA256SUMS" -sigfile "$ROOT/SHA256SUMS.sig" >/dev/null
-  echo "signature=valid trust=$TRUST"
-else
-  echo "signature=absent trust=unsigned"
+if [ "$MODE" = structural ]; then
+  echo "STRUCTURAL ONLY: checksums and bundle structure passed; authenticity not established; NOT RELEASE READY"
+  exit 0
 fi
+[ -f "$ROOT/SHA256SUMS.sig" ] && [ -f "$ROOT/release-public-key.pem" ] || {
+  echo "release verification failed: bundle is unsigned or signature material is incomplete" >&2
+  echo "use --structural-only only for non-release checksum diagnostics" >&2
+  exit 2
+}
+[ -n "$PINNED_KEY" ] || [ -n "$PINNED_FINGERPRINT" ] || {
+  echo "release verification failed: an external public key or RELEASE_KEY_SHA256 fingerprint is required" >&2
+  echo "the public key bundled with the release is not a trust anchor" >&2
+  exit 2
+}
+command -v openssl >/dev/null 2>&1 || { echo "openssl is required for signature verification" >&2; exit 2; }
+KEY="$ROOT/release-public-key.pem"
+TRUST=
+if [ -n "$PINNED_KEY" ]; then
+  [ -f "$PINNED_KEY" ] || { echo "pinned public key is unavailable" >&2; exit 2; }
+  cmp -s "$PINNED_KEY" "$KEY" || { echo "bundle key differs from externally pinned key" >&2; exit 2; }
+  KEY="$PINNED_KEY"
+  TRUST=trusted_pinned_key
+fi
+if [ -n "$PINNED_FINGERPRINT" ]; then
+  case "$PINNED_FINGERPRINT" in *[!0-9a-f]*) echo "external fingerprint must be 64 lowercase hexadecimal characters" >&2; exit 2;; esac
+  [ "${#PINNED_FINGERPRINT}" -eq 64 ] || { echo "external fingerprint must be 64 lowercase hexadecimal characters" >&2; exit 2; }
+  ACTUAL=$(sha256sum "$ROOT/release-public-key.pem" | cut -d' ' -f1)
+  [ "$ACTUAL" = "$PINNED_FINGERPRINT" ] || { echo "bundle key fingerprint differs from external pin" >&2; exit 2; }
+  if [ -n "$TRUST" ]; then TRUST=trusted_pinned_key_and_fingerprint; else TRUST=trusted_pinned_fingerprint; fi
+fi
+openssl pkeyutl -verify -rawin -pubin -inkey "$KEY" -in "$ROOT/SHA256SUMS" -sigfile "$ROOT/SHA256SUMS.sig" >/dev/null
+echo "release authenticity verified: signature=valid trust=$TRUST"
 '''
 
 
@@ -1208,6 +1225,7 @@ def verify_delivery(
     root: Path,
     *,
     allow_blocked: bool = False,
+    structural_only: bool = False,
     trusted_public_key: Path | None = None,
     trusted_fingerprint: str | None = None,
 ) -> dict[str, Any]:
@@ -1216,6 +1234,16 @@ def verify_delivery(
     signature_files = {"SHA256SUMS.sig"}
     _verify_checksum_file(root, root / "SHA256SUMS", signature_files if (root / "SHA256SUMS.sig").exists() else set())
     signature_result = _verify_signature(root, trusted_public_key, trusted_fingerprint)
+    externally_trusted = signature_result["trust"] in {
+        "trusted_pinned_key",
+        "trusted_pinned_fingerprint",
+        "trusted_pinned_key_and_fingerprint",
+    }
+    if not structural_only and not externally_trusted:
+        raise BundleError(
+            "release authenticity requires a valid signature anchored by an externally supplied public key or fingerprint; "
+            "use structural_only=True only for non-release diagnostics"
+        )
     signed = signature_result["signed"]
     evidence = _object(load_json(root / "证据.json", "delivery evidence"), "delivery evidence")
     if evidence.get("schema_version") != EVIDENCE_SCHEMA:
@@ -1409,7 +1437,14 @@ def verify_delivery(
     blocked = bool(blockers) or any(not _status_passed(item["status"]) for item in checks.values())
     if blocked and not allow_blocked:
         raise BundleError("delivery verifies structurally but has non-passed checks")
-    return {"verified": True, **signature_result, "blocked": blocked, "blockers": blockers}
+    return {
+        "verified": True,
+        "release_authentic": externally_trusted,
+        "verification_mode": "structural_only" if structural_only else "release",
+        **signature_result,
+        "blocked": blocked,
+        "blockers": blockers,
+    }
 
 
 def build_delivery(
@@ -1581,6 +1616,7 @@ def build_delivery(
         _sign_checksums(root, signing_key)
         if _inventory_tree(product_kit) != product_kit_before:
             raise BundleError("product-kit changed during generation; generator never mutates product-kit")
+        verify_delivery(root, allow_blocked=True, structural_only=True)
         if destination.exists():
             shutil.rmtree(destination)
         os.replace(root, destination)
@@ -1651,7 +1687,7 @@ def self_test() -> None:
         shutil.copytree(source_kit, kit)
         destination = build_delivery(site_path, release_path, kit, root / "out", None, None)
         first_hashes = {path.relative_to(destination).as_posix(): _sha256(path) for path in destination.rglob("*") if path.is_file()}
-        verify_delivery(destination, allow_blocked=True)
+        verify_delivery(destination, allow_blocked=True, structural_only=True)
         destination = build_delivery(site_path, release_path, kit, root / "out", None, None, force=True)
         second_hashes = {path.relative_to(destination).as_posix(): _sha256(path) for path in destination.rglob("*") if path.is_file()}
         if first_hashes != second_hashes:
@@ -1662,9 +1698,16 @@ def self_test() -> None:
             subprocess.run([openssl, "genpkey", "-algorithm", "ED25519", "-out", str(key)], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             key.chmod(0o600)
             destination = build_delivery(site_path, release_path, kit, root / "out", key, None, force=True)
-            signed_result = verify_delivery(destination, allow_blocked=True)
-            if not signed_result["signed"]:
-                raise AssertionError("signed delivery did not verify as signed")
+            signed_result = verify_delivery(destination, allow_blocked=True, structural_only=True)
+            if not signed_result["signed"] or signed_result["release_authentic"]:
+                raise AssertionError("signed delivery structural verification reported incorrect trust")
+            trusted_result = verify_delivery(
+                destination,
+                allow_blocked=True,
+                trusted_public_key=destination / "release-public-key.pem",
+            )
+            if not trusted_result["release_authentic"]:
+                raise AssertionError("externally pinned signed delivery did not verify authentically")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -1682,7 +1725,8 @@ def _parser() -> argparse.ArgumentParser:
             child.add_argument("--force", action="store_true")
     verify = subparsers.add_parser("verify")
     verify.add_argument("delivery", type=Path)
-    verify.add_argument("--allow-blocked", action="store_true", help="return success for structurally valid unsigned/PDF-blocked output")
+    verify.add_argument("--allow-blocked", action="store_true", help="allow semantically blocked checks after verification")
+    verify.add_argument("--structural-only", action="store_true", help="checksum/structure diagnostics only; never reports release authenticity")
     trust = verify.add_mutually_exclusive_group()
     trust.add_argument("--trusted-public-key", type=Path, help="externally distributed pinned Ed25519 public-key PEM")
     trust.add_argument("--trusted-key-sha256", help="externally pinned lowercase SHA-256 of release-public-key.pem")
@@ -1704,6 +1748,7 @@ def main() -> int:
             print(json.dumps(verify_delivery(
                 arguments.delivery.resolve(),
                 allow_blocked=arguments.allow_blocked,
+                structural_only=arguments.structural_only,
                 trusted_public_key=arguments.trusted_public_key.resolve() if arguments.trusted_public_key else None,
                 trusted_fingerprint=arguments.trusted_key_sha256,
             ), ensure_ascii=False, sort_keys=True))

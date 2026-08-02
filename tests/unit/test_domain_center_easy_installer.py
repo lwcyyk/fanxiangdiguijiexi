@@ -139,7 +139,7 @@ def test_real_build_is_deterministic_and_named(tmp_path: Path):
     assert first.name == "resolver-identity-domain-center-easy-install-0.3.0-test"
     assert [item.name for item in _archives(first)] == [item.name for item in _archives(second)]
     assert [item.read_bytes() for item in _archives(first)] == [item.read_bytes() for item in _archives(second)]
-    assert generator.verify_delivery(first, allow_blocked=True)["verified"] is True
+    assert generator.verify_delivery(first, allow_blocked=True, structural_only=True)["verified"] is True
 
 
 def test_host_archives_are_standalone_with_exact_entry_points(tmp_path: Path):
@@ -469,15 +469,18 @@ def test_passed_external_status_requires_provenance_record(tmp_path: Path):
         generator.validate_inputs(site_path, release_path)
 
 
-def test_user_status_vocabulary_allowed_but_all_mandatory_must_pass(tmp_path: Path):
-    site_path, release_path = _fixture(tmp_path)
-    site = json.loads(site_path.read_text(encoding="utf-8"))
-    site["external_requirements"]["capacity"] = {"status": "pending", "status_zh": "待验收", "reason_zh": "等待现场容量验收"}
-    _write_json(site_path, site)
-    delivery = generator.build_delivery(site_path, release_path, PRODUCT_KIT, tmp_path / "out", None, None)
-    evidence = json.loads((delivery / "证据.json").read_text(encoding="utf-8"))
-    assert evidence["checks"]["capacity"]["status"] == "pending"
-    assert evidence["delivery_ready"] is False
+def test_status_vocabulary_rejects_noncanonical_aliases(tmp_path: Path):
+    for alias in ("pass", "success", "pending"):
+        site_path, release_path = _fixture(tmp_path / alias)
+        site = json.loads(site_path.read_text(encoding="utf-8"))
+        site["external_requirements"]["capacity"] = {
+            "status": alias,
+            "status_zh": alias,
+            "reason_zh": "非规范状态",
+        }
+        _write_json(site_path, site)
+        with pytest.raises(generator.BundleError, match="unsupported or inconsistent status"):
+            generator.validate_inputs(site_path, release_path)
 
 
 def test_strict_oci_requires_matching_import_reference_annotation(tmp_path: Path):
@@ -497,8 +500,17 @@ def test_top_level_delivery_and_offline_recipient_verifier(tmp_path: Path):
     assert not (delivery / "SHA256SUMS.sig").exists()
     assert not (delivery / "release-public-key.pem").exists()
     completed = subprocess.run([str(delivery / "recipient-verify.sh")], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    assert completed.returncode == 0
-    assert "signature=absent trust=unsigned" in completed.stdout
+    assert completed.returncode != 0
+    assert "unsigned" in completed.stderr
+    structural = subprocess.run([str(delivery / "recipient-verify.sh"), "--structural-only"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    assert structural.returncode == 0
+    assert "STRUCTURAL ONLY" in structural.stdout
+    assert "NOT RELEASE READY" in structural.stdout
+    with pytest.raises(generator.BundleError, match="authenticity"):
+        generator.verify_delivery(delivery, allow_blocked=True)
+    diagnostic = generator.verify_delivery(delivery, allow_blocked=True, structural_only=True)
+    assert diagnostic["release_authentic"] is False
+    assert diagnostic["verification_mode"] == "structural_only"
 
 
 def test_deterministic_across_umask(tmp_path: Path):
@@ -527,10 +539,22 @@ def test_signed_verify_requires_external_pin_for_authenticity(tmp_path: Path):
     subprocess.run([openssl, "genpkey", "-algorithm", "ED25519", "-out", str(key)], check=True)
     key.chmod(0o600)
     delivery = generator.build_delivery(site, release, PRODUCT_KIT, tmp_path / "out", key, None)
-    structural = generator.verify_delivery(delivery, allow_blocked=True)
+    with pytest.raises(generator.BundleError, match="authenticity"):
+        generator.verify_delivery(delivery, allow_blocked=True)
+    structural = generator.verify_delivery(delivery, allow_blocked=True, structural_only=True)
     assert structural["trust"] == "self_signed/untrusted"
+    assert structural["release_authentic"] is False
     trusted = generator.verify_delivery(delivery, allow_blocked=True, trusted_public_key=delivery / "release-public-key.pem")
     assert trusted["trust"] == "trusted_pinned_key"
+    assert trusted["release_authentic"] is True
+    script_unpinned = subprocess.run([str(delivery / "recipient-verify.sh")], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    assert script_unpinned.returncode != 0
+    assert "not a trust anchor" in script_unpinned.stderr
+    external_key = tmp_path / "external-release-public-key.pem"
+    external_key.write_bytes((delivery / "release-public-key.pem").read_bytes())
+    script_trusted = subprocess.run([str(delivery / "recipient-verify.sh"), str(external_key)], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    assert script_trusted.returncode == 0
+    assert "release authenticity verified" in script_trusted.stdout
     wrong = tmp_path / "wrong.pem"
     subprocess.run([openssl, "genpkey", "-algorithm", "ED25519", "-out", str(tmp_path / "wrong-key.pem")], check=True)
     subprocess.run([openssl, "pkey", "-in", str(tmp_path / "wrong-key.pem"), "-pubout", "-out", str(wrong)], check=True)
