@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""管理机汇总六台主机的离线安装进度。"""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+import sys
+
+ROLES = ("management", "norn-a", "norn-b", "r1", "r2", "r3")
+STATUS_CN = {"complete": "完成", "running": "进行中", "uninstalled": "已卸载", "missing": "未开始", "failed": "失败"}
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="汇总域名中心安装进度（输入目录内每台主机一个 JSON 状态文件）")
+    parser.add_argument("state_directory", type=Path)
+    parser.add_argument("--json", action="store_true", dest="as_json")
+    args = parser.parse_args()
+    result = []
+    try:
+        for role in ROLES:
+            path = args.state_directory / f"{role}.json"
+            if not path.is_file():
+                result.append({"role": role, "status": "missing", "host": "-"})
+                continue
+            value = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(value, dict) or value.get("role") != role:
+                raise ValueError(f"{path.name} 的角色字段不匹配")
+            result.append({"role": role, "status": value.get("status", "failed"), "host": value.get("host", "-")})
+        if args.as_json:
+            print(json.dumps({"hosts": result}, ensure_ascii=False, indent=2))
+        else:
+            print("角色          主机                         进度")
+            print("-" * 58)
+            for item in result:
+                print(f"{item['role']:<13} {item['host']:<28} {STATUS_CN.get(str(item['status']), item['status'])}")
+        return 0 if all(item["status"] == "complete" for item in result) else 1
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        print(f"错误代码：PROG001\n原因：无法汇总安装进度：{exc}\n建议：重新从各主机复制 state/install-state.json，并以角色名命名。", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

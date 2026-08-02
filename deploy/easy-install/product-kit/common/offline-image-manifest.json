@@ -1,0 +1,13 @@
+{
+  "archives_included_in_git": false,
+  "images": {
+    "knot": "127.0.0.1:48709/resolver-identity/knot@sha256:249105c789e893a61f90909feb8a2b2d6ca2c5e232c4ce892d460f231926dbb4",
+    "management": "127.0.0.1:48709/resolver-identity/management@sha256:e1c8745b4f86827496205d038565ed046ca01274784b6cfa111f2397ecca9e2b",
+    "nginx": "127.0.0.1:48709/resolver-identity/nginx@sha256:114dff0fc8ee3d0200c3a12c60e3e2b79d0920dd953175ecb78a0b157425b25e",
+    "norn": "127.0.0.1:48709/resolver-identity/norn@sha256:e4619c3cff0ad6da73bf598f80bab2f486de3ae79aa737f86006648c0eb60a7e",
+    "rust": "127.0.0.1:48709/resolver-identity/rust@sha256:860f875d55bb095c53f62578d9002af065b005d3a829613c37467c00b54111ca"
+  },
+  "release_version": "0.3.0-norn-knot-rc1",
+  "schema_version": "resolver-identity-offline-image-manifest-v1",
+  "source_commit": "dca8887eadf85a1575a6fe6c4c7dafb3f9ec27e5"
+}
