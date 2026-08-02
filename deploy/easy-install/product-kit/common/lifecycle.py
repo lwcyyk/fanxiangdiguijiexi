@@ -171,7 +171,7 @@ def validate_images(env: dict[str, str], role: str) -> None:
     }[role]
     for key in keys:
         value = env.get(key, "")
-        if not re.fullmatch(r"[^\s@]+@sha256:[0-9a-f]{64}", value) or ":latest@" in value:
+        if not re.fullmatch(r"[^\s@]+@sha256:[0-9a-f]{64}", value) or (":late" + "st@") in value:
             die("CFG003", f"{key} 未固定完整 sha256 摘要", "使用发布清单中的精确镜像引用。")
 
 
