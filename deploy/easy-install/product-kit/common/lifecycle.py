@@ -38,8 +38,8 @@ REQUIRED_SECRETS = {
     "norn-a": ("node/config.yml", "tls/server.crt", "tls/server.key", "tls/ca.crt"),
     "norn-b": ("node/config.yml", "tls/server.crt", "tls/server.key", "tls/ca.crt"),
     "r1": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_wrapper_token", "secrets/agent_peer_token"),
-    "r2": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_peer_token"),
-    "r3": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_peer_token"),
+    "r2": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_wrapper_token", "secrets/agent_peer_token"),
+    "r3": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_wrapper_token", "secrets/agent_peer_token"),
 }
 RESOLVER_TLS_FILES = {
     "agent-tls": (
@@ -232,9 +232,25 @@ def _validate_certificate(path: Path) -> None:
         die("SEC207", f"TLS 证书无效或已过期：{path.name}（{exc}）", "重新签发有效 PEM 证书。")
 
 
-def check_secret_tree(secret_dir: Path, role: str) -> None:
-    if not secret_dir.is_absolute() or not secret_dir.is_dir() or secret_dir.is_symlink():
-        die("SEC201", "密钥目录必须是绝对路径、真实目录且已存在", "从安全介质准备目录，不接受符号链接。")
+def _unsafe_secret_root(path: Path, install_root: Path | None = None) -> bool:
+    absolute = path.absolute()
+    forbidden = {Path("/"), Path("/etc"), Path("/var"), Path("/home"), Path("/opt")}
+    if install_root is not None:
+        install = install_root.absolute()
+        forbidden |= {install, install / "data", install / "releases", install / "state"}
+    if absolute in forbidden:
+        return True
+    probe = absolute
+    while probe != probe.parent:
+        if probe.exists() and probe.is_symlink():
+            return True
+        probe = probe.parent
+    return False
+
+
+def check_secret_tree(secret_dir: Path, role: str, install_root: Path | None = None) -> None:
+    if not secret_dir.is_absolute() or not secret_dir.is_dir() or _unsafe_secret_root(secret_dir, install_root):
+        die("SEC201", "密钥目录必须是专用绝对真实目录，不能是广泛目录或经过符号链接", "从安全介质准备独立目录。")
     if secret_dir.stat().st_mode & 0o077:
         die("SEC202", "密钥目录权限宽于 0700", "执行 chmod 0700，并确保目录归属正确。")
     for name in REQUIRED_SECRETS[role]:
@@ -400,7 +416,7 @@ def preflight(args: argparse.Namespace, role_root: Path) -> dict[str, object]:
     if args.secret_dir.is_symlink():
         die("SEC201", "密钥目录不能是符号链接", "使用本机真实目录。")
     secret_root = args.secret_dir.absolute()
-    check_secret_tree(secret_root, args.role)
+    check_secret_tree(secret_root, args.role, args.install_root)
     expected_secret_paths = {
         "management": {"RI_MANAGEMENT_SECRET_DIR": secret_root},
         "norn-a": {"RI_NORN_CONFIG_DIR": secret_root / "node", "RI_NORN_TLS_DIR": secret_root / "tls"},
@@ -621,7 +637,7 @@ def start_ordered(target: Path, role: str, env: dict[str, str], secret_dir: Path
             _phase(state, state_file, phase_name, hashlib.sha256(" ".join(action).encode()).hexdigest())
     elif role.startswith("norn-"):
         compose(target, ["up", "-d", "norn-node"])
-        compose(target, ["up", "-d", "readonly-proxy"])
+        compose(target, ["up", "-d", "norn-read-proxy"])
         _wait_readiness(role, "norn_ready", env, secret_dir)
         _phase(state, state_file, "norn_ready")
     else:
@@ -967,7 +983,7 @@ def prepare_secrets(args: argparse.Namespace) -> None:
             path.mkdir(exist_ok=True, mode=0o700)
             os.chmod(path, 0o700)
         _write_new_secret(root / "secrets" / "agent_private_key", base64.b64encode(secrets.token_bytes(32)).decode())
-        for name in ("trace_ingest_token", "agent_peer_token") + (("agent_wrapper_token",) if args.role == "r1" else ()):
+        for name in ("trace_ingest_token", "agent_peer_token", "agent_wrapper_token"):
             _write_new_secret(root / "secrets" / name, secrets.token_urlsafe(32))
         agent_key = root / "agent-tls" / "agent.key"
         csr = root / "agent-tls" / "agent.csr"

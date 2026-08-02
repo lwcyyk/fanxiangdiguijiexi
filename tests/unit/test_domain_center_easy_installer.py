@@ -285,6 +285,60 @@ def test_wizard_enforces_exact_fqdn_and_packaged_identity(monkeypatch: pytest.Mo
         wizard.reject_duplicate_options(["--expected-host", "one", "--expected-host", "two"])
 
 
+def test_wizard_answers_and_secret_paths_are_fail_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    answers = tmp_path / "answers.json"
+    _write_json(answers, {"role": "r1", "expected-host": "dc-r1-01.example", "yes": True})
+    expanded = wizard.apply_answers(["install", "--answers", str(answers)])
+    assert expanded[0] == "install"
+    assert expanded[-1] == "--yes"
+    assert expanded[expanded.index("--role") + 1] == "r1"
+    assert expanded[expanded.index("--expected-host") + 1] == "dc-r1-01.example"
+    with pytest.raises(wizard.InstallError, match="冲突"):
+        wizard.apply_answers(["--answers", str(answers), "--role", "r2"])
+
+    _write_json(answers, {"role": "r1", "password": "must-not-be-here"})
+    with pytest.raises(wizard.InstallError, match="未知或秘密键"):
+        wizard.apply_answers(["--answers", str(answers)])
+
+    with pytest.raises(wizard.InstallError):
+        wizard.validate_secret_dir(Path("/etc"))
+    install_root = tmp_path / "install"
+    (install_root / "data").mkdir(parents=True)
+    (install_root / "data").chmod(0o700)
+    with pytest.raises(wizard.InstallError):
+        wizard.validate_secret_dir(install_root / "data", install_root)
+    real = tmp_path / "real"
+    real.mkdir()
+    real.chmod(0o700)
+    link = tmp_path / "linked"
+    link.symlink_to(real, target_is_directory=True)
+    with pytest.raises(wizard.InstallError):
+        wizard.validate_secret_dir(link)
+
+    with pytest.raises(lifecycle.LifecycleError, match="广泛目录"):
+        lifecycle.check_secret_tree(Path("/etc"), "r1")
+
+
+def test_show_mismatch_reports_but_never_bypasses(capsys: pytest.CaptureFixture[str]):
+    with pytest.raises(wizard.InstallError) as raised:
+        wizard.check_expected_host("dc-r1-01.example", {"dc-r1-01.other"}, show_mismatch=True)
+    assert raised.value.code == "E002"
+    output = capsys.readouterr().out
+    assert "期望 dc-r1-01.example" in output
+    assert "实际 dc-r1-01.other" in output
+
+
+def test_compose_requirements_use_real_norn_name_and_all_agent_tokens():
+    assert 'compose(target, ["up", "-d", "norn-read-proxy"])' in LIFECYCLE_PATH.read_text(encoding="utf-8")
+    r1 = (PRODUCT_KIT / "r1" / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "RI_WRAPPER_UPSTREAMS: ${RI_WRAPPER_UPSTREAMS:?" in r1
+    for role in ("r2", "r3"):
+        text = (PRODUCT_KIT / role / "docker-compose.yml").read_text(encoding="utf-8")
+        assert "RI_AGENT_WRAPPER_TOKEN_FILE: /run/secrets/agent_wrapper_token" in text
+        assert "wrapper:" not in text
+        assert "secrets/agent_wrapper_token" in lifecycle.REQUIRED_SECRETS[role]
+
+
 def test_lifecycle_install_resumes_without_image_reload_and_honors_no_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     role_root = tmp_path / "product-kit" / "r1"
     role_root.mkdir(parents=True)
@@ -382,7 +436,7 @@ def test_resolver_topology_and_r1_shadow_port():
     for role in ("r2", "r3"):
         text = (PRODUCT_KIT / role / "docker-compose.yml").read_text(encoding="utf-8").lower()
         assert "wrapper:" not in text
-        assert "wrapper_token" not in text
+        assert "ri_agent_wrapper_token_file: /run/secrets/agent_wrapper_token" in text
         assert "profiles: [first-hop]" not in text
 
 

@@ -73,12 +73,18 @@ def local_host_names() -> set[str]:
     return names
 
 
-def check_expected_host(expected: str, actual_names: set[str] | None = None) -> None:
+def check_expected_host(
+    expected: str, actual_names: set[str] | None = None, *, show_mismatch: bool = False
+) -> None:
     expected = safe_host(expected)
     names = {safe_host(value) for value in (actual_names or local_host_names())}
+    candidates = set(names)
     if "." not in expected:
-        names |= {name.split(".", 1)[0] for name in names}
-    if expected not in names:
+        candidates |= {name.split(".", 1)[0] for name in names}
+    if expected not in candidates:
+        if show_mismatch:
+            print(f"主机不一致：期望 {expected}")
+            print(f"主机不一致：实际 {', '.join(sorted(names))}")
         raise InstallError("E002", f"期望 {expected}，实际 {', '.join(sorted(names))}")
 
 
@@ -132,9 +138,26 @@ def select_role(args: argparse.Namespace, metadata: dict[str, object]) -> str:
         raise InstallError("E001", "角色序号无效") from exc
 
 
-def validate_secret_dir(path: Path) -> None:
-    if not path.is_absolute() or not path.is_dir() or path.is_symlink():
-        raise InstallError("E006", "密钥目录必须是已存在的绝对路径且不能是符号链接")
+def _unsafe_path(path: Path, *, install_root: Path | None = None) -> bool:
+    """Reject broad roots and any path reached through a symlink ancestor."""
+    absolute = path.absolute()
+    forbidden = {Path("/"), Path("/etc"), Path("/var"), Path("/home"), Path("/opt")}
+    if install_root is not None:
+        install = install_root.absolute()
+        forbidden |= {install, install / "data", install / "releases", install / "state"}
+    if absolute in forbidden:
+        return True
+    probe = absolute
+    while probe != probe.parent:
+        if probe.exists() and probe.is_symlink():
+            return True
+        probe = probe.parent
+    return False
+
+
+def validate_secret_dir(path: Path, install_root: Path | None = None) -> None:
+    if not path.is_absolute() or not path.is_dir() or _unsafe_path(path, install_root=install_root):
+        raise InstallError("E006", "密钥目录必须是已存在的专用绝对路径，不能是广泛目录或经过符号链接")
     mode = path.stat().st_mode & 0o777
     if mode & 0o077:
         raise InstallError("E006", f"密钥目录权限必须不宽于 0700，当前为 {mode:04o}")
@@ -143,6 +166,64 @@ def validate_secret_dir(path: Path) -> None:
             raise InstallError("E006", f"密钥文件不能是符号链接：{child.name}")
         if child.is_file() and child.stat().st_mode & 0o077:
             raise InstallError("E006", f"密钥文件权限必须不宽于 0600：{child.name}")
+
+
+ANSWER_KEYS = {"role", "expected-host", "package-root", "config-dir", "secret-dir", "install-root", "images", "output", "yes"}
+SECRET_ANSWER_RE = re.compile(r"(?i)(secret|token|password|passphrase|mnemonic|private|credential|api.?key)")
+
+
+def load_answers(path: Path) -> dict[str, object]:
+    if not path.is_absolute() or not path.is_file() or _unsafe_path(path):
+        raise InstallError("E001", "--answers 必须是安全的绝对普通文件路径")
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise InstallError("E001", f"无法读取 answers JSON：{exc}") from exc
+    if not isinstance(value, dict):
+        raise InstallError("E001", "answers JSON 顶层必须是对象")
+    unknown = set(map(str, value)) - ANSWER_KEYS
+    secret_keys = {str(key) for key in value if SECRET_ANSWER_RE.search(str(key)) and str(key) != "secret-dir"}
+    if unknown or secret_keys:
+        rejected = sorted(unknown | secret_keys)
+        raise InstallError("E006", f"answers JSON 含未知或秘密键：{', '.join(rejected)}")
+    if "yes" in value and not isinstance(value["yes"], bool):
+        raise InstallError("E001", "answers JSON 的 yes 必须是布尔值")
+    for key, item in value.items():
+        if key != "yes" and (not isinstance(item, str) or not item.strip()):
+            raise InstallError("E001", f"answers JSON 的 {key} 必须是非空字符串")
+    return value
+
+
+def apply_answers(raw_argv: list[str]) -> list[str]:
+    answer_options = [item for item in raw_argv if item == "--answers" or item.startswith("--answers=")]
+    if not answer_options:
+        return raw_argv
+    if len(answer_options) != 1:
+        raise InstallError("E001", "--answers 只能指定一次")
+    index = next(i for i, item in enumerate(raw_argv) if item == "--answers" or item.startswith("--answers="))
+    option = raw_argv[index]
+    if option == "--answers":
+        if index + 1 >= len(raw_argv):
+            raise InstallError("E001", "--answers 缺少路径")
+        answer_path = raw_argv[index + 1]
+        cleaned = raw_argv[:index] + raw_argv[index + 2:]
+    else:
+        answer_path = option.split("=", 1)[1]
+        cleaned = raw_argv[:index] + raw_argv[index + 1:]
+    answers = load_answers(Path(answer_path))
+    present = {item.split("=", 1)[0] for item in cleaned if item.startswith("--")}
+    conflicts = sorted(f"--{key}" for key in answers if f"--{key}" in present)
+    if conflicts:
+        raise InstallError("E001", f"answers JSON 与命令行参数冲突：{', '.join(conflicts)}")
+    injected: list[str] = []
+    for key, item in answers.items():
+        option_name = f"--{key}"
+        if key == "yes":
+            if item:
+                injected.append(option_name)
+        else:
+            injected.extend((option_name, str(item)))
+    return [*cleaned, *injected]
 
 
 def reject_duplicate_options(argv: list[str]) -> None:
@@ -170,6 +251,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--install-root", type=Path, default=Path("/opt/domain-center"))
     parser.add_argument("--images", type=Path, help="离线镜像目录")
     parser.add_argument("--output", type=Path, help="支持包或备份输出目录")
+    parser.add_argument("--show-mismatch", action="store_true", help="主机校验失败时仅显示差异（不绕过拒绝）")
+    parser.add_argument("--answers", type=Path, help="非秘密无人值守 answers JSON")
     parser.add_argument("--yes", action="store_true", help="非交互确认")
     parser.add_argument("--purge-data", action="store_true", help="卸载时删除本工具拥有的数据")
     return parser
@@ -178,6 +261,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     raw_argv = list(sys.argv[1:] if argv is None else argv)
     try:
+        raw_argv = apply_answers(raw_argv)
         reject_duplicate_options(raw_argv)
         args = build_parser().parse_args(raw_argv)
         package_root = (args.package_root or infer_package_root(Path(__file__))).resolve()
@@ -185,6 +269,7 @@ def main(argv: list[str] | None = None) -> int:
         metadata = load_package_metadata(metadata_root)
         role = select_role(args, metadata)
         packaged_expected = metadata.get("expected_host") or metadata.get("hostname")
+        packaged_expected_is_fqdn = packaged_expected is not None and "." in safe_host(str(packaged_expected))
         if metadata.get("expected_host") and metadata.get("hostname"):
             if safe_host(str(metadata["expected_host"])) != safe_host(str(metadata["hostname"])):
                 raise InstallError("E005", "安装包 expected_host 与 hostname 不一致")
@@ -198,7 +283,9 @@ def main(argv: list[str] | None = None) -> int:
             if not sys.stdin.isatty():
                 raise InstallError("E008", "缺少 --expected-host")
             expected = safe_host(prompt("本安装包指定主机名"))
-        check_expected_host(expected)
+        check_expected_host(expected, show_mismatch=args.show_mismatch)
+        if packaged_expected_is_fqdn and "." not in expected:
+            raise InstallError("E005", "FQDN 安装包身份不能降级为短主机名")
 
         role_root = package_root / role
         control = role_root / "安装工具"
@@ -211,7 +298,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.secret_dir:
             secret_path = args.secret_dir.absolute()
             if args.action != "prepare-secrets":
-                validate_secret_dir(secret_path)
+                validate_secret_dir(secret_path, args.install_root)
             command += ["--secret-dir", str(secret_path)]
         if args.images:
             command += ["--images", str(args.images.resolve())]
