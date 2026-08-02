@@ -148,7 +148,9 @@ MAX_LAYER_FILE_BYTES = 128 * 1024 * 1024
 MAX_LAYER_UNCOMPRESSED_BYTES = 8 * 1024 * 1024 * 1024
 MAX_SECRET_SCAN_BYTES = 8 * 1024 * 1024
 EXTERNAL_EVIDENCE_REQUIRED = frozenset({"path", "sha256", "timestamp", "source_commit", "host", "role", "provenance"})
-WRAPPER_STRUCTURE_RE = re.compile(r"(?:^|[^a-z0-9])(?:wrapper|first-hop)(?:[^a-z0-9]|$)", re.IGNORECASE)
+WRAPPER_STRUCTURE_RE = re.compile(
+    r"(?im)^(?:\s{0,4}wrapper\s*:|\s*command\s*:\s*.*\bri-wrapper\b|\s*profiles\s*:\s*\[[^\]\r\n]*\bfirst-hop\b|\s*[- ]+\bfirst-hop\b\s*$|\s*RI_WRAPPER_[A-Z0-9_]*\s*:)",
+)
 FORBIDDEN_OUTPUT_RE = (
     (re.compile(rb"127\.0\.0\.1"), "loopback image/reference text"),
     (re.compile(rb":latest(?:[^A-Za-z0-9_.-]|$)", re.IGNORECASE), "latest image reference"),
