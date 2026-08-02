@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import copy
 import hashlib
 import importlib.util
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -171,7 +169,7 @@ def test_host_archives_are_standalone_with_exact_entry_points(tmp_path: Path):
     assert roles == set(generator.ROLE_COUNTS)
 
 
-def test_generated_standalone_preflight_entry_reaches_local_lifecycle(tmp_path: Path):
+def test_generated_standalone_rejects_removed_actual_host_override(tmp_path: Path):
     delivery = _build(tmp_path)
     archive = next(path for path in _archives(delivery) if path.name == "dc-r1-01.tar.gz")
     extracted = tmp_path / "extracted"
@@ -180,13 +178,11 @@ def test_generated_standalone_preflight_entry_reaches_local_lifecycle(tmp_path: 
         handle.extractall(extracted, filter="data")
     package = extracted / "dc-r1-01"
     completed = subprocess.run(
-        [str(package / "开始安装.sh"), "--actual-host", "dc-r1-01", "--config-dir", str(tmp_path / "missing-config"), "--secret-dir", str(tmp_path / "missing-secret"), "--install-root", str(tmp_path / "install")],
+        [str(package / "开始安装.sh"), "--actual-host", "dc-r1-01", "--yes"],
         text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     )
     assert completed.returncode == 2
-    assert "PRE001" in completed.stderr or "PRE002" in completed.stderr or "PRE004" in completed.stderr
-    assert "BOOT001" not in completed.stderr
-    assert "角色工具不存在" not in completed.stderr
+    assert "unrecognized arguments: --actual-host" in completed.stderr
 
 
 def test_image_lock_parser_and_full_repo_digest_check(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -205,7 +201,12 @@ def test_image_lock_parser_and_full_repo_digest_check(tmp_path: Path, monkeypatc
     calls: list[list[str]] = []
     def fake_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
         calls.append(command)
-        output = json.dumps([reference]) if command[:3] == ["docker", "image", "inspect"] else ""
+        if command[:4] == ["docker", "image", "ls", "--no-trunc"]:
+            output = ""
+        elif command[:3] == ["docker", "image", "inspect"]:
+            output = json.dumps([reference])
+        else:
+            output = ""
         return subprocess.CompletedProcess(command, 0, output, "")
     monkeypatch.setattr(image_loader.subprocess, "run", fake_run)
     monkeypatch.setattr(sys, "argv", [str(IMAGE_LOADER_PATH), str(tmp_path)])
@@ -218,6 +219,25 @@ def test_image_lock_parser_and_full_repo_digest_check(tmp_path: Path, monkeypatc
     assert image_loader.main() == 2
 
 
+def test_image_loader_removes_only_new_imports_on_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    archive = tmp_path / "rust.oci.tar"
+    archive.write_bytes(b"offline image")
+    reference = "registry.internal/rust@sha256:" + "7" * 64
+    _write_json(tmp_path / "image-lock.json", {
+        "schema_version": generator.LOCK_SCHEMA,
+        "images": [{"archive": archive.name, "archive_sha256": hashlib.sha256(archive.read_bytes()).hexdigest(), "reference": reference}],
+    })
+    ids = iter([{"sha256:" + "1" * 64}, {"sha256:" + "1" * 64, "sha256:" + "2" * 64}])
+    removed: list[set[str]] = []
+    monkeypatch.setattr(image_loader, "image_ids", lambda: next(ids))
+    monkeypatch.setattr(image_loader, "inspect_digests", lambda _: set())
+    monkeypatch.setattr(image_loader, "remove_images", lambda values: removed.append(values))
+    monkeypatch.setattr(image_loader.subprocess, "run", lambda command, **kwargs: subprocess.CompletedProcess(command, 0, "", ""))
+    monkeypatch.setattr(sys, "argv", [str(IMAGE_LOADER_PATH), str(tmp_path)])
+    assert image_loader.main() == 2
+    assert removed == [{reference, "sha256:" + "2" * 64}]
+
+
 def test_image_lock_rejects_path_traversal(tmp_path: Path):
     _write_json(tmp_path / "image-lock.json", {
         "schema_version": generator.LOCK_SCHEMA,
@@ -227,38 +247,97 @@ def test_image_lock_rejects_path_traversal(tmp_path: Path):
         image_loader.parse_manifest(tmp_path / "image-lock.json")
 
 
-def test_wizard_rejects_expected_host_before_dispatch(monkeypatch: pytest.MonkeyPatch):
+def test_wizard_enforces_exact_fqdn_and_packaged_identity(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(wizard, "run", lambda *args, **kwargs: pytest.fail("dispatch must not run"))
+    wizard.check_expected_host("dc-r1-01", {"dc-r1-01.example"})
+    wizard.check_expected_host("dc-r1-01.example", {"dc-r1-01.example"})
     with pytest.raises(wizard.InstallError) as raised:
-        wizard.check_expected_host("dc-r1-01.example", "dc-r2-01.example")
+        wizard.check_expected_host("dc-r1-01.example", {"dc-r1-01.other"})
     assert raised.value.code == "E002"
+    assert "actual-host" not in wizard.build_parser().format_help()
+
+    metadata = {"role": "r1", "expected_host": "dc-r1-01.example", "hostname": "dc-r1-01.example"}
+    assert wizard.select_role(SimpleNamespace(role=None), metadata) == "r1"
+    with pytest.raises(wizard.InstallError, match="固定角色"):
+        wizard.select_role(SimpleNamespace(role="r2"), metadata)
+    with pytest.raises(wizard.InstallError, match="禁止重复参数"):
+        wizard.reject_duplicate_options(["--expected-host", "one", "--expected-host", "two"])
 
 
-def test_lifecycle_install_resumes_without_image_reload(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_lifecycle_install_resumes_without_image_reload_and_honors_no_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     role_root = tmp_path / "product-kit" / "r1"
     role_root.mkdir(parents=True)
     (role_root / "PACKAGE-VERSION").write_text("0.3.0-test\n", encoding="utf-8")
     (role_root / "docker-compose.yml").write_text("services: {}\n", encoding="utf-8")
+    (role_root.parent / "common").mkdir()
+    (role_root.parent / "common" / "load_images.py").write_text("# fake\n", encoding="utf-8")
     config = tmp_path / "config"
     config.mkdir()
-    (config / ".env").write_text(f"RI_FIELD_COMPOSE_PROJECT=dc-test-r1\nRI_FIELD_DATA_DIR={tmp_path / 'data'}\n", encoding="utf-8")
-    probes: list[str] = []
+    install_root = tmp_path / "install"
+    data = install_root / "data" / "r1"
+    (config / ".env").write_text(f"RI_FIELD_COMPOSE_PROJECT=dc-test-r1\nRI_FIELD_DATA_DIR={data}\n", encoding="utf-8")
+    images = tmp_path / "images"
+    images.mkdir()
+    (images / "image-lock.json").write_text("{}\n", encoding="utf-8")
+    runs: list[list[str]] = []
     monkeypatch.setattr(lifecycle, "preflight", lambda args, root: {"result": "passed", "status_zh": "通过"})
-    monkeypatch.setattr(lifecycle, "compose", lambda target, action, check=True: probes.append(" ".join(action)) or subprocess.CompletedProcess(action, 0, "", ""))
-    args = SimpleNamespace(install_root=tmp_path / "install", expected_host="dc-r1-01", role="r1", images=None, config_dir=config, secret_dir=tmp_path / "secrets", no_start=False)
+    monkeypatch.setattr(lifecycle, "run", lambda command, **kwargs: runs.append(command) or subprocess.CompletedProcess(command, 0, "", ""))
+    monkeypatch.setattr(lifecycle, "compose", lambda target, action, check=True: subprocess.CompletedProcess(action, 0, "", ""))
+    args = SimpleNamespace(install_root=install_root, expected_host="dc-r1-01", role="r1", images=images, config_dir=config, secret_dir=tmp_path / "secrets", no_start=True)
     lifecycle.install(args, role_root)
     lifecycle.install(args, role_root)
     state = json.loads((args.install_root / "state" / "install-state.json").read_text())
     assert state["status"] == "complete"
-    assert state["images"] == "not-requested"
+    assert state["activated"] is False
+    assert "images_loaded" in state["phases"]
+    assert len([command for command in runs if "load_images.py" in " ".join(command)]) == 1
     assert len(list((args.install_root / "releases").iterdir())) == 1
-    assert probes.count("up -d") == 2
+    marker = json.loads((data / lifecycle.DATA_MARKER).read_text())
+    assert marker["canonical_path"] == str(data)
+    assert marker["install_id"] == state["install_id"]
+
+
+def test_existing_nonempty_data_dir_is_never_claimed(tmp_path: Path):
+    install_root = tmp_path / "install"
+    data = install_root / "data" / "r1"
+    data.mkdir(parents=True)
+    (data / "existing.db").write_bytes(b"business data")
+    args = SimpleNamespace(install_root=install_root, expected_host="dc-r1-01", role="r1")
+    with pytest.raises(lifecycle.LifecycleError) as raised:
+        lifecycle._ensure_owned_data(data, args, {"install_id": "new-install"})
+    assert raised.value.code == "DATA002"
+    assert not (data / lifecycle.DATA_MARKER).exists()
+
+
+def test_r1_start_is_ordered_readiness_gated_and_uses_profile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    target = tmp_path / "release"
+    (target / "config").mkdir(parents=True)
+    (target / "config" / ".env").write_text("RI_FIELD_COMPOSE_PROJECT=test\n", encoding="utf-8")
+    commands: list[list[str]] = []
+    readiness: list[str] = []
+    monkeypatch.setattr(lifecycle, "compose", lambda target, action, check=True: commands.append(action) or subprocess.CompletedProcess(action, 0, "", ""))
+    monkeypatch.setattr(lifecycle, "_wait_readiness", lambda role, phase, env, secret: readiness.append(phase))
+    state: dict[str, object] = {}
+    lifecycle.start_ordered(target, "r1", {}, None, state, tmp_path / "state.json")
+    assert commands == [
+        ["up", "-d", "registry-sync"],
+        ["up", "-d", "agent", "trace-adapter"],
+        ["up", "-d", "trace-producer", "resolver"],
+        ["--profile", "first-hop", "up", "-d", "wrapper"],
+    ]
+    assert readiness == ["registry_ready", "agent_trace_ready", "resolver_ready", "wrapper_shadow_ready"]
 
 
 def test_support_bundle_redacts_structured_and_text_secrets(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     state = tmp_path / "install" / "state"
     state.mkdir(parents=True)
-    _write_json(state / "install-state.json", {"status": "failed", "authorization": "Bearer top-secret-token", "rpc_url": "https://user:password@rpc.invalid/api?key=secret", "message_zh": "预检失败"})
+    _write_json(state / "install-state.json", {
+        "status": "failed", "authorization": "Bearer top-secret-token",
+        "rpc_url": "https://user:password@rpc.invalid/api?key=secret", "message_zh": "预检失败",
+        "diagnostic": "Authorization: Basic dXNlcjpwYXNz\nCookie: sid=abc\npassword: hunter2\nTOKEN=env-secret\n"
+                      "jwt=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature123\n"
+                      "-----BEGIN PRIVATE KEY-----\nmaterial\n-----END PRIVATE KEY-----",
+    })
     (state / "agent_private.key").write_text("PRIVATE-KEY-MATERIAL", encoding="utf-8")
     (state / "wrapper-token.txt").write_text("WRAPPER-TOKEN", encoding="utf-8")
     monkeypatch.setattr(lifecycle.shutil, "which", lambda command: None)
@@ -268,7 +347,7 @@ def test_support_bundle_redacts_structured_and_text_secrets(tmp_path: Path, monk
         names = handle.getnames()
         payload = b"\n".join(handle.extractfile(member).read() for member in handle.getmembers() if member.isfile())
     assert not any("key" in name.lower() or "token" in name.lower() for name in names)
-    for secret in (b"PRIVATE-KEY-MATERIAL", b"WRAPPER-TOKEN", b"top-secret-token", b"user:password", b"key=secret"):
+    for secret in (b"PRIVATE-KEY-MATERIAL", b"WRAPPER-TOKEN", b"top-secret-token", b"user:password", b"key=secret", b"dXNlcjpwYXNz", b"sid=abc", b"hunter2", b"env-secret", b"eyJhbGci", b"BEGIN PRIVATE KEY"):
         assert secret not in payload
     assert "预检失败".encode() in payload
 
@@ -276,8 +355,9 @@ def test_support_bundle_redacts_structured_and_text_secrets(tmp_path: Path, monk
 def test_resolver_topology_and_r1_shadow_port():
     r1 = (PRODUCT_KIT / "r1" / "docker-compose.yml").read_text(encoding="utf-8")
     assert "wrapper:" in r1
-    assert "${DNS_SHADOW_PORT:-1053}:1053/udp" in r1
-    assert "${DNS_SHADOW_PORT:-1053}:1053/tcp" in r1
+    assert "${DNS_BIND_ADDRESS:?required}:1053:1053/udp" in r1
+    assert "${DNS_BIND_ADDRESS:?required}:1053:1053/tcp" in r1
+    assert "profiles: [first-hop]" in r1
     for role in ("r2", "r3"):
         text = (PRODUCT_KIT / role / "docker-compose.yml").read_text(encoding="utf-8").lower()
         assert "wrapper:" not in text

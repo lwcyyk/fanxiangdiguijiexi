@@ -4,9 +4,7 @@
 from __future__ import annotations
 
 import argparse
-import getpass
 import json
-import os
 from pathlib import Path
 import re
 import shlex
@@ -69,21 +67,18 @@ def safe_host(value: str) -> str:
 
 def local_host_names() -> set[str]:
     names: set[str] = set()
-    for value in (socket.gethostname(), socket.getfqdn(), os.environ.get("HOSTNAME", "")):
+    for value in (socket.gethostname(), socket.getfqdn()):
         if value:
-            normalized = value.strip().lower().rstrip(".")
-            names.add(normalized)
-            names.add(normalized.split(".", 1)[0])
+            names.add(safe_host(value))
     return names
 
 
-def check_expected_host(expected: str, override_actual: str | None = None) -> None:
+def check_expected_host(expected: str, actual_names: set[str] | None = None) -> None:
     expected = safe_host(expected)
-    names = local_host_names()
-    if override_actual:
-        actual = safe_host(override_actual)
-        names = {actual, actual.split(".", 1)[0]}
-    if expected not in names and expected.split(".", 1)[0] not in names:
+    names = {safe_host(value) for value in (actual_names or local_host_names())}
+    if "." not in expected:
+        names |= {name.split(".", 1)[0] for name in names}
+    if expected not in names:
         raise InstallError("E002", f"期望 {expected}，实际 {', '.join(sorted(names))}")
 
 
@@ -113,7 +108,14 @@ def infer_package_root(script: Path) -> Path:
 
 
 def select_role(args: argparse.Namespace, metadata: dict[str, object]) -> str:
-    role = args.role or metadata.get("role")
+    packaged = metadata.get("role")
+    if packaged is not None:
+        if packaged not in ROLES:
+            raise InstallError("E005", f"安装包角色不合法：{packaged}")
+        if args.role is not None and args.role != packaged:
+            raise InstallError("E005", f"安装包固定角色为 {packaged}，不能改为 {args.role}")
+        return str(packaged)
+    role = args.role
     if role:
         if role not in ROLES:
             raise InstallError("E001", f"角色不合法：{role}")
@@ -143,6 +145,17 @@ def validate_secret_dir(path: Path) -> None:
             raise InstallError("E006", f"密钥文件权限必须不宽于 0600：{child.name}")
 
 
+def reject_duplicate_options(argv: list[str]) -> None:
+    single_value = {"--role", "--expected-host", "--package-root", "--config-dir", "--secret-dir", "--install-root", "--images", "--output"}
+    seen: set[str] = set()
+    for item in argv:
+        option = item.split("=", 1)[0]
+        if option in single_value:
+            if option in seen:
+                raise InstallError("E005", f"禁止重复参数覆盖安装包绑定：{option}")
+            seen.add(option)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="域名中心离线安装向导（中文、无颜色）")
     parser.add_argument("action", nargs="?", default="install", choices=(
@@ -150,7 +163,6 @@ def build_parser() -> argparse.ArgumentParser:
     ))
     parser.add_argument("--role", choices=ROLES, help="本机角色")
     parser.add_argument("--expected-host", help="安装包指定的主机名")
-    parser.add_argument("--actual-host", help=argparse.SUPPRESS)
     parser.add_argument("--no-start", action="store_true", help="安装但不启动服务")
     parser.add_argument("--package-root", type=Path, help="product-kit 根目录")
     parser.add_argument("--config-dir", type=Path, help="本机渲染配置目录")
@@ -164,18 +176,29 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
     try:
+        reject_duplicate_options(raw_argv)
+        args = build_parser().parse_args(raw_argv)
         package_root = (args.package_root or infer_package_root(Path(__file__))).resolve()
         metadata_root = package_root.parent if package_root.name == "product-kit" else package_root
         metadata = load_package_metadata(metadata_root)
         role = select_role(args, metadata)
-        expected = args.expected_host or metadata.get("expected_host") or metadata.get("hostname")
+        packaged_expected = metadata.get("expected_host") or metadata.get("hostname")
+        if metadata.get("expected_host") and metadata.get("hostname"):
+            if safe_host(str(metadata["expected_host"])) != safe_host(str(metadata["hostname"])):
+                raise InstallError("E005", "安装包 expected_host 与 hostname 不一致")
+        if packaged_expected is not None:
+            expected = safe_host(str(packaged_expected))
+            if args.expected_host is not None and safe_host(args.expected_host) != expected:
+                raise InstallError("E005", f"安装包固定主机为 {expected}，不能改为 {args.expected_host}")
+        else:
+            expected = safe_host(args.expected_host) if args.expected_host else None
         if not expected:
             if not sys.stdin.isatty():
                 raise InstallError("E008", "缺少 --expected-host")
-            expected = prompt("本安装包指定主机名")
-        check_expected_host(str(expected), args.actual_host)
+            expected = safe_host(prompt("本安装包指定主机名"))
+        check_expected_host(expected)
 
         role_root = package_root / role
         control = role_root / "安装工具"
@@ -186,8 +209,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.config_dir:
             command += ["--config-dir", str(args.config_dir.resolve())]
         if args.secret_dir:
-            validate_secret_dir(args.secret_dir.resolve())
-            command += ["--secret-dir", str(args.secret_dir.resolve())]
+            secret_path = args.secret_dir.absolute()
+            if args.action != "prepare-secrets":
+                validate_secret_dir(secret_path)
+            command += ["--secret-dir", str(secret_path)]
         if args.images:
             command += ["--images", str(args.images.resolve())]
         if args.output:

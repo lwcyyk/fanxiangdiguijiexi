@@ -50,6 +50,22 @@ def inspect_digests(reference: str) -> set[str]:
     return {str(value) for value in values if re.fullmatch(r"[^\s@]+@sha256:[0-9a-f]{64}", str(value))}
 
 
+def image_ids() -> set[str]:
+    result = subprocess.run(
+        ["docker", "image", "ls", "--no-trunc", "--quiet"], check=True,
+        text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    return {line.strip() for line in result.stdout.splitlines() if re.fullmatch(r"sha256:[0-9a-f]{64}", line.strip())}
+
+
+def remove_images(references: set[str]) -> None:
+    for reference in sorted(references):
+        subprocess.run(
+            ["docker", "image", "rm", "--force", reference], check=False,
+            text=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+
+
 def parse_manifest(path: Path) -> list[tuple[Path, str, str]]:
     try:
         obj = json.loads(path.read_text(encoding="utf-8"))
@@ -96,12 +112,28 @@ def main() -> int:
         if args.verify_only:
             return 0
         subprocess.run(["docker", "version"], check=True, stdout=subprocess.DEVNULL)
-        for archive, _, reference in entries:
-            subprocess.run(["docker", "load", "--input", str(archive)], check=True)
-            actual = inspect_digests(reference)
-            if reference not in actual:
-                raise ImageError(f"加载后镜像摘要不匹配：{reference}；RepoDigests={sorted(actual)}")
-            print(f"加载后摘要校验通过：{reference}")
+        before_ids = image_ids()
+        preexisting_references: set[str] = set()
+        for _, _, reference in entries:
+            try:
+                if reference in inspect_digests(reference):
+                    preexisting_references.add(reference)
+            except (ImageError, subprocess.CalledProcessError):
+                pass
+        imported_references: set[str] = set()
+        try:
+            for archive, _, reference in entries:
+                subprocess.run(["docker", "load", "--input", str(archive)], check=True)
+                if reference not in preexisting_references:
+                    imported_references.add(reference)
+                actual = inspect_digests(reference)
+                if reference not in actual:
+                    raise ImageError(f"加载后镜像摘要不匹配：{reference}；RepoDigests={sorted(actual)}")
+                print(f"加载后摘要校验通过：{reference}")
+        except Exception:
+            # A failed load must not leave unverified refs or newly imported image IDs behind.
+            remove_images(imported_references | (image_ids() - before_ids))
+            raise
         return 0
     except FileNotFoundError as exc:
         return error("IMG003", f"所需命令或文件不存在：{exc}", "安装 Docker 并重新复制完整离线镜像目录。")
