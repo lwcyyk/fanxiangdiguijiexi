@@ -467,6 +467,110 @@ def test_existing_nonempty_data_dir_is_never_claimed(tmp_path: Path):
     assert not (data / lifecycle.DATA_MARKER).exists()
 
 
+def test_norn_readiness_uses_authenticated_get_block_number_endpoint(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    secret = tmp_path / "secrets" / "norn-tls"
+    secret.mkdir(parents=True)
+    for name in ("ca.crt", "client.crt", "client.key"):
+        (secret / name).write_bytes(name.encode())
+    loaded: list[tuple[str, str]] = []
+
+    class Context:
+        def load_cert_chain(self, cert: str, key: str) -> None:
+            loaded.append((cert, key))
+
+    class Response:
+        status = 200
+        headers = {"Content-Type": "application/grpc", "grpc-status": "0"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def read(self, limit: int) -> bytes:
+            assert limit == 4 * 1024 * 1024 + 1
+            return b"\x00\x00\x00\x00\x02\x10\x07"
+
+    requests: list[object] = []
+    monkeypatch.setattr(lifecycle.ssl, "create_default_context", lambda cafile: Context())
+    monkeypatch.setattr(lifecycle, "urlopen", lambda request, timeout, context: requests.append(request) or Response())
+    env = {"RI_NORN_READ_HOSTNAME": "norn-read-a.example", "RI_NORN_READ_PORT": "8443"}
+
+    assert lifecycle.readiness_probe("norn-a", "norn_ready", env, tmp_path / "secrets") is True
+    request = requests[0]
+    assert request.full_url == "https://norn-read-a.example:8443/Blockchain/GetBlockNumber"
+    assert request.method == "POST"
+    assert request.data == b"\x00\x00\x00\x00\x00"
+    assert request.headers["Content-type"] == "application/grpc"
+    assert loaded == [(str(secret / "client.crt"), str(secret / "client.key"))]
+
+
+def test_norn_readiness_fails_closed_for_missing_or_invalid_material(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    env = {"RI_NORN_READ_HOSTNAME": "norn-read-a.example", "RI_NORN_READ_PORT": "8443"}
+    with pytest.raises(lifecycle._NornProbeError) as missing:
+        lifecycle.readiness_probe("norn-a", "norn_ready", env, tmp_path / "secrets")
+    assert missing.value.code == "NORN_TLS_MISSING"
+
+    secret = tmp_path / "invalid" / "norn-tls"
+    secret.mkdir(parents=True)
+    for name in ("ca.crt", "client.crt", "client.key"):
+        (secret / name).write_bytes(b"material")
+    monkeypatch.setattr(lifecycle.ssl, "create_default_context", lambda cafile: (_ for _ in ()).throw(lifecycle.ssl.SSLError("bad ca")))
+    with pytest.raises(lifecycle._NornProbeError) as bad_ca:
+        lifecycle.readiness_probe("norn-a", "norn_ready", env, tmp_path / "invalid")
+    assert bad_ca.value.code == "NORN_TLS_CA_INVALID"
+
+    class Context:
+        def load_cert_chain(self, cert: str, key: str) -> None:
+            raise lifecycle.ssl.SSLError("mismatch")
+
+    monkeypatch.setattr(lifecycle.ssl, "create_default_context", lambda cafile: Context())
+    with pytest.raises(lifecycle._NornProbeError) as mismatch:
+        lifecycle.readiness_probe("norn-a", "norn_ready", env, tmp_path / "invalid")
+    assert mismatch.value.code == "NORN_TLS_CERT_KEY_MISMATCH"
+
+
+def test_norn_readiness_distinguishes_connection_http_and_malformed_grpc(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    secret = tmp_path / "secrets" / "norn-tls"
+    secret.mkdir(parents=True)
+    for name in ("ca.crt", "client.crt", "client.key"):
+        (secret / name).write_bytes(name.encode())
+
+    class Context:
+        def load_cert_chain(self, cert: str, key: str) -> None:
+            return None
+
+    monkeypatch.setattr(lifecycle.ssl, "create_default_context", lambda cafile: Context())
+    env = {"RI_NORN_READ_HOSTNAME": "norn-read-a.example", "RI_NORN_READ_PORT": "8443"}
+    monkeypatch.setattr(lifecycle, "urlopen", lambda *args, **kwargs: (_ for _ in ()).throw(OSError("stopped")))
+    with pytest.raises(lifecycle._NornProbeError) as stopped:
+        lifecycle.readiness_probe("norn-a", "norn_ready", env, tmp_path / "secrets")
+    assert stopped.value.code == "NORN_CONNECTION" and stopped.value.retryable
+
+    class Response:
+        status = 403
+        headers = {"Content-Type": "text/plain"}
+        def __enter__(self):
+            return self
+        def __exit__(self, *args: object) -> None:
+            return None
+        def read(self, limit: int) -> bytes:
+            return b"denied"
+
+    monkeypatch.setattr(lifecycle, "urlopen", lambda *args, **kwargs: Response())
+    with pytest.raises(lifecycle._NornProbeError) as rejected:
+        lifecycle.readiness_probe("norn-a", "norn_ready", env, tmp_path / "secrets")
+    assert rejected.value.code == "NORN_HTTP_REJECTED"
+
+    Response.status = 200
+    Response.headers = {"Content-Type": "application/grpc", "grpc-status": "0"}
+    monkeypatch.setattr(lifecycle, "urlopen", lambda *args, **kwargs: Response())
+    with pytest.raises(lifecycle._NornProbeError) as malformed:
+        lifecycle.readiness_probe("norn-a", "norn_ready", env, tmp_path / "secrets")
+    assert malformed.value.code == "NORN_GRPC_INVALID"
+
+
 def test_r1_start_is_ordered_readiness_gated_and_uses_profile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     target = tmp_path / "release"
     (target / "config").mkdir(parents=True)

@@ -567,6 +567,109 @@ def _http_ready(url: str, context: ssl.SSLContext | None = None) -> bool:
         return False
 
 
+class _NornProbeError(Exception):
+    def __init__(self, code: str, reason: str, advice: str, *, retryable: bool) -> None:
+        self.code, self.reason, self.advice, self.retryable = code, reason, advice, retryable
+        super().__init__(reason)
+
+
+def _norn_probe_error(code: str, reason: str, advice: str, *, retryable: bool) -> NoReturn:
+    raise _NornProbeError(code, reason, advice, retryable=retryable)
+
+
+def _grpc_varint(data: bytes, offset: int) -> tuple[int, int]:
+    value = 0
+    shift = 0
+    while offset < len(data) and shift < 64:
+        byte = data[offset]
+        offset += 1
+        value |= (byte & 0x7F) << shift
+        if not byte & 0x80:
+            return value, offset
+        shift += 7
+    _norn_probe_error("NORN_GRPC_INVALID", "Norn gRPC 响应的 protobuf 编码无效", "确认只读 Norn 服务返回合法的 GetBlockNumber 响应。", retryable=False)
+
+
+def _validate_norn_block_number(body: bytes) -> None:
+    if len(body) < 5 or body[0] != 0:
+        _norn_probe_error("NORN_GRPC_INVALID", "Norn gRPC 响应帧无效", "确认只读 Norn 服务返回未压缩的合法 gRPC 响应。", retryable=False)
+    length = int.from_bytes(body[1:5], "big")
+    payload = body[5:]
+    if length != len(payload):
+        _norn_probe_error("NORN_GRPC_INVALID", "Norn gRPC 响应长度不一致", "确认只读 Norn 服务返回完整的 GetBlockNumber 响应。", retryable=False)
+    offset = 0
+    number: int | None = None
+    while offset < len(payload):
+        key, offset = _grpc_varint(payload, offset)
+        field, wire = key >> 3, key & 7
+        if field == 2 and wire == 0:
+            if number is not None:
+                _norn_probe_error("NORN_GRPC_INVALID", "Norn gRPC 响应包含重复区块高度", "确认只读 Norn 服务的响应 schema 未改变。", retryable=False)
+            number, offset = _grpc_varint(payload, offset)
+        elif wire == 0:
+            _, offset = _grpc_varint(payload, offset)
+        elif wire == 1:
+            offset += 8
+        elif wire == 2:
+            size, offset = _grpc_varint(payload, offset)
+            offset += size
+        elif wire == 5:
+            offset += 4
+        else:
+            _norn_probe_error("NORN_GRPC_INVALID", "Norn gRPC 响应包含未知 protobuf wire type", "确认只读 Norn 服务返回合法的 GetBlockNumber 响应。", retryable=False)
+        if offset > len(payload):
+            _norn_probe_error("NORN_GRPC_INVALID", "Norn gRPC protobuf 响应被截断", "确认只读 Norn 服务返回完整响应。", retryable=False)
+    if number is None:
+        _norn_probe_error("NORN_GRPC_INVALID", "Norn gRPC 响应缺少区块高度", "确认只读 Norn 服务返回 GetBlockNumber 的 number 字段。", retryable=False)
+
+
+def _norn_grpc_ready(env: dict[str, str], secret_dir: Path | None) -> None:
+    tls_dir = secret_dir / "norn-tls" if secret_dir else None
+    if tls_dir is None:
+        _norn_probe_error("NORN_TLS_MISSING", "Norn mTLS 密钥目录缺失", "提供受检的 norn-tls/ca.crt、client.crt 和 client.key。", retryable=False)
+    material = {name: tls_dir / name for name in ("ca.crt", "client.crt", "client.key")}
+    for name, path in material.items():
+        if not path.is_file() or path.is_symlink() or path.stat().st_size == 0:
+            _norn_probe_error("NORN_TLS_MISSING", f"Norn mTLS 材料缺失：{name}", "提供受检的 norn-tls/ca.crt、client.crt 和 client.key。", retryable=False)
+    try:
+        context = ssl.create_default_context(cafile=str(material["ca.crt"]))
+    except (OSError, ssl.SSLError, ValueError) as exc:
+        _norn_probe_error("NORN_TLS_CA_INVALID", f"Norn mTLS CA 无效：{type(exc).__name__}", "提供有效的 PEM CA 证书。", retryable=False)
+    try:
+        context.load_cert_chain(str(material["client.crt"]), str(material["client.key"]))
+    except (OSError, ssl.SSLError, ValueError) as exc:
+        _norn_probe_error("NORN_TLS_CERT_KEY_MISMATCH", f"Norn mTLS 客户端证书或私钥无效：{type(exc).__name__}", "提供匹配的 client.crt 和 client.key。", retryable=False)
+    try:
+        hostname = safe_host(env.get("RI_NORN_READ_HOSTNAME", ""))
+        port = int(env.get("RI_NORN_READ_PORT", "8443"))
+    except (LifecycleError, ValueError):
+        _norn_probe_error("NORN_CONNECTION", "Norn 只读端点配置无效", "配置有效的 Norn HTTPS 主机名和端口。", retryable=False)
+    url = f"https://{hostname}:{port}/Blockchain/GetBlockNumber"
+    request = Request(
+        url,
+        data=b"\x00\x00\x00\x00\x00",
+        method="POST",
+        headers={
+            "Content-Type": "application/grpc",
+            "TE": "trailers",
+            "User-Agent": "domain-center-readiness/1",
+        },
+    )
+    try:
+        with urlopen(request, timeout=3, context=context) as response:
+            status = response.status if hasattr(response, "status") else response.getcode()
+            content_type = response.headers.get("Content-Type", "")
+            grpc_status = response.headers.get("grpc-status")
+            body = response.read(4 * 1024 * 1024 + 1)
+    except HTTPError as exc:
+        _norn_probe_error("NORN_HTTP_REJECTED", f"Norn 只读端点拒绝请求（HTTP {exc.code}）", "确认只读代理、客户端证书和 Norn 服务状态。", retryable=exc.code >= 500)
+    except (OSError, URLError, TimeoutError) as exc:
+        _norn_probe_error("NORN_CONNECTION", f"无法连接 Norn 只读端点（{type(exc).__name__}）", "确认 Norn 只读代理运行且网络可达。", retryable=True)
+    if not 200 <= status < 300 or not content_type.lower().startswith("application/grpc") or grpc_status != "0":
+        _norn_probe_error("NORN_HTTP_REJECTED", f"Norn gRPC 响应被拒绝（HTTP {status}，grpc-status {grpc_status or 'missing'}）", "确认只读代理返回 HTTP 2xx 和 grpc-status 0。", retryable=status >= 500)
+    _validate_norn_block_number(body)
+
+
 def _dns_query(address: str, port: int, tcp: bool) -> bool:
     query_id = secrets.randbelow(65536)
     packet = struct.pack("!HHHHHH", query_id, 0x0100, 1, 0, 0, 0) + b"\x00\x00\x01\x00\x01"
@@ -607,16 +710,25 @@ def readiness_probe(role: str, phase: str, env: dict[str, str], secret_dir: Path
         port = 1053
         return port == 1053 and _http_ready(f"http://{address}:9108/readyz") and _dns_query(bind, port, False) and _dns_query(bind, port, True)
     if phase == "norn_ready":
-        return _http_ready(f"https://{env.get('RI_NORN_READ_HOSTNAME', env.get('RI_FIELD_HOST_ID', ''))}:{env.get('RI_NORN_READ_PORT', '8443')}/")
+        _norn_grpc_ready(env, secret_dir)
+        return True
     return True
 
 
 def _wait_readiness(role: str, phase: str, env: dict[str, str], secret_dir: Path | None) -> None:
     deadline = time.monotonic() + int(os.environ.get("DC_READINESS_TIMEOUT_SECONDS", "60"))
+    last_probe_error: _NornProbeError | None = None
     while time.monotonic() < deadline:
-        if readiness_probe(role, phase, env, secret_dir):
-            return
+        try:
+            if readiness_probe(role, phase, env, secret_dir):
+                return
+        except _NornProbeError as exc:
+            last_probe_error = exc
+            if not exc.retryable:
+                die(exc.code, exc.reason, exc.advice)
         time.sleep(1)
+    if last_probe_error is not None:
+        die(last_probe_error.code, last_probe_error.reason, last_probe_error.advice)
     die("RUN002", f"应用 readiness 超时：{phase}", "禁止标记安装完成；修复服务后重试，程序指针已回滚。")
 
 
