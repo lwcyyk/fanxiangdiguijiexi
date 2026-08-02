@@ -16,6 +16,7 @@ import re
 import secrets
 import shutil
 import socket
+import sqlite3
 import ssl
 import struct
 import subprocess
@@ -735,6 +736,23 @@ def validate_active_install(args: argparse.Namespace) -> tuple[dict[str, object]
     return state, target
 
 
+def _restore_previous_release(
+    root: Path, target: Path, previous: Path | None, role: str, secret_dir: Path | None,
+    state_file: Path,
+) -> str | None:
+    compose(target, ["down", "--remove-orphans"], check=False)
+    if previous is None or not previous.is_dir():
+        current = root / "current"
+        if current.is_symlink():
+            current.unlink()
+        return None
+    set_current(root, previous)
+    previous_env = load_env(previous / "config" / ".env")
+    recovery_state: dict[str, object] = {"phases": {}}
+    start_ordered(previous, role, previous_env, secret_dir, recovery_state, state_file)
+    return str(previous)
+
+
 def install(args: argparse.Namespace, role_root: Path) -> None:
     evidence = preflight(args, role_root)
     root, state_file = args.install_root, args.install_root / "state" / "install-state.json"
@@ -760,6 +778,8 @@ def install(args: argparse.Namespace, role_root: Path) -> None:
         state.update({"status": "running", "status_zh": "执行中", "last_error": None})
         atomic_json(state_file, state)
         previous = (root / "current").resolve() if (root / "current").is_symlink() else None
+        target: Path | None = None
+        activation_attempted = False
         try:
             _phase(state, state_file, "validated", hashlib.sha256(json.dumps(evidence, sort_keys=True).encode()).hexdigest())
             phases = state.get("phases", {})
@@ -797,24 +817,47 @@ def install(args: argparse.Namespace, role_root: Path) -> None:
                 die("RUN001", f"Compose 静态检查失败：{redact_text(result.stdout or '')}", "修复配置后重试；程序指针已回滚，数据未删除。")
             previous = (root / "current").resolve() if (root / "current").is_symlink() else None
             if args.no_start:
-                set_current(root, target)
-                state.update({"status": "complete", "status_zh": "完成（未启动）", "release": str(target), "activated": False})
+                state.update({
+                    "status": "staged", "status_zh": "已暂存（未启动）",
+                    "release": str(previous) if previous else None,
+                    "active_release": str(previous) if previous else None,
+                    "staged_release": str(target), "activated": bool(previous),
+                })
             else:
+                activation_attempted = True
                 start_ordered(target, args.role, env_values, args.secret_dir.absolute() if args.secret_dir else None, state, state_file)
                 set_current(root, target)
-                state.update({"status": "complete", "status_zh": "完成", "release": str(target), "activated": True})
+                state.update({
+                    "status": "complete", "status_zh": "完成", "release": str(target),
+                    "active_release": str(target), "staged_release": None, "activated": True,
+                })
             if previous and previous != target:
                 atomic_text(root / "state" / "previous-release", f"{previous}\n")
             _phase(state, state_file, "evidence_written", hashlib.sha256(json.dumps(state, sort_keys=True).encode()).hexdigest())
             atomic_json(state_file, state)
             print(f"安装完成：{args.role} {version}")
         except Exception as exc:
-            if previous and previous.is_dir():
-                set_current(root, previous)
-            elif (root / "current").is_symlink() and (root / "current").resolve() != previous:
-                (root / "current").unlink(missing_ok=True)
-            state.update({"status": "failed", "status_zh": "失败", "activated": bool(previous), "last_error": {
+            recovery_error: Exception | None = None
+            try:
+                if activation_attempted and target is not None:
+                    _restore_previous_release(
+                        root, target, previous, args.role,
+                        args.secret_dir.absolute() if args.secret_dir else None, state_file,
+                    )
+                elif previous and previous.is_dir():
+                    set_current(root, previous)
+                elif (root / "current").is_symlink() and (root / "current").resolve() != previous:
+                    (root / "current").unlink(missing_ok=True)
+            except Exception as recovery_exc:
+                recovery_error = recovery_exc
+            active = previous is not None and previous.is_dir() and recovery_error is None
+            state.update({"status": "failed", "status_zh": "失败", "activated": active,
+                          "release": str(previous) if active else None,
+                          "active_release": str(previous) if active else None,
+                          "staged_release": str(target) if target is not None else None,
+                          "last_error": {
                 "code": exc.code if isinstance(exc, LifecycleError) else "SYS001", "message": redact_text(str(exc)), "at": now(),
+                "recovery_error": redact_text(str(recovery_error)) if recovery_error else None,
             }})
             atomic_json(state_file, state)
             raise
@@ -832,17 +875,56 @@ def status(args: argparse.Namespace) -> None:
             print(redact_text(result.stdout), end="")
 
 
+def _sqlite_backup(source: Path, destination: Path) -> str:
+    destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with sqlite3.connect(f"file:{source}?mode=ro", uri=True) as source_db:
+        with sqlite3.connect(destination) as backup_db:
+            source_db.backup(backup_db)
+            result = backup_db.execute("PRAGMA integrity_check").fetchone()
+    integrity = str(result[0]) if result else "no-result"
+    if integrity.lower() != "ok":
+        destination.unlink(missing_ok=True)
+        die("BACK001", f"SQLite 在线备份完整性检查失败：{integrity}", "保留现场并检查 evidence-v2.db 后重试。")
+    os.chmod(destination, 0o600)
+    return integrity
+
+
 def backup(args: argparse.Namespace) -> None:
     state, target = validate_active_install(args)
     env = load_env(target / "config" / ".env")
     data = Path(env.get("RI_FIELD_DATA_DIR", ""))
     _validate_marker(data, args, state)
     output = args.output or Path.cwd() / "backup"
-    output.mkdir(parents=True, exist_ok=True)
+    output.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(output, 0o700)
     archive = output / f"{safe_host(args.expected_host)}-{dt.datetime.now().strftime('%Y%m%d%H%M%S')}.tar.gz"
-    with tarfile.open(archive, "w:gz") as tar:
-        tar.add(data, arcname="data", recursive=True)
-    os.chmod(archive, 0o600)
+    database = data / "evidence-v2.db"
+    excluded = {"evidence-v2.db", "evidence-v2.db-wal", "evidence-v2.db-shm"}
+    with tempfile.TemporaryDirectory(prefix=".domain-center-backup-", dir=output) as temp_name:
+        staging = Path(temp_name)
+        manifest: dict[str, object] = {
+            "schema": "domain-center-backup-manifest-v1", "created_at": now(),
+            "host": safe_host(args.expected_host), "role": args.role,
+            "database": {"path": "data/evidence-v2.db", "status": "absent"},
+            "excluded_live_files": sorted(excluded),
+        }
+        staged_database = staging / "evidence-v2.db"
+        if args.role in {"r1", "r2", "r3"} and database.is_file() and not database.is_symlink():
+            integrity = _sqlite_backup(database, staged_database)
+            manifest["database"] = {
+                "path": "data/evidence-v2.db", "status": "backed_up", "method": "sqlite3_online_backup",
+                "integrity_check": integrity, "sha256": file_hash(staged_database),
+            }
+        atomic_json(staging / "backup-manifest.json", manifest, 0o600)
+        fd = os.open(archive, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "wb") as archive_file, tarfile.open(fileobj=archive_file, mode="w:gz") as tar:
+            tar.add(data, arcname="data", recursive=False)
+            for path in sorted(data.iterdir()):
+                if path.name not in excluded:
+                    tar.add(path, arcname=f"data/{path.name}", recursive=True)
+            if staged_database.is_file():
+                tar.add(staged_database, arcname="data/evidence-v2.db", recursive=False)
+            tar.add(staging / "backup-manifest.json", arcname="backup-manifest.json", recursive=False)
     atomic_text(Path(f"{archive}.sha256"), f"{file_hash(archive)}  {archive.name}\n", 0o600)
     print(f"备份完成：{archive}")
 

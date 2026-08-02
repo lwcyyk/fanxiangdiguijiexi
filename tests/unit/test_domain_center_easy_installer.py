@@ -5,6 +5,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import sqlite3
 import subprocess
 import sys
 import tarfile
@@ -362,14 +363,92 @@ def test_lifecycle_install_resumes_without_image_reload_and_honors_no_start(tmp_
     lifecycle.install(args, role_root)
     lifecycle.install(args, role_root)
     state = json.loads((args.install_root / "state" / "install-state.json").read_text())
-    assert state["status"] == "complete"
+    assert state["status"] == "staged"
     assert state["activated"] is False
+    assert state["release"] is None
+    assert state["staged_release"].endswith("/releases/0.3.0-test")
+    assert not (install_root / "current").exists()
     assert "images_loaded" in state["phases"]
     assert len([command for command in runs if "load_images.py" in " ".join(command)]) == 1
     assert len(list((args.install_root / "releases").iterdir())) == 1
     marker = json.loads((data / lifecycle.DATA_MARKER).read_text())
     assert marker["canonical_path"] == str(data)
     assert marker["install_id"] == state["install_id"]
+
+
+def test_failed_activation_stops_partial_release_and_restarts_previous(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    root = tmp_path / "install"
+    target = root / "releases" / "v2"
+    previous = root / "releases" / "v1"
+    for release in (target, previous):
+        (release / "config").mkdir(parents=True)
+        (release / "config" / ".env").write_text("RI_FIELD_COMPOSE_PROJECT=test\n", encoding="utf-8")
+    lifecycle.set_current(root, target)
+    commands: list[tuple[Path, list[str], bool]] = []
+    monkeypatch.setattr(lifecycle, "compose", lambda release, action, check=True: commands.append((release, action, check)) or subprocess.CompletedProcess(action, 0, "", ""))
+    monkeypatch.setattr(lifecycle, "start_ordered", lambda release, *args: commands.append((release, ["restart-ordered"], True)))
+
+    restored = lifecycle._restore_previous_release(root, target, previous, "r1", None, root / "state.json")
+
+    assert restored == str(previous)
+    assert (root / "current").resolve() == previous
+    assert commands == [
+        (target, ["down", "--remove-orphans"], False),
+        (previous, ["restart-ordered"], True),
+    ]
+
+
+def test_resolver_backup_uses_consistent_sqlite_snapshot_and_excludes_live_wal(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    install_root = tmp_path / "install"
+    target = install_root / "releases" / "v1"
+    data = install_root / "data" / "r1"
+    (target / "config").mkdir(parents=True)
+    data.mkdir(parents=True)
+    (target / "config" / ".env").write_text(f"RI_FIELD_DATA_DIR={data}\n", encoding="utf-8")
+    database = data / "evidence-v2.db"
+    connection = sqlite3.connect(database)
+    connection.execute("PRAGMA journal_mode=WAL")
+    connection.execute("CREATE TABLE evidence (value TEXT)")
+    connection.execute("INSERT INTO evidence VALUES ('preserved')")
+    connection.commit()
+    (data / "ordinary.txt").write_text("included", encoding="utf-8")
+    monkeypatch.setattr(lifecycle, "validate_active_install", lambda args: ({"install_id": "id"}, target))
+    monkeypatch.setattr(lifecycle, "_validate_marker", lambda *args: None)
+    output = tmp_path / "backup"
+    args = SimpleNamespace(install_root=install_root, expected_host="dc-r1-01", role="r1", output=output)
+    lifecycle.backup(args)
+    connection.close()
+
+    archive = next(output.glob("*.tar.gz"))
+    with tarfile.open(archive, "r:gz") as handle:
+        names = handle.getnames()
+        manifest = json.load(handle.extractfile("backup-manifest.json"))
+        extracted = tmp_path / "snapshot.db"
+        extracted.write_bytes(handle.extractfile("data/evidence-v2.db").read())
+    assert "data/evidence-v2.db-wal" not in names
+    assert "data/evidence-v2.db-shm" not in names
+    assert manifest["database"]["method"] == "sqlite3_online_backup"
+    assert manifest["database"]["integrity_check"] == "ok"
+    with sqlite3.connect(extracted) as snapshot:
+        assert snapshot.execute("SELECT value FROM evidence").fetchone() == ("preserved",)
+    assert (output.stat().st_mode & 0o077) == 0
+    assert (archive.stat().st_mode & 0o077) == 0
+
+
+def test_resolver_backup_manifest_truthfully_records_absent_database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    install_root = tmp_path / "install"
+    target = install_root / "releases" / "v1"
+    data = install_root / "data" / "r1"
+    (target / "config").mkdir(parents=True)
+    data.mkdir(parents=True)
+    (target / "config" / ".env").write_text(f"RI_FIELD_DATA_DIR={data}\n", encoding="utf-8")
+    monkeypatch.setattr(lifecycle, "validate_active_install", lambda args: ({"install_id": "id"}, target))
+    monkeypatch.setattr(lifecycle, "_validate_marker", lambda *args: None)
+    output = tmp_path / "backup"
+    lifecycle.backup(SimpleNamespace(install_root=install_root, expected_host="dc-r1-01", role="r1", output=output))
+    with tarfile.open(next(output.glob("*.tar.gz")), "r:gz") as handle:
+        manifest = json.load(handle.extractfile("backup-manifest.json"))
+    assert manifest["database"] == {"path": "data/evidence-v2.db", "status": "absent"}
 
 
 def test_existing_nonempty_data_dir_is_never_claimed(tmp_path: Path):
