@@ -148,7 +148,7 @@ def test_host_archives_are_standalone_with_exact_entry_points(tmp_path: Path):
         metadata = json.loads(files[prefix + "expected-host.json"])
         roles.add(metadata["role"])
         required = {
-            "README.md", "expected-host.json", "wizard.py",
+            "README-请先阅读.txt", "expected-host.json", "wizard.py",
             "product-kit/common/lifecycle.py", "product-kit/common/load_images.py", "product-kit/common/role_entry.py",
             f"product-kit/{metadata['role']}/docker-compose.yml",
             *chinese, *ascii_scripts,
@@ -171,7 +171,7 @@ def test_generated_standalone_preflight_entry_reaches_local_lifecycle(tmp_path: 
         handle.extractall(extracted, filter="data")
     package = extracted / "dc-r1-01"
     completed = subprocess.run(
-        [str(package / "预检.sh"), "--actual-host", "dc-r1-01", "--config-dir", str(tmp_path / "missing-config"), "--secret-dir", str(tmp_path / "missing-secret"), "--install-root", str(tmp_path / "install")],
+        [str(package / "开始安装.sh"), "--actual-host", "dc-r1-01", "--config-dir", str(tmp_path / "missing-config"), "--secret-dir", str(tmp_path / "missing-secret"), "--install-root", str(tmp_path / "install")],
         text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     )
     assert completed.returncode == 2

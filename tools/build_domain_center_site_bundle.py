@@ -42,18 +42,18 @@ ROLE_IMAGES = {
     "r3": ("rust", "knot"),
 }
 CHINESE_ENTRY_POINTS = {
-    "安装.sh": "install",
-    "预检.sh": "preflight",
-    "查看状态.sh": "status",
-    "收集支持包.sh": "support",
+    "开始安装.sh": "install",
+    "检查运行状态.sh": "status",
+    "准备证书和密钥.sh": "prepare-secrets",
+    "导出故障信息.sh": "support",
     "备份.sh": "backup",
     "回滚.sh": "rollback",
     "卸载.sh": "uninstall",
 }
 ASCII_ENTRY_POINTS = {
     "install": "install",
-    "preflight": "preflight",
     "status": "status",
+    "prepare-secrets": "prepare-secrets",
     "support": "support",
     "backup": "backup",
     "rollback": "rollback",
@@ -501,17 +501,17 @@ def _write_host_entry_points(host_root: Path, role: str, hostname: str) -> None:
 
 
 def _host_readme(hostname: str, role: str) -> str:
-    return f"""# 域名中心离线主机安装包
+    return f"""域名中心离线主机安装包
 
-指定主机：`{hostname}`
-固定角色：`{role}`
+指定主机：{hostname}
+固定角色：{role}
 
-1. 校验 `SHA256SUMS` 后解压到本机普通目录。
-2. 准备仅本机可读的配置目录和密钥目录。
-3. 执行 `./预检.sh --config-dir /绝对路径/config --secret-dir /绝对路径/secrets --install-root /opt/domain-center`。
-4. 预检通过后执行同参数的 `./安装.sh --yes`。
+1. 校验 SHA256SUMS 后解压到本机普通目录。
+2. 执行 ./准备证书和密钥.sh --secret-dir /绝对路径/secrets --install-root /opt/domain-center。
+3. 材料准备后执行 ./开始安装.sh --config-dir /绝对路径/config --secret-dir /绝对路径/secrets --install-root /opt/domain-center --yes。
+4. 运行 ./检查运行状态.sh 查看机器可读状态。
 
-ASCII 入口位于 `scripts/`。安装包只准备离线制品，不表示真实服务器已部署，也不表示生产流量已启用。
+ASCII 入口位于 scripts/。安装包只准备离线制品，不表示真实服务器已部署，也不表示生产流量已启用。
 """
 
 
@@ -833,7 +833,7 @@ def verify_delivery(root: Path, *, allow_blocked: bool = False) -> dict[str, Any
                 if lock.get("schema_version") != LOCK_SCHEMA or lock.get("hostname") != hostname or lock.get("role") != role:
                     raise BundleError(f"host archive image lock metadata mismatch: {hostname}")
                 required_members = {
-                    prefix + "README.md",
+                    prefix + "README-请先阅读.txt",
                     prefix + "expected-host.json",
                     prefix + "wizard.py",
                     prefix + f"product-kit/{role}/docker-compose.yml",
@@ -989,7 +989,7 @@ def build_delivery(
                 _write_json(metadata / "host.json", host_metadata)
                 _write_json(metadata / "sbom.spdx.json", _spdx(hostname, validated["version"], validated["source_commit"], lock_images))
                 _write_json(metadata / "sbom.cdx.json", _cyclonedx(hostname, validated["version"], validated["source_commit"], lock_images))
-                (host_root / "README.md").write_text(_host_readme(hostname, role), encoding="utf-8")
+                (host_root / "README-请先阅读.txt").write_text(_host_readme(hostname, role), encoding="utf-8")
                 _write_host_entry_points(host_root, role, hostname)
                 _scan_output(host_root)
                 _write_checksums(host_root, host_root / "SHA256SUMS")

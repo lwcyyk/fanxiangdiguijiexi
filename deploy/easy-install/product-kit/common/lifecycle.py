@@ -460,6 +460,37 @@ def support(args: argparse.Namespace) -> None:
     print(f"支持包完成（不含密钥与业务数据）：{archive}")
 
 
+def prepare_secrets(args: argparse.Namespace) -> None:
+    if not args.secret_dir:
+        die("SEC200", "未指定密钥目录", "使用 --secret-dir 指向本机独立安全目录。")
+    root = args.secret_dir.resolve()
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if root.is_symlink():
+        die("SEC201", "密钥目录不能是符号链接", "使用本机真实目录并设置 0700 权限。")
+    os.chmod(root, 0o700)
+    if args.role in {"r1", "r2", "r3"}:
+        for name in ("secrets", "agent-tls", "norn-tls"):
+            path = root / name
+            path.mkdir(exist_ok=True, mode=0o700)
+            os.chmod(path, 0o700)
+        missing = [name for name in REQUIRED_SECRETS[args.role] if not (root / name).is_file()]
+        missing.extend(f"{name}/" for name in REQUIRED_TLS_DIRS[args.role] if not (root / name).is_dir())
+    elif args.role.startswith("norn-"):
+        for name in ("node", "tls"):
+            path = root / name
+            path.mkdir(exist_ok=True, mode=0o700)
+            os.chmod(path, 0o700)
+        missing = [name for name in REQUIRED_SECRETS[args.role] if not (root / name).is_file()]
+    else:
+        missing = [name for name in REQUIRED_SECRETS[args.role] if not (root / name).is_file()]
+    if missing:
+        print("等待证书签发")
+        print("仍需通过安全带外流程提供：" + "、".join(missing))
+        return
+    check_secret_tree(root, args.role)
+    print("证书和密钥目录检查通过；未打印任何秘密。")
+
+
 def rollback(args: argparse.Namespace) -> None:
     root = args.install_root
     with lock(root):
@@ -504,7 +535,7 @@ def uninstall(args: argparse.Namespace) -> None:
 
 def parser() -> argparse.ArgumentParser:
     value = argparse.ArgumentParser(description="域名中心主机生命周期工具")
-    value.add_argument("action", choices=("preflight", "install", "status", "support", "backup", "rollback", "uninstall"))
+    value.add_argument("action", choices=("preflight", "prepare-secrets", "install", "status", "support", "backup", "rollback", "uninstall"))
     value.add_argument("--role", required=True, choices=tuple(ROLE_KIND))
     value.add_argument("--expected-host", required=True)
     value.add_argument("--install-root", required=True, type=Path)
@@ -531,6 +562,7 @@ def main() -> int:
                 print("预检通过。")
             else:
                 install(args, role_root)
+        elif args.action == "prepare-secrets": prepare_secrets(args)
         elif args.action == "status": status(args)
         elif args.action == "support": support(args)
         elif args.action == "backup": backup(args)

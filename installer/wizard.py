@@ -146,7 +146,7 @@ def validate_secret_dir(path: Path) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="域名中心离线安装向导（中文、无颜色）")
     parser.add_argument("action", nargs="?", default="install", choices=(
-        "install", "preflight", "status", "support", "backup", "rollback", "uninstall"
+        "install", "preflight", "prepare-secrets", "status", "support", "backup", "rollback", "uninstall"
     ))
     parser.add_argument("--role", choices=ROLES, help="本机角色")
     parser.add_argument("--expected-host", help="安装包指定的主机名")
