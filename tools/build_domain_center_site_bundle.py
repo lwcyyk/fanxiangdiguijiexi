@@ -23,7 +23,48 @@ EVIDENCE_SCHEMA = "resolver-identity-domain-center-easy-evidence-v1"
 LOCK_SCHEMA = "resolver-identity-role-image-lock-v1"
 SPDX_VERSION = "SPDX-2.3"
 CDX_VERSION = "1.5"
-DELIVERY_PREFIX = "域名中心简易离线交付包"
+DELIVERY_PREFIX = "resolver-identity-domain-center-easy-install"
+REQUIRED_EXTERNAL_ACCEPTANCE_IDS = frozenset(
+    {
+        "resolver_trace",
+        "production_cutover",
+        "pki_identity",
+        "network_isolation",
+        "negative_fail_close",
+        "monitoring",
+        "backup_restore",
+        "capacity",
+        "rollback_rto",
+        "ubuntu22",
+        "ubuntu24",
+        "real_oci",
+    }
+)
+STATUS_VOCABULARY = {
+    "passed": {"通过", "已通过", "passed"},
+    "pass": {"通过", "已通过", "pass"},
+    "success": {"通过", "已通过", "成功", "success"},
+    "blocked": {"阻断", "已阻断", "blocked"},
+    "not_run": {"未运行", "未执行", "not_run"},
+    "failed": {"失败", "未通过", "failed"},
+    "pending": {"待处理", "待验收", "pending"},
+}
+TOP_LEVEL_DIRECTORIES = (
+    "00-开始",
+    "01-发布信息",
+    "02-校验与签名",
+    "03-主机包",
+    "04-软件物料清单",
+    "05-PDF手册",
+    "06-配置交接",
+    "07-证书与身份",
+    "08-网络隔离",
+    "09-监控",
+    "10-备份恢复",
+    "11-容量与回滚",
+    "12-验收证据",
+)
+OCI_REF_ANNOTATION = "org.opencontainers.image.ref.name"
 ROLE_COUNTS = {
     "management": 1,
     "norn-a": 1,
@@ -191,6 +232,7 @@ def _json_bytes(value: Any) -> bytes:
 
 def _write_json(path: Path, value: Any) -> None:
     path.write_bytes(_json_bytes(value))
+    path.chmod(0o644)
 
 
 def _safe_relative(name: str, label: str) -> PurePosixPath:
@@ -249,7 +291,17 @@ def _validate_layer_tar(data: bytes, media_type: str, label: str) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
-def validate_oci_archive(path: Path, expected_digest: str, platform: dict[str, str]) -> dict[str, Any]:
+def _import_reference(repository: str, digest: str) -> str:
+    """Return a deterministic, importable OCI tag associated with a pinned digest."""
+    return f"{repository}:ri-{digest.split(':', 1)[1][:16]}"
+
+
+def validate_oci_archive(
+    path: Path,
+    expected_digest: str,
+    platform: dict[str, str],
+    expected_reference: str | None = None,
+) -> dict[str, Any]:
     """Fully validate one strict, single-platform OCI image-layout tar."""
     if not path.is_file() or path.is_symlink():
         raise BundleError(f"OCI archive is not a regular file: {path}")
@@ -279,6 +331,13 @@ def validate_oci_archive(path: Path, expected_digest: str, platform: dict[str, s
         root = _descriptor(manifests[0], "index.json.manifests[0]", {OCI_MANIFEST})
         if root["digest"] != expected_digest:
             raise BundleError(f"OCI manifest digest {root['digest']} does not equal release digest {expected_digest}")
+        if expected_reference is not None:
+            annotations = _object(root.get("annotations"), "index manifest annotations")
+            reference_name = annotations.get(OCI_REF_ANNOTATION)
+            if reference_name != expected_reference:
+                raise BundleError(
+                    f"OCI index manifest annotation {OCI_REF_ANNOTATION} must equal configured reference {expected_reference}"
+                )
         root_platform = _object(root.get("platform"), "index manifest platform")
         required_platform = {"os": platform["os"], "architecture": platform["architecture"]}
         if platform.get("variant"):
@@ -392,11 +451,14 @@ def validate_inputs(site_path: Path, release_path: Path) -> dict[str, Any]:
         if match is None:
             raise BundleError(f"source release images.{key} is not digest-pinned")
         digest = f"sha256:{match.group(2)}"
-        oci = validate_oci_archive(archive, digest, platform_clean)
+        reference = f"{repository.rstrip('/')}@{digest}"
+        import_reference = _import_reference(repository.rstrip('/'), digest)
+        oci = validate_oci_archive(archive, digest, platform_clean, import_reference)
         clean_images[key] = {
             "archive": archive,
             "repository": repository.rstrip("/"),
-            "reference": f"{repository.rstrip('/')}@{digest}",
+            "reference": reference,
+            "import_reference": import_reference,
             "digest": digest,
             **oci,
         }
@@ -421,17 +483,24 @@ def validate_inputs(site_path: Path, release_path: Path) -> dict[str, Any]:
     if len(set(names)) != len(names):
         raise BundleError("hostnames must be unique")
     requirements = _object(site.get("external_requirements", {}), "external_requirements")
+    missing_requirements = REQUIRED_EXTERNAL_ACCEPTANCE_IDS - set(requirements)
+    if missing_requirements:
+        raise BundleError(
+            "external_requirements is missing mandatory acceptance IDs: "
+            + ", ".join(sorted(missing_requirements))
+        )
     clean_requirements: dict[str, dict[str, str]] = {}
-    allowed_statuses = {"blocked": "阻断", "not_run": "未运行"}
     for requirement_id, raw_requirement in sorted(requirements.items()):
         if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", requirement_id) is None:
             raise BundleError(f"external requirement id is invalid: {requirement_id!r}")
         requirement = _object(raw_requirement, f"external_requirements.{requirement_id}")
         _exact_keys(requirement, {"status", "status_zh"}, {"reason_zh", "blocked_by"}, f"external_requirements.{requirement_id}")
-        status = _text(requirement["status"], f"external_requirements.{requirement_id}.status")
+        status = _text(requirement["status"], f"external_requirements.{requirement_id}.status").lower()
         status_zh = _text(requirement["status_zh"], f"external_requirements.{requirement_id}.status_zh")
-        if status not in allowed_statuses or status_zh != allowed_statuses[status]:
-            raise BundleError(f"external_requirements.{requirement_id} must be blocked/阻断 or not_run/未运行")
+        if status not in STATUS_VOCABULARY or status_zh not in STATUS_VOCABULARY[status]:
+            raise BundleError(
+                f"external_requirements.{requirement_id} has an unsupported or inconsistent status/status_zh"
+            )
         clean_requirement = {"status": status, "status_zh": status_zh}
         if "reason_zh" in requirement:
             clean_requirement["reason_zh"] = _text(requirement["reason_zh"], f"external_requirements.{requirement_id}.reason_zh")
@@ -452,14 +521,15 @@ def validate_inputs(site_path: Path, release_path: Path) -> dict[str, Any]:
 def _copy_template(source: Path, destination: Path, replacements: dict[str, str]) -> None:
     if not source.is_dir() or source.is_symlink():
         raise BundleError(f"required product-kit template directory is unavailable: {source}")
-    destination.mkdir(parents=True)
+    destination.mkdir(parents=True, mode=0o755)
+    os.chmod(destination, 0o755)
     for path in sorted(source.rglob("*")):
         relative = path.relative_to(source)
         target = destination / relative
         if path.is_symlink():
             raise BundleError(f"product-kit templates must not contain symlinks: {path}")
         if path.is_dir():
-            target.mkdir()
+            target.mkdir(mode=0o755)
             continue
         data = path.read_bytes()
         if SECRET_BYTES_RE.search(data):
@@ -468,13 +538,15 @@ def _copy_template(source: Path, destination: Path, replacements: dict[str, str]
             text = data.decode("utf-8")
         except UnicodeDecodeError:
             target.write_bytes(data)
-            continue
-        for marker, replacement in replacements.items():
-            text = text.replace(marker, replacement)
-        if "{{" in text or "}}" in text:
-            raise BundleError(f"unresolved product-kit placeholder in {path}")
-        target.write_text(text, encoding="utf-8")
-        target.chmod(path.stat().st_mode & 0o777)
+        else:
+            for marker, replacement in replacements.items():
+                text = text.replace(marker, replacement)
+            if path.name == "PACKAGE-VERSION":
+                text = replacements["{{VERSION}}"] + "\n"
+            if "{{" in text or "}}" in text:
+                raise BundleError(f"unresolved product-kit placeholder in {path}")
+            target.write_text(text, encoding="utf-8")
+        target.chmod(0o755 if path.stat().st_mode & 0o111 else 0o644)
 
 
 def _entry_script(root_expression: str, action: str, role: str, hostname: str) -> str:
@@ -487,7 +559,7 @@ exec python3 "$ROOT/wizard.py" {action} --package-root "$ROOT/product-kit" --rol
 
 def _write_host_entry_points(host_root: Path, role: str, hostname: str) -> None:
     scripts = host_root / "scripts"
-    scripts.mkdir()
+    _mkdir(scripts)
     root_expression = '$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)'
     nested_root_expression = '$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)'
     for filename, action in CHINESE_ENTRY_POINTS.items():
@@ -524,6 +596,139 @@ def _write_checksums(root: Path, destination: Path, excluded: set[Path] | None =
     ]
     lines = [f"{_sha256(path)}  {path.relative_to(root).as_posix()}" for path in sorted(paths)]
     destination.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    destination.chmod(0o644)
+
+
+def _mkdir(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True, mode=0o755)
+    path.chmod(0o755)
+
+
+def _write_text(path: Path, text: str, mode: int = 0o644) -> None:
+    path.write_text(text, encoding="utf-8")
+    path.chmod(mode)
+
+
+def _status_passed(status: str) -> bool:
+    return status in {"passed", "pass", "success"}
+
+
+def _recipient_verify_script() -> str:
+    return '''#!/bin/sh
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PINNED_KEY=${1:-}
+PINNED_FINGERPRINT=${RELEASE_KEY_SHA256:-}
+[ -f "$ROOT/SHA256SUMS" ] || { echo "missing SHA256SUMS" >&2; exit 2; }
+(
+  cd "$ROOT"
+  sha256sum --check --strict SHA256SUMS
+)
+if [ -f "$ROOT/SHA256SUMS.sig" ]; then
+  command -v openssl >/dev/null 2>&1 || { echo "openssl is required for signature verification" >&2; exit 2; }
+  KEY="$ROOT/release-public-key.pem"
+  TRUST=untrusted
+  if [ -n "$PINNED_KEY" ]; then
+    [ -f "$PINNED_KEY" ] || { echo "pinned public key is unavailable" >&2; exit 2; }
+    cmp -s "$PINNED_KEY" "$KEY" || { echo "bundle key differs from externally pinned key" >&2; exit 2; }
+    KEY="$PINNED_KEY"
+    TRUST=trusted_pinned_key
+  elif [ -n "$PINNED_FINGERPRINT" ]; then
+    ACTUAL=$(sha256sum "$KEY" | cut -d' ' -f1)
+    [ "$ACTUAL" = "$PINNED_FINGERPRINT" ] || { echo "bundle key fingerprint differs from external pin" >&2; exit 2; }
+    TRUST=trusted_pinned_fingerprint
+  fi
+  openssl pkeyutl -verify -rawin -pubin -inkey "$KEY" -in "$ROOT/SHA256SUMS" -sigfile "$ROOT/SHA256SUMS.sig" >/dev/null
+  echo "signature=valid trust=$TRUST"
+else
+  echo "signature=absent trust=unsigned"
+fi
+'''
+
+
+def _generated_image_loader() -> str:
+    """Runtime loader for strict OCI archives carrying a standard ref.name tag."""
+    return r'''#!/usr/bin/env python3
+from __future__ import annotations
+import argparse, hashlib, json, re, subprocess, sys
+from pathlib import Path
+
+class ImageError(Exception):
+    pass
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+def parse_manifest(path: Path):
+    try:
+        obj = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ImageError(f"无法读取镜像清单：{exc}") from exc
+    if not isinstance(obj, dict) or obj.get("schema_version") != "resolver-identity-role-image-lock-v1":
+        raise ImageError("镜像清单 schema_version 不受支持")
+    entries = obj.get("images")
+    if not isinstance(entries, list) or not entries:
+        raise ImageError("镜像清单 images 必须是非空数组")
+    parsed = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ImageError("镜像清单条目必须是对象")
+        filename, checksum = entry.get("archive"), entry.get("archive_sha256")
+        reference, import_reference, digest = entry.get("reference"), entry.get("import_reference"), entry.get("digest")
+        if not isinstance(filename, str) or Path(filename).name != filename:
+            raise ImageError("归档文件名必须是单一安全文件名")
+        if not isinstance(checksum, str) or re.fullmatch(r"[0-9a-f]{64}", checksum) is None:
+            raise ImageError(f"归档校验值不合法：{filename}")
+        if not isinstance(reference, str) or not isinstance(digest, str) or not reference.endswith("@" + digest):
+            raise ImageError(f"摘要引用不合法：{filename}")
+        repository = reference.split("@", 1)[0]
+        expected_import = f"{repository}:ri-{digest.split(':', 1)[1][:16]}"
+        if import_reference != expected_import:
+            raise ImageError(f"OCI 导入引用不合法：{filename}")
+        parsed.append((path.parent / filename, checksum, reference, import_reference))
+    return parsed
+
+def inspect_exact(reference: str) -> None:
+    result = subprocess.run(
+        ["docker", "image", "inspect", reference, "--format", "{{json .RepoTags}}"],
+        check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    try:
+        tags = json.loads(result.stdout.strip())
+    except json.JSONDecodeError as exc:
+        raise ImageError(f"docker inspect 返回不可解析：{exc}") from exc
+    if not isinstance(tags, list) or reference not in tags:
+        raise ImageError(f"加载后未找到 OCI ref.name 指定的精确镜像：{reference}")
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="严格校验并加载离线 OCI 镜像")
+    parser.add_argument("directory", type=Path)
+    parser.add_argument("--verify-only", action="store_true")
+    args = parser.parse_args()
+    try:
+        entries = parse_manifest(args.directory.resolve() / "image-lock.json")
+        for archive, expected, _, _ in entries:
+            if not archive.is_file() or archive.is_symlink() or sha256(archive) != expected:
+                raise ImageError(f"归档校验失败：{archive.name}")
+        if args.verify_only:
+            return 0
+        subprocess.run(["docker", "version"], check=True, stdout=subprocess.DEVNULL)
+        for archive, _, reference, import_reference in entries:
+            subprocess.run(["docker", "load", "--input", str(archive)], check=True)
+            inspect_exact(import_reference)
+            print(f"加载后精确引用校验通过：{import_reference}；发布摘要：{reference}")
+        return 0
+    except (ImageError, OSError, subprocess.CalledProcessError) as exc:
+        print(f"错误代码：IMG002\n原因：{exc}\n建议：停止安装并重新取得受信离线镜像。", file=sys.stderr)
+        return 2
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+'''
 
 
 def _spdx(name: str, version: str, commit: str, images: list[dict[str, str]]) -> dict[str, Any]:
@@ -590,6 +795,7 @@ def _cyclonedx(name: str, version: str, commit: str, images: list[dict[str, str]
 
 
 def _tar_reproducible(source: Path, destination: Path) -> None:
+    source.chmod(0o755)
     with destination.open("wb") as raw:
         with gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as zipped:
             with tarfile.open(fileobj=zipped, mode="w", format=tarfile.PAX_FORMAT) as archive:
@@ -599,6 +805,7 @@ def _tar_reproducible(source: Path, destination: Path) -> None:
                     info.uid = info.gid = 0
                     info.uname = info.gname = "root"
                     info.mtime = 0
+                    info.mode = 0o755 if path.is_dir() or (path.is_file() and path.stat().st_mode & 0o111) else 0o644
                     if path.is_file():
                         with path.open("rb") as handle:
                             archive.addfile(info, handle)
@@ -643,16 +850,15 @@ def _openssl_sign(key: Path, target: Path, signature: Path, public_key: Path) ->
 def _prepare_signing_public_key(root: Path, key: Path | None) -> None:
     if key is None:
         return
-    signature_dir = root / "签名"
-    signature_dir.mkdir(exist_ok=True)
-    _openssl_public_key(key, signature_dir / "ed25519-public.pem")
+    _openssl_public_key(key, root / "release-public-key.pem")
+    (root / "release-public-key.pem").chmod(0o644)
 
 
 def _sign_checksums(root: Path, key: Path | None) -> bool:
     if key is None:
         return False
-    signature_dir = root / "签名"
-    _openssl_sign(key, root / "SHA256SUMS", signature_dir / "SHA256SUMS.ed25519", signature_dir / "ed25519-public.pem")
+    _openssl_sign(key, root / "SHA256SUMS", root / "SHA256SUMS.sig", root / "release-public-key.pem")
+    (root / "SHA256SUMS.sig").chmod(0o644)
     return True
 
 
@@ -694,7 +900,7 @@ def _render_pdfs(product_kit: Path, output: Path, image: str | None) -> tuple[bo
     inspect = subprocess.run([runtime, "image", "inspect", image], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if inspect.returncode != 0:
         return False, "PDF_BLOCKED: fixed PDF builder image is not present in the offline runtime"
-    output.mkdir()
+    output.mkdir(exist_ok=True)
     for document in documents:
         result = subprocess.run(
             [runtime, "run", "--rm", "--network=none", "--pull=never", "--read-only", "-e", "SOURCE_DATE_EPOCH=0", "-v", f"{document.resolve()}:/input.md:ro", "-v", f"{output.resolve()}:/output", image, "/input.md", "-o", f"/output/{document.stem}.pdf"],
@@ -734,28 +940,52 @@ def _verify_checksum_file(root: Path, checksum_path: Path, ignored: set[str] | N
             raise BundleError(f"checksum mismatch: {name}")
 
 
-def _verify_signature(root: Path) -> bool:
-    signature = root / "签名" / "SHA256SUMS.ed25519"
-    public = root / "签名" / "ed25519-public.pem"
-    if not signature.exists() and not public.exists():
-        return False
-    if not signature.is_file() or not public.is_file():
+def _verify_signature(root: Path, trusted_public_key: Path | None = None, trusted_fingerprint: str | None = None) -> dict[str, Any]:
+    signature = root / "SHA256SUMS.sig"
+    bundled_public = root / "release-public-key.pem"
+    if not signature.exists() and not bundled_public.exists():
+        if trusted_public_key is not None or trusted_fingerprint is not None:
+            raise BundleError("a trust pin was supplied but the delivery is unsigned")
+        return {"signed": False, "signature_valid": False, "trust": "unsigned"}
+    if not signature.is_file() or not bundled_public.is_file() or signature.is_symlink() or bundled_public.is_symlink():
         raise BundleError("signature output is incomplete")
     openssl = shutil.which("openssl")
     if openssl is None:
         raise BundleError("openssl is required to verify the supplied Ed25519 signature")
-    result = subprocess.run([openssl, "pkeyutl", "-verify", "-rawin", "-pubin", "-inkey", str(public), "-in", str(root / "SHA256SUMS"), "-sigfile", str(signature)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    verification_key = bundled_public
+    trust = "self_signed/untrusted"
+    if trusted_public_key is not None:
+        if not trusted_public_key.is_file() or trusted_public_key.is_symlink():
+            raise BundleError("externally pinned public key must be a regular file")
+        if trusted_public_key.read_bytes() != bundled_public.read_bytes():
+            raise BundleError("bundle public key does not match externally pinned public key")
+        verification_key = trusted_public_key
+        trust = "trusted_pinned_key"
+    if trusted_fingerprint is not None:
+        if re.fullmatch(r"[0-9a-f]{64}", trusted_fingerprint) is None:
+            raise BundleError("trusted public key fingerprint must be lowercase SHA-256")
+        if hashlib.sha256(bundled_public.read_bytes()).hexdigest() != trusted_fingerprint:
+            raise BundleError("bundle public key does not match externally pinned fingerprint")
+        trust = "trusted_pinned_fingerprint" if trusted_public_key is None else "trusted_pinned_key_and_fingerprint"
+    result = subprocess.run([openssl, "pkeyutl", "-verify", "-rawin", "-pubin", "-inkey", str(verification_key), "-in", str(root / "SHA256SUMS"), "-sigfile", str(signature)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if result.returncode != 0:
         raise BundleError("Ed25519 signature verification failed")
-    return True
+    return {"signed": True, "signature_valid": True, "trust": trust}
 
 
-def verify_delivery(root: Path, *, allow_blocked: bool = False) -> dict[str, Any]:
+def verify_delivery(
+    root: Path,
+    *,
+    allow_blocked: bool = False,
+    trusted_public_key: Path | None = None,
+    trusted_fingerprint: str | None = None,
+) -> dict[str, Any]:
     if not root.is_dir() or root.is_symlink():
         raise BundleError("delivery path must be a regular directory")
-    signature_files = {"签名/SHA256SUMS.ed25519"}
-    _verify_checksum_file(root, root / "SHA256SUMS", signature_files if (root / "签名").exists() else set())
-    signed = _verify_signature(root)
+    signature_files = {"SHA256SUMS.sig"}
+    _verify_checksum_file(root, root / "SHA256SUMS", signature_files if (root / "SHA256SUMS.sig").exists() else set())
+    signature_result = _verify_signature(root, trusted_public_key, trusted_fingerprint)
+    signed = signature_result["signed"]
     evidence = _object(load_json(root / "证据.json", "delivery evidence"), "delivery evidence")
     if evidence.get("schema_version") != EVIDENCE_SCHEMA:
         raise BundleError("delivery evidence schema is invalid")
@@ -766,11 +996,20 @@ def verify_delivery(root: Path, *, allow_blocked: bool = False) -> dict[str, Any
     if evidence.get("real_server_deployed") is not False or evidence.get("production_traffic_enabled") is not False:
         raise BundleError("bundle evidence must not claim real deployment or production traffic")
     checks = _object(evidence.get("checks"), "delivery evidence checks")
+    missing_checks = REQUIRED_EXTERNAL_ACCEPTANCE_IDS - set(checks)
+    if missing_checks:
+        raise BundleError("delivery evidence omits mandatory acceptance IDs: " + ", ".join(sorted(missing_checks)))
     for check_id, raw_check in checks.items():
         check = _object(raw_check, f"delivery evidence checks.{check_id}")
-        if check.get("status") not in {"blocked", "not_run"} or check.get("status_zh") not in {"阻断", "未运行"}:
+        status = check.get("status")
+        status_zh = check.get("status_zh")
+        if status not in STATUS_VOCABULARY or status_zh not in STATUS_VOCABULARY[status]:
             raise BundleError(f"delivery evidence check has an invalid status: {check_id}")
-    archives = sorted((root / "主机包").glob("*.tar.gz"))
+    mandatory_passed = all(_status_passed(checks[item]["status"]) for item in REQUIRED_EXTERNAL_ACCEPTANCE_IDS)
+    all_checks_passed = mandatory_passed and all(_status_passed(item["status"]) for item in checks.values())
+    if evidence.get("delivery_ready") is not (all_checks_passed and not evidence.get("blockers")):
+        raise BundleError("delivery_ready is inconsistent with mandatory acceptance checks and blockers")
+    archives = sorted((root / "03-主机包").glob("*.tar.gz"))
     if len(archives) != 6:
         raise BundleError("delivery must contain exactly six host archives")
     host_records = evidence.get("hosts")
@@ -857,12 +1096,15 @@ def verify_delivery(root: Path, *, allow_blocked: bool = False) -> dict[str, Any
                 lock_digests: list[str] = []
                 for lock_index, raw_image in enumerate(lock_images):
                     image = _object(raw_image, f"{hostname} image lock[{lock_index}]")
-                    _exact_keys(image, {"key", "reference", "digest", "archive", "archive_sha256"}, set(), f"{hostname} image lock[{lock_index}]")
+                    _exact_keys(image, {"key", "reference", "import_reference", "digest", "archive", "archive_sha256"}, set(), f"{hostname} image lock[{lock_index}]")
                     key = _text(image["key"], f"{hostname} image key")
                     reference = _text(image["reference"], f"{hostname} image reference")
+                    import_reference = _text(image["import_reference"], f"{hostname} image import reference")
                     digest = _text(image["digest"], f"{hostname} image digest")
                     if key not in ROLE_IMAGES[role] or IMAGE_REF_RE.fullmatch(reference) is None or not reference.endswith("@" + digest):
                         raise BundleError(f"host archive has an invalid image lock: {hostname}")
+                    if import_reference != _import_reference(reference.split("@", 1)[0], digest):
+                        raise BundleError(f"host archive has invalid OCI import reference metadata: {hostname}")
                     archive_member = prefix + "images/" + _safe_relative(_text(image["archive"], "image archive path"), "image archive path").as_posix()
                     image_data = files.get(archive_member)
                     if image_data is None or hashlib.sha256(image_data).hexdigest() != image["archive_sha256"]:
@@ -893,10 +1135,10 @@ def verify_delivery(root: Path, *, allow_blocked: bool = False) -> dict[str, Any
         raise BundleError("delivery evidence blockers must be an array of strings")
     if blockers and not allow_blocked:
         raise BundleError("delivery verifies structurally but remains blocked: " + "; ".join(blockers))
-    blocked = bool(blockers) or any(item["status"] in {"blocked", "not_run"} for item in checks.values())
+    blocked = bool(blockers) or any(not _status_passed(item["status"]) for item in checks.values())
     if blocked and not allow_blocked:
-        raise BundleError("delivery verifies structurally but has blocked/not_run checks")
-    return {"verified": True, "signed": signed, "blocked": blocked, "blockers": blockers}
+        raise BundleError("delivery verifies structurally but has non-passed checks")
+    return {"verified": True, **signature_result, "blocked": blocked, "blockers": blockers}
 
 
 def build_delivery(
@@ -933,13 +1175,15 @@ def build_delivery(
         marker = destination / ".domain-center-easy-bundle"
         if not marker.is_file() or marker.read_text(encoding="ascii") != SCHEMA + "\n":
             raise BundleError("refusing to replace a directory without the managed bundle marker")
-    output_parent.mkdir(parents=True, exist_ok=True)
+    output_parent.mkdir(parents=True, exist_ok=True, mode=0o755)
+    output_parent.chmod(0o755)
     with tempfile.TemporaryDirectory(prefix="domain-center-easy-", dir=output_parent) as temporary:
         root = Path(temporary) / delivery_name
-        root.mkdir()
-        (root / ".domain-center-easy-bundle").write_text(SCHEMA + "\n", encoding="ascii")
-        host_archives = root / "主机包"
-        host_archives.mkdir()
+        _mkdir(root)
+        for directory in TOP_LEVEL_DIRECTORIES:
+            _mkdir(root / directory)
+        _write_text(root / ".domain-center-easy-bundle", SCHEMA + "\n")
+        host_archives = root / "03-主机包"
         all_image_records = [
             {"key": key, "digest": image["digest"], "reference": image["reference"], "archive_sha256": image["archive_sha256"]}
             for key, image in sorted(validated["images"].items())
@@ -955,7 +1199,7 @@ def build_delivery(
                 lock_images = []
                 for key in ROLE_IMAGES[role]:
                     image = validated["images"][key]
-                    lock_images.append({"key": key, "reference": image["reference"], "digest": image["digest"], "archive": f"{key}.oci.tar", "archive_sha256": image["archive_sha256"]})
+                    lock_images.append({"key": key, "reference": image["reference"], "import_reference": image["import_reference"], "digest": image["digest"], "archive": f"{key}.oci.tar", "archive_sha256": image["archive_sha256"]})
                 replacements = {
                     "{{HOSTNAME}}": hostname,
                     "{{ROLE}}": role,
@@ -966,41 +1210,47 @@ def build_delivery(
                     replacements[f"{{{{IMAGE_{image['key'].upper().replace('-', '_')}}}}}"] = image["reference"]
                 _copy_template(product_kit / ROLE_TEMPLATE[role], template_target, replacements)
                 common_target = product_root / "common"
-                common_target.mkdir()
+                _mkdir(common_target)
                 for common_name in ("lifecycle.py", "load_images.py", "role_entry.py"):
                     common_source = product_kit / "common" / common_name
                     if not common_source.is_file() or common_source.is_symlink():
                         raise BundleError(f"required package runtime is unavailable: {common_source}")
-                    shutil.copy2(common_source, common_target / common_name)
+                    if common_name == "load_images.py":
+                        _write_text(common_target / common_name, _generated_image_loader())
+                    else:
+                        shutil.copy2(common_source, common_target / common_name)
+                        (common_target / common_name).chmod(0o644)
                 wizard_source = Path(__file__).resolve().parents[1] / "installer" / "wizard.py"
                 if not wizard_source.is_file() or wizard_source.is_symlink():
                     raise BundleError(f"required package wizard is unavailable: {wizard_source}")
                 shutil.copy2(wizard_source, host_root / "wizard.py")
+                (host_root / "wizard.py").chmod(0o644)
                 image_dir = host_root / "images"
-                image_dir.mkdir()
+                _mkdir(image_dir)
                 for image in lock_images:
                     shutil.copyfile(validated["images"][image["key"]]["archive"], image_dir / image["archive"])
+                    (image_dir / image["archive"]).chmod(0o644)
                 lock = {"schema_version": LOCK_SCHEMA, "hostname": hostname, "role": role, "images": lock_images}
                 _write_json(image_dir / "image-lock.json", lock)
                 metadata = host_root / "metadata"
-                metadata.mkdir()
+                _mkdir(metadata)
                 host_metadata = {"schema_version": SCHEMA, "expected_host": hostname, "hostname": hostname, "role": role, "version": validated["version"], "source_commit": validated["source_commit"], "release_manifest_sha256": validated["release_manifest_sha256"], "platform": validated["platform"]}
                 _write_json(host_root / "expected-host.json", host_metadata)
                 _write_json(metadata / "host.json", host_metadata)
                 _write_json(metadata / "sbom.spdx.json", _spdx(hostname, validated["version"], validated["source_commit"], lock_images))
                 _write_json(metadata / "sbom.cdx.json", _cyclonedx(hostname, validated["version"], validated["source_commit"], lock_images))
-                (host_root / "README-请先阅读.txt").write_text(_host_readme(hostname, role), encoding="utf-8")
+                _write_text(host_root / "README-请先阅读.txt", _host_readme(hostname, role))
                 _write_host_entry_points(host_root, role, hostname)
                 _scan_output(host_root)
                 _write_checksums(host_root, host_root / "SHA256SUMS")
                 archive_path = host_archives / f"{hostname}.tar.gz"
                 _tar_reproducible(host_root, archive_path)
-                host_evidence.append({"hostname": hostname, "role": role, "archive": f"主机包/{archive_path.name}", "sha256": _sha256(archive_path), "images": [item["digest"] for item in lock_images]})
-        sbom_dir = root / "软件物料清单"
-        sbom_dir.mkdir()
+                archive_path.chmod(0o644)
+                host_evidence.append({"hostname": hostname, "role": role, "archive": f"03-主机包/{archive_path.name}", "sha256": _sha256(archive_path), "images": [item["digest"] for item in lock_images]})
+        sbom_dir = root / "04-软件物料清单"
         _write_json(sbom_dir / "site.spdx.json", _spdx(delivery_name, validated["version"], validated["source_commit"], all_image_records))
         _write_json(sbom_dir / "site.cdx.json", _cyclonedx(delivery_name, validated["version"], validated["source_commit"], all_image_records))
-        pdf_ready, pdf_detail = _render_pdfs(product_kit, root / "PDF手册", pdf_builder_image)
+        pdf_ready, pdf_detail = _render_pdfs(product_kit, root / "05-PDF手册", pdf_builder_image)
         blockers = []
         checks: dict[str, dict[str, str]] = dict(validated["external_requirements"])
         if signing_key is None:
@@ -1017,22 +1267,27 @@ def build_delivery(
             "host_count": 6,
             "hosts": host_evidence,
             "oci_validation": {"passed": True, "strict_single_platform": validated["platform"], "images": all_image_records},
-            "sbom": {"spdx_json": "软件物料清单/site.spdx.json", "cyclonedx_json": "软件物料清单/site.cdx.json"},
+            "sbom": {"spdx_json": "04-软件物料清单/site.spdx.json", "cyclonedx_json": "04-软件物料清单/site.cdx.json"},
             "signing": {"signed": signing_key is not None, "algorithm": "Ed25519", "implementation": "openssl" if signing_key is not None else None},
             "pdf": {"ready": pdf_ready, "builder_image": pdf_builder_image, "detail": pdf_detail},
             "runtime_policy": {"offline_only": True, "runtime_pulls_forbidden": True, "latest_forbidden": True, "loopback_image_references_forbidden": True},
+            "topology_note": "R2/R3 configuration has no Wrapper service. The shared Rust image may contain the Wrapper binary; configuration intentionally does not make it runnable.",
             "blockers": blockers,
             "checks": checks,
-            "delivery_ready": not blockers and not any(item["status"] in {"blocked", "not_run"} for item in checks.values()),
+            "delivery_ready": not blockers and all(_status_passed(item["status"]) for item in checks.values()),
             "real_server_deployed": False,
             "production_traffic_enabled": False,
-            "verification_command": "python3 tools/build_domain_center_site_bundle.py verify <delivery-directory>",
+            "verification_command": "./recipient-verify.sh /offline/path/to/pinned-release-public-key.pem",
         }
-        _write_json(root / "证据.json", evidence)
-        (root / "验证命令.txt").write_text("python3 tools/build_domain_center_site_bundle.py verify \"<域名中心简易离线交付包目录>\"\n", encoding="utf-8")
+        _write_json(root / "12-验收证据" / "证据.json", evidence)
+        shutil.copyfile(root / "12-验收证据" / "证据.json", root / "证据.json")
+        (root / "证据.json").chmod(0o644)
+        _write_text(root / "00-开始" / "验证命令.txt", "./recipient-verify.sh /离线路径/已固定-release-public-key.pem\n")
+        _write_text(root / "recipient-verify.sh", _recipient_verify_script(), 0o755)
         _prepare_signing_public_key(root, signing_key)
         _scan_output(root)
-        _write_checksums(root, root / "SHA256SUMS")
+        checksum_exclusions = {root / "SHA256SUMS.sig"}
+        _write_checksums(root, root / "SHA256SUMS", checksum_exclusions)
         _sign_checksums(root, signing_key)
         if _inventory_tree(product_kit) != product_kit_before:
             raise BundleError("product-kit changed during generation; generator never mutates product-kit")
@@ -1042,7 +1297,7 @@ def build_delivery(
     return destination
 
 
-def _make_test_oci(path: Path, digest_out: dict[str, str]) -> None:
+def _make_test_oci(path: Path, digest_out: dict[str, str], repository: str | None = None) -> None:
     layer_stream = io.BytesIO()
     with tarfile.open(fileobj=layer_stream, mode="w") as layer:
         data = b"offline\n"
@@ -1065,6 +1320,7 @@ def _make_test_oci(path: Path, digest_out: dict[str, str]) -> None:
                     "digest": f"sha256:{manifest_digest}",
                     "size": len(manifest_data),
                     "platform": {"os": "linux", "architecture": "amd64"},
+                    **({"annotations": {OCI_REF_ANNOTATION: _import_reference(repository, f"sha256:{manifest_digest}")}} if repository else {}),
                 }
             ],
         },
@@ -1086,7 +1342,7 @@ def self_test() -> None:
         root = Path(temporary)
         oci = root / "image.tar"
         digest: dict[str, str] = {}
-        _make_test_oci(oci, digest)
+        _make_test_oci(oci, digest, "registry.internal/example/test")
         validate_oci_archive(oci, f"sha256:{digest['digest']}", {"os": "linux", "architecture": "amd64"})
         try:
             load_json_bytes(b'{"a":1,"a":2}', "duplicate test")
@@ -1097,7 +1353,7 @@ def self_test() -> None:
         release = {"version": "test-1", "git_commit": "a" * 40, "images": {key: f"127.0.0.1:5000/example/{key}@sha256:{digest['digest']}" for key in EXPECTED_IMAGE_KEYS}}
         release_path = root / "release.json"
         _write_json(release_path, release)
-        site = {"schema_version": SCHEMA, "release": {"version": "test-1", "source_commit": "a" * 40, "manifest_sha256": _sha256(release_path)}, "platform": {"os": "linux", "architecture": "amd64"}, "hosts": [{"hostname": "mgmt-01", "role": "management"}, {"hostname": "node-a-01", "role": "norn-a"}, {"hostname": "node-b-01", "role": "norn-b"}, {"hostname": "resolver-r1", "role": "r1"}, {"hostname": "resolver-r2", "role": "r2"}, {"hostname": "resolver-r3", "role": "r3"}], "images": {key: {"archive": str(oci), "repository": f"registry.internal/example/{key}"} for key in EXPECTED_IMAGE_KEYS}, "external_requirements": {"production_cutover": {"status": "not_run", "status_zh": "未运行", "blocked_by": "external_approval"}}}
+        site = {"schema_version": SCHEMA, "release": {"version": "test-1", "source_commit": "a" * 40, "manifest_sha256": _sha256(release_path)}, "platform": {"os": "linux", "architecture": "amd64"}, "hosts": [{"hostname": "mgmt-01", "role": "management"}, {"hostname": "node-a-01", "role": "norn-a"}, {"hostname": "node-b-01", "role": "norn-b"}, {"hostname": "resolver-r1", "role": "r1"}, {"hostname": "resolver-r2", "role": "r2"}, {"hostname": "resolver-r3", "role": "r3"}], "images": {key: {"archive": str(oci), "repository": "registry.internal/example/test"} for key in EXPECTED_IMAGE_KEYS}, "external_requirements": {requirement_id: {"status": "not_run", "status_zh": "未运行", "blocked_by": "external_approval"} for requirement_id in REQUIRED_EXTERNAL_ACCEPTANCE_IDS}}
         site_path = root / "site.json"
         _write_json(site_path, site)
         kit = root / "product-kit"
@@ -1130,13 +1386,16 @@ def _parser() -> argparse.ArgumentParser:
         child.add_argument("--release-manifest", type=Path, required=True)
         if name == "build":
             child.add_argument("--product-kit", type=Path, required=True)
-            child.add_argument("--output", "--output-parent", dest="output", type=Path, required=True, help="parent directory; creates 域名中心简易离线交付包_<version>")
+            child.add_argument("--output", "--output-parent", dest="output", type=Path, required=True, help="parent directory; creates resolver-identity-domain-center-easy-install-<version>")
             child.add_argument("--signing-key", type=Path, help="external Ed25519 private-key PEM; never copied")
             child.add_argument("--pdf-builder-image", help="locally present, digest-pinned Pandoc-compatible image")
             child.add_argument("--force", action="store_true")
     verify = subparsers.add_parser("verify")
     verify.add_argument("delivery", type=Path)
     verify.add_argument("--allow-blocked", action="store_true", help="return success for structurally valid unsigned/PDF-blocked output")
+    trust = verify.add_mutually_exclusive_group()
+    trust.add_argument("--trusted-public-key", type=Path, help="externally distributed pinned Ed25519 public-key PEM")
+    trust.add_argument("--trusted-key-sha256", help="externally pinned lowercase SHA-256 of release-public-key.pem")
     subparsers.add_parser("self-test")
     return parser
 
@@ -1152,7 +1411,12 @@ def main() -> int:
             evidence = load_json(destination / "证据.json", "delivery evidence")
             print(json.dumps({"built": True, "delivery": str(destination), "delivery_ready": evidence["delivery_ready"], "blockers": evidence["blockers"]}, ensure_ascii=False, sort_keys=True))
         elif arguments.command == "verify":
-            print(json.dumps(verify_delivery(arguments.delivery.resolve(), allow_blocked=arguments.allow_blocked), ensure_ascii=False, sort_keys=True))
+            print(json.dumps(verify_delivery(
+                arguments.delivery.resolve(),
+                allow_blocked=arguments.allow_blocked,
+                trusted_public_key=arguments.trusted_public_key.resolve() if arguments.trusted_public_key else None,
+                trusted_fingerprint=arguments.trusted_key_sha256,
+            ), ensure_ascii=False, sort_keys=True))
         else:
             self_test()
             print(json.dumps({"self_test": "passed"}))

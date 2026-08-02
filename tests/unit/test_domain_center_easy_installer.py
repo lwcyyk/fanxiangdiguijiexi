@@ -49,9 +49,10 @@ def _fixture(tmp_path: Path) -> tuple[Path, Path]:
     for key in sorted(generator.EXPECTED_IMAGE_KEYS):
         archive = tmp_path / f"{key}.oci.tar"
         digest: dict[str, str] = {}
-        generator._make_test_oci(archive, digest)
+        repository = f"registry.internal/domain-center/{key}"
+        generator._make_test_oci(archive, digest, repository)
         digests[key] = digest["digest"]
-        images[key] = {"archive": archive.name, "repository": f"registry.internal/domain-center/{key}"}
+        images[key] = {"archive": archive.name, "repository": repository}
         release_images[key] = f"source.invalid/domain-center/{key}@sha256:{digest['digest']}"
     release = {"version": "0.3.0-test", "git_commit": "a" * 40, "images": release_images}
     release_path = tmp_path / "release-manifest.json"
@@ -74,8 +75,13 @@ def _fixture(tmp_path: Path) -> tuple[Path, Path]:
         ],
         "images": images,
         "external_requirements": {
-            "resolver_trace": {"status": "blocked", "status_zh": "阻断", "reason_zh": "等待真实 Resolver Trace"},
-            "production_cutover": {"status": "not_run", "status_zh": "未运行", "blocked_by": "resolver_trace"},
+            requirement_id: {
+                "status": "blocked" if requirement_id == "resolver_trace" else "not_run",
+                "status_zh": "阻断" if requirement_id == "resolver_trace" else "未运行",
+                **({"reason_zh": "等待真实 Resolver Trace"} if requirement_id == "resolver_trace" else {}),
+                **({"blocked_by": "resolver_trace"} if requirement_id == "production_cutover" else {}),
+            }
+            for requirement_id in sorted(generator.REQUIRED_EXTERNAL_ACCEPTANCE_IDS)
         },
     }
     site_path = tmp_path / "site-manifest.json"
@@ -89,7 +95,7 @@ def _build(tmp_path: Path, name: str = "out") -> Path:
 
 
 def _archives(delivery: Path) -> list[Path]:
-    return sorted((delivery / "主机包").glob("*.tar.gz"))
+    return sorted((delivery / "03-主机包").glob("*.tar.gz"))
 
 
 def _archive_files(archive: Path) -> dict[str, bytes]:
@@ -131,7 +137,7 @@ def test_strict_oci_validation_rejects_wrong_release_digest(tmp_path: Path):
 def test_real_build_is_deterministic_and_named(tmp_path: Path):
     first = _build(tmp_path / "first")
     second = _build(tmp_path / "second")
-    assert first.name == "域名中心简易离线交付包_0.3.0-test"
+    assert first.name == "resolver-identity-domain-center-easy-install-0.3.0-test"
     assert [item.name for item in _archives(first)] == [item.name for item in _archives(second)]
     assert [item.read_bytes() for item in _archives(first)] == [item.read_bytes() for item in _archives(second)]
     assert generator.verify_delivery(first, allow_blocked=True)["verified"] is True
@@ -158,7 +164,10 @@ def test_host_archives_are_standalone_with_exact_entry_points(tmp_path: Path):
         assert lock["schema_version"] == generator.LOCK_SCHEMA
         for image in lock["images"]:
             assert prefix + "images/" + image["archive"] in files
-        assert b"product-kit" in files[prefix + "wizard.py"]
+            assert image["import_reference"] == generator._import_reference(
+                image["reference"].split("@", 1)[0], image["digest"]
+            )
+        assert files[prefix + f"product-kit/{metadata['role']}/PACKAGE-VERSION"] == b"0.3.0-test\n"
     assert roles == set(generator.ROLE_COUNTS)
 
 
@@ -287,10 +296,100 @@ def test_evidence_preserves_external_statuses_and_false_deployment_claims(tmp_pa
     assert evidence["delivery_ready"] is False
 
 
+def test_mandatory_acceptance_ids_cannot_be_omitted(tmp_path: Path):
+    site_path, release_path = _fixture(tmp_path)
+    site = json.loads(site_path.read_text(encoding="utf-8"))
+    del site["external_requirements"]["real_oci"]
+    _write_json(site_path, site)
+    with pytest.raises(generator.BundleError, match="real_oci"):
+        generator.validate_inputs(site_path, release_path)
+
+
+def test_user_status_vocabulary_allowed_but_all_mandatory_must_pass(tmp_path: Path):
+    site_path, release_path = _fixture(tmp_path)
+    site = json.loads(site_path.read_text(encoding="utf-8"))
+    for check in site["external_requirements"].values():
+        check.clear()
+        check.update({"status": "passed", "status_zh": "已通过"})
+    site["external_requirements"]["capacity"] = {"status": "pending", "status_zh": "待验收"}
+    _write_json(site_path, site)
+    delivery = generator.build_delivery(site_path, release_path, PRODUCT_KIT, tmp_path / "out", None, None)
+    evidence = json.loads((delivery / "证据.json").read_text(encoding="utf-8"))
+    assert evidence["checks"]["capacity"]["status"] == "pending"
+    assert evidence["delivery_ready"] is False
+
+
+def test_strict_oci_requires_matching_import_reference_annotation(tmp_path: Path):
+    site_path, release_path = _fixture(tmp_path)
+    site = json.loads(site_path.read_text(encoding="utf-8"))
+    site["images"]["rust"]["repository"] = "registry.internal/domain-center/renamed-rust"
+    _write_json(site_path, site)
+    with pytest.raises(generator.BundleError, match="org.opencontainers.image.ref.name"):
+        generator.validate_inputs(site_path, release_path)
+
+
+def test_top_level_delivery_and_offline_recipient_verifier(tmp_path: Path):
+    delivery = _build(tmp_path)
+    assert set(generator.TOP_LEVEL_DIRECTORIES) <= {path.name for path in delivery.iterdir() if path.is_dir()}
+    for name in ("SHA256SUMS", "recipient-verify.sh"):
+        assert (delivery / name).is_file()
+    assert not (delivery / "SHA256SUMS.sig").exists()
+    assert not (delivery / "release-public-key.pem").exists()
+    completed = subprocess.run([str(delivery / "recipient-verify.sh")], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    assert completed.returncode == 0
+    assert "signature=absent trust=unsigned" in completed.stdout
+
+
+def test_deterministic_across_umask(tmp_path: Path):
+    site, release = _fixture(tmp_path / "fixture")
+    script = f'''import importlib.util, pathlib, os
+spec=importlib.util.spec_from_file_location("g", {str(GENERATOR_PATH)!r})
+g=importlib.util.module_from_spec(spec); spec.loader.exec_module(g)
+os.umask(int(os.environ["BUILD_UMASK"], 8))
+g.build_delivery(pathlib.Path({str(site)!r}), pathlib.Path({str(release)!r}), pathlib.Path({str(PRODUCT_KIT)!r}), pathlib.Path(os.environ["OUT"]), None, None)
+'''
+    outputs = []
+    for mask in ("0022", "0077"):
+        out = tmp_path / f"out-{mask}"
+        subprocess.run([sys.executable, "-c", script], check=True, env={**os.environ, "BUILD_UMASK": mask, "OUT": str(out)})
+        delivery = out / "resolver-identity-domain-center-easy-install-0.3.0-test"
+        outputs.append({path.relative_to(delivery).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in delivery.rglob("*") if path.is_file()})
+    assert outputs[0] == outputs[1]
+
+
+def test_signed_verify_requires_external_pin_for_authenticity(tmp_path: Path):
+    openssl = pytest.importorskip("shutil").which("openssl")
+    if openssl is None:
+        pytest.skip("openssl unavailable")
+    site, release = _fixture(tmp_path / "fixture")
+    key = tmp_path / "key.pem"
+    subprocess.run([openssl, "genpkey", "-algorithm", "ED25519", "-out", str(key)], check=True)
+    key.chmod(0o600)
+    delivery = generator.build_delivery(site, release, PRODUCT_KIT, tmp_path / "out", key, None)
+    structural = generator.verify_delivery(delivery, allow_blocked=True)
+    assert structural["trust"] == "self_signed/untrusted"
+    trusted = generator.verify_delivery(delivery, allow_blocked=True, trusted_public_key=delivery / "release-public-key.pem")
+    assert trusted["trust"] == "trusted_pinned_key"
+    wrong = tmp_path / "wrong.pem"
+    subprocess.run([openssl, "genpkey", "-algorithm", "ED25519", "-out", str(tmp_path / "wrong-key.pem")], check=True)
+    subprocess.run([openssl, "pkey", "-in", str(tmp_path / "wrong-key.pem"), "-pubout", "-out", str(wrong)], check=True)
+    with pytest.raises(generator.BundleError, match="pinned public key"):
+        generator.verify_delivery(delivery, allow_blocked=True, trusted_public_key=wrong)
+    with pytest.raises(generator.BundleError, match="fingerprint"):
+        generator.verify_delivery(delivery, allow_blocked=True, trusted_fingerprint="0" * 64)
+
+
+def test_r2_r3_have_no_wrapper_but_use_shared_rust_image():
+    for role in ("r2", "r3"):
+        text = (PRODUCT_KIT / role / "docker-compose.yml").read_text(encoding="utf-8")
+        assert "wrapper:" not in text
+        assert "image: ${RI_IMAGE:?pin Rust image digest}" in text
+
+
 def test_cli_exposes_unambiguous_output_parent_alias():
     help_text = subprocess.run([sys.executable, str(GENERATOR_PATH), "build", "--help"], check=True, text=True, stdout=subprocess.PIPE).stdout
     assert "--output-parent" in help_text
-    assert "域名中心简易离线交付包_<version>" in help_text
+    assert "resolver-identity-domain-center-easy-install-<version>" in help_text
 
 
 def test_documentation_contains_required_chinese_operator_guidance():
