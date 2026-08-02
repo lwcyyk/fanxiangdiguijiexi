@@ -954,6 +954,20 @@ def support(args: argparse.Namespace) -> None:
         if current.is_symlink() and shutil.which("docker"):
             result = compose(current.resolve(), ["ps"], check=False)
             atomic_text(temp / "compose-ps.txt", redact_text(result.stdout or ""), 0o600)
+        state_record = _read_state(args.install_root)
+        manifest_files = [
+            {"path": path.relative_to(temp).as_posix(), "sha256": file_hash(path)}
+            for path in sorted(temp.rglob("*")) if path.is_file()
+        ]
+        atomic_json(temp / "manifest.json", {
+            "schema_version": "domain-center-support-bundle-manifest-v1",
+            "generated_at": now(),
+            "host": safe_host(args.expected_host),
+            "source_commit": state_record.get("source_commit"),
+            "files": manifest_files,
+            "real_server_deployed": False,
+            "production_traffic_enabled": False,
+        }, 0o600)
         _scan_support(temp, _known_secret_values(args))
         with tarfile.open(archive, "w:gz") as tar:
             tar.add(temp, arcname="support")

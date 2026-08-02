@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://resolver-identity.invalid/schemas/domain-center-preflight-result-v1.json",
+  "title": "Domain center easy-install preflight result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["host", "role", "kind", "checked_at", "result", "status_zh", "checks"],
+  "properties": {
+    "host": {"type": "string", "minLength": 1},
+    "role": {"enum": ["management", "norn-a", "norn-b", "r1", "r2", "r3"]},
+    "kind": {"type": "string", "minLength": 1},
+    "checked_at": {"type": "string", "minLength": 1},
+    "result": {"enum": ["passed", "failed"]},
+    "status_zh": {"enum": ["通过", "失败"]},
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["check_id", "status", "status_zh", "message_zh", "required", "details"],
+        "properties": {
+          "check_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+          "status": {"enum": ["passed", "failed"]},
+          "status_zh": {"enum": ["通过", "失败"]},
+          "message_zh": {"type": "string", "minLength": 1},
+          "required": {"type": "boolean"},
+          "details": {}
+        }
+      }
+    }
+  }
+}
