@@ -1259,7 +1259,7 @@ def _render_pdfs(product_kit: Path, output: Path, image: str | None) -> tuple[bo
         return False, "PDF_BLOCKED: docs/easy-install contains no Markdown inputs"
     if image is None or IMAGE_REF_RE.fullmatch(image) is None or image.startswith("127.0.0.1"):
         return False, "PDF_BLOCKED: a non-loopback digest-pinned offline PDF builder image was not supplied"
-    if tuple(f"{document.stem}.pdf" for document in documents) != EXPECTED_PDF_NAMES:
+    if sorted(f"{document.stem}.pdf" for document in documents) != sorted(EXPECTED_PDF_NAMES):
         return False, "PDF_BLOCKED: Markdown inputs do not match the required manual set"
     runtime = shutil.which("docker") or shutil.which("podman")
     if runtime is None:
