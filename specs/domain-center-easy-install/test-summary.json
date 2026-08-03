@@ -2,7 +2,7 @@
   "blocked": true,
   "delivery": {
     "evidence_sha256": "b3e3fc50a00fec4d1a87e69f2a52249258ca8470161ef317c4afb6a7f92c23e2",
-    "path": "/home/lwc/fanxiangdiguijiexi/artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1"
+    "path": "artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1"
   },
   "external": [
     {
