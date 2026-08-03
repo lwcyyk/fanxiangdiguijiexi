@@ -35,6 +35,8 @@
     "architecture": "amd64",
     "os": "linux"
   },
+  "production_traffic_enabled": false,
+  "real_server_deployed": false,
   "schema_version": "resolver-identity-domain-center-easy-site-v1",
   "source_commit": "7a5c0fffc59cce38352cc34285b104a9ddc6140c",
   "source_release_manifest_sha256": "1a0e6d3994b3764a3faf306286b13ce774db8a7b27750667562e9314abf1bb97",

@@ -4,7 +4,7 @@
   "source_commit": "7a5c0fffc59cce38352cc34285b104a9ddc6140c",
   "delivery": {
     "path": "artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1",
-    "evidence_sha256": "b6b2f36618dee5008cf32ac41b8f97b7898bf50eb0853a0b2251719b7ef7aed6"
+    "evidence_sha256": "116c5c1e1e5c13352ecc17542872eae20dfbe6236fe925fefcd2fa810338477f"
   },
   "local": [
     {

@@ -1,5 +1,5 @@
 ae72ec45074c7202e0267ed38979b9458070dc2a8dfd10528213ebd48878b97c  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/00-开始/验证命令.txt
-0e2aad839d8d2acbd665781615e9b41c581d121280cf97ad8e87d437d7f71992  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/01-发布信息/release-manifest.json
+fe528f19f672a50e5efe55abad4523af2ca0b30485ee29385e7d18c8d39ba68c  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/01-发布信息/release-manifest.json
 8cfb09555344915ea1e84d2939e2827c77fa2cc952f47f86981ef951d4bb9928  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/02-校验与签名/README.txt
 782921505fa2d3c932a9c6e258e1d2792037e066cd34e741ffb1601666cb3329  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/03-主机包/acceptance-mgmt.tar.gz
 f436aa05a5477879367b82df49a6240c1c0f1e9bd0cbbc3365ca63915d1f1bc7  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/03-主机包/acceptance-norn-a.tar.gz
@@ -7,8 +7,8 @@ f80302cac9dc085947a1bb3aa32e8208c8aa233fe0920be278ac2c347ec18fd9  artifacts/doma
 2b33eb8775d11a234f0ed22f79e43353c2bf66700154ad05958740283a58248e  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/03-主机包/acceptance-r1.tar.gz
 cfbd94dc380d78c6bcc843c2b94d66d9c5c2b2f964cbdd752a4cf89bddcd6759  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/03-主机包/acceptance-r2.tar.gz
 abed4132bba7f42e1c4b0c627578703a39018655546c8bcd7014c5f07b2452dd  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/03-主机包/acceptance-r3.tar.gz
-91a1bf8f78d26ffe7e430a7f69b246ba5f95948ede57d9a1d099c3acc1d30465  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/04-软件物料清单/site.cdx.json
-d3ab1d2670e8537f188243ef24129c5f7f978ded0e7bf6068fe1119bf260ec6d  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/04-软件物料清单/site.spdx.json
+664dd5fce8d7817adbbd3cb833a4d4601b99c5f6662d40248cacbb12b41b2fff  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/04-软件物料清单/site.cdx.json
+ae0624c83482f262a0ab15d527d2c4e1b8e12fb46ebea361c1234e89bcdba3bd  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/04-软件物料清单/site.spdx.json
 fed7ce60858fcadbc1a94e825cf26326292a90bf4dbe9ad1828532e0836f5b9e  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/06-配置交接/host-inventory.json
 24b5732d3d88819b242d30be54b098193913fedf3a1d3af980cb5beabf0839ba  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/06-配置交接/README.txt
 ef85f40e72db9170961f0012a0a6257da58ca96ff633bbda2e40eee8624a2f81  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/07-证书与身份/README.txt
@@ -16,11 +16,11 @@ caa7075904d3ea6b78e15f6cad9b82e1901227aa4671565ad522c6a4dcc83ef4  artifacts/doma
 777e731e55d87bfb3b5878c829db7530d6b8d2e1d133d26a17fcf20e5f5f0041  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/09-监控/README.txt
 4d4ea74720f010a2bd43a1b69d2111d81108459ae6238142691d18d247413e44  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/10-备份恢复/README.txt
 852fc7571a0c2c27fc5d9cc4084c5209774f75905f773d4e94ce2691d8bc73e9  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/11-容量与回滚/README.txt
-a886fca9f2a4419c428db0b2bfb4ef6e0c90ccedceb3464aa4c82b8335c494b6  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/12-验收证据/证据.json
+116c5c1e1e5c13352ecc17542872eae20dfbe6236fe925fefcd2fa810338477f  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/12-验收证据/证据.json
 4226f3b2c9057eca8c6221f2bb4d64668c65243861dd0caf15931a0867c33c2b  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/12-验收证据/external-4226f3b2c9057eca8c6221f2bb4d64668c65243861dd0caf15931a0867c33c2b.json
 c94d1b703b47fb3fb13d04ded5c1e6f1db7d809a5e6fbc0d30ac30104c9c4a4e  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/12-验收证据/host-archives.json
-a886fca9f2a4419c428db0b2bfb4ef6e0c90ccedceb3464aa4c82b8335c494b6  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/证据.json
+116c5c1e1e5c13352ecc17542872eae20dfbe6236fe925fefcd2fa810338477f  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/证据.json
 7e0acdcad558c22270039a23f7c170e5438b514db93d6161b816d90523c00c5e  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/.domain-center-easy-bundle
 77fb92bfea363bad4dc0cb8baf1afda23943637c943c6f6b1e36009288880d29  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/recipient-verify.sh
-2fcf941f49d95f096b3f474a00dfa3f047f70c5a471ad55cafa24b33b9dc51ff  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/SHA256SUMS
+d486caede1f744c00dfaec413a7c650137640c8e3bafa4d324b92189a267c69a  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1/SHA256SUMS
 b26b1ff549beb4263c39b6e9ba4331fb81c1e5ecf7fc8952acbe98582ae829b8  artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1.tar.zst

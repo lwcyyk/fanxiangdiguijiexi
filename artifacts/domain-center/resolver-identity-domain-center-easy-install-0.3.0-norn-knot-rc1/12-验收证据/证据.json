@@ -61,7 +61,7 @@
         "path": "12-验收证据/external-4226f3b2c9057eca8c6221f2bb4d64668c65243861dd0caf15931a0867c33c2b.json",
         "provenance": "bundled-copy:12-验收证据/external-4226f3b2c9057eca8c6221f2bb4d64668c65243861dd0caf15931a0867c33c2b.json",
         "role": "site",
-        "sha256": "4369199a6d45d4394638f5da6271f0bf82cff65114fd836db47690ee46521296",
+        "sha256": "4226f3b2c9057eca8c6221f2bb4d64668c65243861dd0caf15931a0867c33c2b",
         "source_commit": "7a5c0fffc59cce38352cc34285b104a9ddc6140c",
         "timestamp": "2026-08-03T00:00:00Z"
       },
@@ -209,6 +209,7 @@
   },
   "production_traffic_enabled": false,
   "real_server_deployed": false,
+  "release_ready": false,
   "runtime_policy": {
     "latest_forbidden": true,
     "loopback_image_references_forbidden": true,
@@ -226,7 +227,7 @@
     "signed": false
   },
   "source_commit": "7a5c0fffc59cce38352cc34285b104a9ddc6140c",
-  "source_release_manifest_sha256": "1a0e6d3994b3764a3faf306286b13ce774db8a7b27750667562e9314abf1bb97",
+  "source_release_manifest_sha256": "fe528f19f672a50e5efe55abad4523af2ca0b30485ee29385e7d18c8d39ba68c",
   "topology_note": "R2/R3 configuration has no Wrapper service. The shared Rust image may contain the Wrapper binary; configuration intentionally does not make it runnable.",
   "verification_command": "./recipient-verify.sh /offline/path/to/pinned-release-public-key.pem",
   "version": "0.3.0-norn-knot-rc1"
