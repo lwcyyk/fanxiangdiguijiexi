@@ -58,11 +58,11 @@
     "real_oci": {
       "evidence": {
         "host": "site",
-        "path": "12-验收证据/external-d7335a3bc7d2fee1fcdcc77da2e23cc075381a09c8afee85c93012f96d3cad70.json",
-        "provenance": "bundled-copy:12-验收证据/external-d7335a3bc7d2fee1fcdcc77da2e23cc075381a09c8afee85c93012f96d3cad70.json",
+        "path": "12-验收证据/external-4369199a6d45d4394638f5da6271f0bf82cff65114fd836db47690ee46521296.json",
+        "provenance": "bundled-copy:12-验收证据/external-4369199a6d45d4394638f5da6271f0bf82cff65114fd836db47690ee46521296.json",
         "role": "site",
-        "sha256": "d7335a3bc7d2fee1fcdcc77da2e23cc075381a09c8afee85c93012f96d3cad70",
-        "source_commit": "d7663dddba575e16d4b925e5e1ea0522b0ba65cc",
+        "sha256": "4369199a6d45d4394638f5da6271f0bf82cff65114fd836db47690ee46521296",
+        "source_commit": "5c80bebb7e2c1bb08382f14935184b47dafe0163",
         "timestamp": "2026-08-03T00:00:00Z"
       },
       "reason_zh": "五个真实 OCI 归档已完成结构校验、Docker load/reimport 及 manifest digest 对账。",
@@ -225,7 +225,7 @@
     "implementation": null,
     "signed": false
   },
-  "source_commit": "d7663dddba575e16d4b925e5e1ea0522b0ba65cc",
+  "source_commit": "5c80bebb7e2c1bb08382f14935184b47dafe0163",
   "source_release_manifest_sha256": "1a0e6d3994b3764a3faf306286b13ce774db8a7b27750667562e9314abf1bb97",
   "topology_note": "R2/R3 configuration has no Wrapper service. The shared Rust image may contain the Wrapper binary; configuration intentionally does not make it runnable.",
   "verification_command": "./recipient-verify.sh /offline/path/to/pinned-release-public-key.pem",

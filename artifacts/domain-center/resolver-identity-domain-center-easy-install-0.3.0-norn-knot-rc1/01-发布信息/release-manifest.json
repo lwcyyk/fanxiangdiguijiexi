@@ -36,7 +36,7 @@
     "os": "linux"
   },
   "schema_version": "resolver-identity-domain-center-easy-site-v1",
-  "source_commit": "d7663dddba575e16d4b925e5e1ea0522b0ba65cc",
+  "source_commit": "5c80bebb7e2c1bb08382f14935184b47dafe0163",
   "source_release_manifest_sha256": "1a0e6d3994b3764a3faf306286b13ce774db8a7b27750667562e9314abf1bb97",
   "version": "0.3.0-norn-knot-rc1"
 }

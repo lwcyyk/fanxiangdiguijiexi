@@ -1,6 +1,6 @@
 {
   "schema_version": "resolver-identity-domain-center-easy-oci-evidence-v1",
-  "source_commit": "d7663dddba575e16d4b925e5e1ea0522b0ba65cc",
+  "source_commit": "5c80bebb7e2c1bb08382f14935184b47dafe0163",
   "real_server_deployed": false,
   "production_traffic_enabled": false,
   "archives": [

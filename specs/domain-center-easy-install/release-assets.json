@@ -1,0 +1,23 @@
+{
+  "schema_version": "resolver-identity-domain-center-release-assets-v1",
+  "version": "0.3.0-norn-knot-rc1",
+  "source_commit": "5c80bebb7e2c1bb08382f14935184b47dafe0163",
+  "assets": [
+    {"filename":"acceptance-mgmt.tar.gz","size":117667600,"sha256":"782921505fa2d3c932a9c6e258e1d2792037e066cd34e741ffb1601666cb3329"},
+    {"filename":"acceptance-norn-a.tar.gz","size":118231250,"sha256":"f436aa05a5477879367b82df49a6240c1c0f1e9bd0cbbc3365ca63915d1f1bc7"},
+    {"filename":"acceptance-norn-b.tar.gz","size":118231246,"sha256":"f80302cac9dc085947a1bb3aa32e8208c8aa233fe0920be278ac2c347ec18fd9"},
+    {"filename":"acceptance-r1.tar.gz","size":87462366,"sha256":"2b33eb8775d11a234f0ed22f79e43353c2bf66700154ad05958740283a58248e"},
+    {"filename":"acceptance-r2.tar.gz","size":87460668,"sha256":"cfbd94dc380d78c6bcc843c2b94d66d9c5c2b2f964cbdd752a4cf89bddcd6759"},
+    {"filename":"acceptance-r3.tar.gz","size":87460623,"sha256":"abed4132bba7f42e1c4b0c627578703a39018655546c8bcd7014c5f07b2452dd"},
+    {"filename":"go-norn.oci.tar","size":46743552,"sha256":"989893a7ee550f5fb1260e000084e182a634d8ecf5b45969c5f9fe31b6a29b06","manifest_digest":"sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"},
+    {"filename":"knot-trace.oci.tar","size":36273152,"sha256":"dd4348db986a629c8f9bf6874e38a75baad96e1e6c0c6545d1082118a0434fa9","manifest_digest":"sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"},
+    {"filename":"management.oci.tar","size":72597504,"sha256":"be05dbdbf872ec5f863684cac100aadcfee616b6b4e00cb98f40ef4723f128cc","manifest_digest":"sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0"},
+    {"filename":"mtls-read-proxy.oci.tar","size":72411648,"sha256":"b296a0d49b2d4f87054808e7ccda7cf1263f9c549b53c0199427990d8ad270c0","manifest_digest":"sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"},
+    {"filename":"resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1.tar.zst","size":613355783,"sha256":"b26b1ff549beb4263c39b6e9ba4331fb81c1e5ecf7fc8952acbe98582ae829b8"},
+    {"filename":"rust-data-plane.oci.tar","size":51838464,"sha256":"34471fee2b260fa3d496a454298ef2881d27c4460b1991ee29ab19b5c4ca5b28","manifest_digest":"sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244"}
+  ],
+  "storage": "github-release-assets-only",
+  "release_ready": false,
+  "real_server_deployed": false,
+  "production_traffic_enabled": false
+}
