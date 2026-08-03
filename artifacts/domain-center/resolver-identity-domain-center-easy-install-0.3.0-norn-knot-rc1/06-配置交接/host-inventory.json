@@ -3,42 +3,42 @@
     {
       "fqdn": "acceptance-mgmt.test.invalid",
       "hostname": "acceptance-mgmt",
-      "machine_id": "00000000000000000000000000000001",
+      "machine_id": "0000000000000000000000000000000b",
       "management_ip": "192.0.2.11",
       "role": "management"
     },
     {
       "fqdn": "acceptance-norn-a.test.invalid",
       "hostname": "acceptance-norn-a",
-      "machine_id": "00000000000000000000000000000002",
+      "machine_id": "0000000000000000000000000000000c",
       "management_ip": "192.0.2.12",
       "role": "norn-a"
     },
     {
       "fqdn": "acceptance-norn-b.test.invalid",
       "hostname": "acceptance-norn-b",
-      "machine_id": "00000000000000000000000000000003",
+      "machine_id": "0000000000000000000000000000000d",
       "management_ip": "192.0.2.13",
       "role": "norn-b"
     },
     {
       "fqdn": "acceptance-r1.test.invalid",
       "hostname": "acceptance-r1",
-      "machine_id": "00000000000000000000000000000004",
+      "machine_id": "0000000000000000000000000000000e",
       "management_ip": "192.0.2.14",
       "role": "r1"
     },
     {
       "fqdn": "acceptance-r2.test.invalid",
       "hostname": "acceptance-r2",
-      "machine_id": "00000000000000000000000000000005",
+      "machine_id": "0000000000000000000000000000000f",
       "management_ip": "192.0.2.15",
       "role": "r2"
     },
     {
       "fqdn": "acceptance-r3.test.invalid",
       "hostname": "acceptance-r3",
-      "machine_id": "00000000000000000000000000000006",
+      "machine_id": "00000000000000000000000000000010",
       "management_ip": "192.0.2.16",
       "role": "r3"
     }

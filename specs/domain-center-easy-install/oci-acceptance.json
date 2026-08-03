@@ -1,19 +1,22 @@
 {
-  "schema_version": "resolver-identity-domain-center-easy-oci-acceptance-v1",
-  "source_commit": "7a5c0fffc59cce38352cc34285b104a9ddc6140c",
-  "timestamp": "2026-08-02T16:57:54Z",
-  "status": "passed",
-  "checks": {
-    "oci_layout": "passed",
-    "single_manifest": "passed",
-    "manifest_config_layer_digests": "passed",
-    "linux_amd64": "passed",
-    "path_traversal_and_special_member_policy": "passed",
-    "secret_filename_and_content_scan": "passed",
-    "latest_and_loopback_registry_forbidden": "passed",
-    "docker_load": "passed",
-    "delete_and_reimport": "passed",
-    "image_id_manifest_digest_reconciliation": "passed"
+  "schema_version":"resolver-identity-domain-center-easy-oci-acceptance-v1",
+  "source_commit":"13a23b48deaa6af886b4da670ebb734018df8162",
+  "timestamp":"2026-08-02T16:57:54Z",
+  "status":"passed",
+  "checks":{
+    "oci_layout":"passed",
+    "single_manifest":"passed",
+    "manifest_config_layer_digests":"passed",
+    "linux_amd64":"passed",
+    "path_traversal_and_special_member_policy":"passed",
+    "secret_filename_and_content_scan":"passed",
+    "latest_and_loopback_registry_forbidden":"passed",
+    "docker_load":"passed",
+    "delete_and_reimport":"passed",
+    "image_id_manifest_digest_reconciliation":"passed"
   },
-  "production": {"real_server_deployed": false, "production_traffic_enabled": false}
+  "production":{
+    "real_server_deployed":false,
+    "production_traffic_enabled":false
+  }
 }

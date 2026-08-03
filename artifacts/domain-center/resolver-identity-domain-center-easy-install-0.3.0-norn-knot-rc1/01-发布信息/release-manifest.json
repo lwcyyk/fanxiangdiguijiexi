@@ -37,8 +37,9 @@
   },
   "production_traffic_enabled": false,
   "real_server_deployed": false,
+  "release_ready": false,
   "schema_version": "resolver-identity-domain-center-easy-site-v1",
-  "source_commit": "7a5c0fffc59cce38352cc34285b104a9ddc6140c",
-  "source_release_manifest_sha256": "1a0e6d3994b3764a3faf306286b13ce774db8a7b27750667562e9314abf1bb97",
+  "source_commit": "13a23b48deaa6af886b4da670ebb734018df8162",
+  "source_release_manifest_sha256": "e6bcbf6d70e0b4017c107ef1946ebc70ca024bb6b0d4777333683c4610e3d5f8",
   "version": "0.3.0-norn-knot-rc1"
 }

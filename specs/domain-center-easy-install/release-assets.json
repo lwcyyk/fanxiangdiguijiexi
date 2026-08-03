@@ -1,23 +1,76 @@
 {
-  "schema_version": "resolver-identity-domain-center-release-assets-v1",
-  "version": "0.3.0-norn-knot-rc1",
-  "source_commit": "7a5c0fffc59cce38352cc34285b104a9ddc6140c",
-  "assets": [
-    {"filename":"acceptance-mgmt.tar.gz","size":117667600,"sha256":"782921505fa2d3c932a9c6e258e1d2792037e066cd34e741ffb1601666cb3329"},
-    {"filename":"acceptance-norn-a.tar.gz","size":118231250,"sha256":"f436aa05a5477879367b82df49a6240c1c0f1e9bd0cbbc3365ca63915d1f1bc7"},
-    {"filename":"acceptance-norn-b.tar.gz","size":118231246,"sha256":"f80302cac9dc085947a1bb3aa32e8208c8aa233fe0920be278ac2c347ec18fd9"},
-    {"filename":"acceptance-r1.tar.gz","size":87462366,"sha256":"2b33eb8775d11a234f0ed22f79e43353c2bf66700154ad05958740283a58248e"},
-    {"filename":"acceptance-r2.tar.gz","size":87460668,"sha256":"cfbd94dc380d78c6bcc843c2b94d66d9c5c2b2f964cbdd752a4cf89bddcd6759"},
-    {"filename":"acceptance-r3.tar.gz","size":87460623,"sha256":"abed4132bba7f42e1c4b0c627578703a39018655546c8bcd7014c5f07b2452dd"},
-    {"filename":"go-norn.oci.tar","size":46743552,"sha256":"989893a7ee550f5fb1260e000084e182a634d8ecf5b45969c5f9fe31b6a29b06","manifest_digest":"sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"},
-    {"filename":"knot-trace.oci.tar","size":36273152,"sha256":"dd4348db986a629c8f9bf6874e38a75baad96e1e6c0c6545d1082118a0434fa9","manifest_digest":"sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"},
-    {"filename":"management.oci.tar","size":72597504,"sha256":"be05dbdbf872ec5f863684cac100aadcfee616b6b4e00cb98f40ef4723f128cc","manifest_digest":"sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0"},
-    {"filename":"mtls-read-proxy.oci.tar","size":72411648,"sha256":"b296a0d49b2d4f87054808e7ccda7cf1263f9c549b53c0199427990d8ad270c0","manifest_digest":"sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"},
-    {"filename":"resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1.tar.zst","size":613355783,"sha256":"b26b1ff549beb4263c39b6e9ba4331fb81c1e5ecf7fc8952acbe98582ae829b8"},
-    {"filename":"rust-data-plane.oci.tar","size":51838464,"sha256":"34471fee2b260fa3d496a454298ef2881d27c4460b1991ee29ab19b5c4ca5b28","manifest_digest":"sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244"}
+  "schema_version":"resolver-identity-domain-center-release-assets-v1",
+  "version":"0.3.0-norn-knot-rc1",
+  "source_commit":"13a23b48deaa6af886b4da670ebb734018df8162",
+  "assets":[
+    {
+      "filename":"acceptance-mgmt.tar.gz",
+      "size":117667538,
+      "sha256":"9bffda5328133d7e3e67482aeeea6ac086d56ce2b07da7d4a612007f25fb9d7a"
+    },
+    {
+      "filename":"acceptance-norn-a.tar.gz",
+      "size":118231143,
+      "sha256":"b7483a39a95cabd15db8576942d61f4c945964313812fb37cf46996ee4e7648d"
+    },
+    {
+      "filename":"acceptance-norn-b.tar.gz",
+      "size":118231306,
+      "sha256":"5ef07d80a379f635ef2b4ba8a8170acf4a63ef122200404917ea6b667131303e"
+    },
+    {
+      "filename":"acceptance-r1.tar.gz",
+      "size":87462363,
+      "sha256":"f6d18fbe0f7be81f23becdd56605d1ac0625b5b22fcae05d7ee3780af3491ade"
+    },
+    {
+      "filename":"acceptance-r2.tar.gz",
+      "size":87460595,
+      "sha256":"9ff2531e59f44f3988fb6b3fbf3e57870dde30c4352dbb63132fb2fbe4bddbb9"
+    },
+    {
+      "filename":"acceptance-r3.tar.gz",
+      "size":87460582,
+      "sha256":"98bb6fa557d52e498b7faf7148412e9b79258334cd84b9125ee789c7fd23aa80"
+    },
+    {
+      "filename":"go-norn.oci.tar",
+      "size":46743552,
+      "sha256":"989893a7ee550f5fb1260e000084e182a634d8ecf5b45969c5f9fe31b6a29b06",
+      "manifest_digest":"sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"
+    },
+    {
+      "filename":"knot-trace.oci.tar",
+      "size":36273152,
+      "sha256":"dd4348db986a629c8f9bf6874e38a75baad96e1e6c0c6545d1082118a0434fa9",
+      "manifest_digest":"sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+    },
+    {
+      "filename":"management.oci.tar",
+      "size":72597504,
+      "sha256":"be05dbdbf872ec5f863684cac100aadcfee616b6b4e00cb98f40ef4723f128cc",
+      "manifest_digest":"sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0"
+    },
+    {
+      "filename":"mtls-read-proxy.oci.tar",
+      "size":72411648,
+      "sha256":"b296a0d49b2d4f87054808e7ccda7cf1263f9c549b53c0199427990d8ad270c0",
+      "manifest_digest":"sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
+    },
+    {
+      "filename":"resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1.tar.zst",
+      "size":613356941,
+      "sha256":"8651c69190a5c625cfd3c5a338e9827e28c99c6cb25753a631ed3bc9e1543f30"
+    },
+    {
+      "filename":"rust-data-plane.oci.tar",
+      "size":51838464,
+      "sha256":"34471fee2b260fa3d496a454298ef2881d27c4460b1991ee29ab19b5c4ca5b28",
+      "manifest_digest":"sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244"
+    }
   ],
-  "storage": "github-release-assets-only",
-  "release_ready": false,
-  "real_server_deployed": false,
-  "production_traffic_enabled": false
+  "storage":"github-release-assets-only",
+  "release_ready":false,
+  "real_server_deployed":false,
+  "production_traffic_enabled":false
 }

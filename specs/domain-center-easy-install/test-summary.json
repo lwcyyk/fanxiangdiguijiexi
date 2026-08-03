@@ -1,49 +1,17 @@
 {
-  "schema_version": "resolver-identity-domain-center-easy-install-test-summary-v1",
-  "generated_at": "2026-08-02T16:57:54+00:00",
-  "source_commit": "7a5c0fffc59cce38352cc34285b104a9ddc6140c",
+  "blocked": true,
   "delivery": {
-    "path": "artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1",
-    "evidence_sha256": "116c5c1e1e5c13352ecc17542872eae20dfbe6236fe925fefcd2fa810338477f"
+    "evidence_sha256": "b3e3fc50a00fec4d1a87e69f2a52249258ca8470161ef317c4afb6a7f92c23e2",
+    "path": "/home/lwc/fanxiangdiguijiexi/artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1"
   },
-  "local": [
-    {
-      "id": "delivery_structure_verification",
-      "status": "passed"
-    },
-    {
-      "id": "recipient_structural_verification",
-      "status": "passed"
-    },
-    {
-      "id": "oci_validation",
-      "status": "passed"
-    },
-    {
-      "id": "docker_load_reimport_digest_reconciliation",
-      "status": "passed"
-    },
-    {
-      "id": "source_tests",
-      "status": "passed"
-    },
-    {
-      "id": "generator_self_test",
-      "status": "passed"
-    },
-    {
-      "id": "false_production_flags",
-      "status": "passed"
-    },
-    {
-      "id": "evidence_secret_scan",
-      "status": "passed"
-    }
-  ],
   "external": [
     {
       "id": "backup_restore",
       "status": "not_run"
+    },
+    {
+      "id": "bundle_signing",
+      "status": "blocked"
     },
     {
       "id": "capacity",
@@ -59,6 +27,10 @@
     },
     {
       "id": "network_isolation",
+      "status": "blocked"
+    },
+    {
+      "id": "pdf_manual",
       "status": "blocked"
     },
     {
@@ -88,22 +60,26 @@
     {
       "id": "ubuntu24",
       "status": "blocked"
-    },
-    {
-      "id": "bundle_signing",
-      "status": "blocked"
-    },
-    {
-      "id": "pdf_manual",
-      "status": "blocked"
-    },
-    {
-      "id": "compose_runtime_readiness",
-      "status": "blocked"
     }
   ],
-  "blocked": true,
-  "real_server_deployed": false,
+  "generated_at": "2026-08-03T06:11:51+00:00",
+  "local": [
+    {
+      "id": "delivery_verification",
+      "status": "passed"
+    },
+    {
+      "id": "false_production_flags",
+      "status": "passed"
+    },
+    {
+      "id": "evidence_secret_scan",
+      "status": "passed"
+    }
+  ],
   "production_traffic_enabled": false,
-  "release_ready": false
+  "real_server_deployed": false,
+  "release_ready": false,
+  "schema_version": "resolver-identity-domain-center-easy-install-test-summary-v1",
+  "source_commit": "13a23b48deaa6af886b4da670ebb734018df8162"
 }

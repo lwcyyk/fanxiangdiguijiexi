@@ -1,6 +1,6 @@
 {
   "SPDXID": "SPDXRef-DOCUMENT",
-  "comment": "release.version=0.3.0-norn-knot-rc1;source.git.commit=7a5c0fffc59cce38352cc34285b104a9ddc6140c",
+  "comment": "release.version=0.3.0-norn-knot-rc1;source.git.commit=13a23b48deaa6af886b4da670ebb734018df8162",
   "creationInfo": {
     "created": "1970-01-01T00:00:00Z",
     "creators": [
@@ -8,7 +8,7 @@
     ]
   },
   "dataLicense": "CC0-1.0",
-  "documentNamespace": "https://resolver-identity.invalid/spdx/1f5b104ae061528e69b384fd92ae518771c6cff7896078241830f6647837ad48",
+  "documentNamespace": "https://resolver-identity.invalid/spdx/e819a49cbb12beadcfa8f5ceba40e2928d6a92826494886754925b9f17084c72",
   "name": "resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1",
   "packages": [
     {

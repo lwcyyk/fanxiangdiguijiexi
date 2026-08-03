@@ -8,7 +8,7 @@
         "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"
       ],
       "role": "management",
-      "sha256": "782921505fa2d3c932a9c6e258e1d2792037e066cd34e741ffb1601666cb3329"
+      "sha256": "9bffda5328133d7e3e67482aeeea6ac086d56ce2b07da7d4a612007f25fb9d7a"
     },
     {
       "archive": "03-主机包/acceptance-norn-a.tar.gz",
@@ -18,7 +18,7 @@
         "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
       ],
       "role": "norn-a",
-      "sha256": "f436aa05a5477879367b82df49a6240c1c0f1e9bd0cbbc3365ca63915d1f1bc7"
+      "sha256": "b7483a39a95cabd15db8576942d61f4c945964313812fb37cf46996ee4e7648d"
     },
     {
       "archive": "03-主机包/acceptance-norn-b.tar.gz",
@@ -28,7 +28,7 @@
         "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
       ],
       "role": "norn-b",
-      "sha256": "f80302cac9dc085947a1bb3aa32e8208c8aa233fe0920be278ac2c347ec18fd9"
+      "sha256": "5ef07d80a379f635ef2b4ba8a8170acf4a63ef122200404917ea6b667131303e"
     },
     {
       "archive": "03-主机包/acceptance-r1.tar.gz",
@@ -38,7 +38,7 @@
         "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
       ],
       "role": "r1",
-      "sha256": "2b33eb8775d11a234f0ed22f79e43353c2bf66700154ad05958740283a58248e"
+      "sha256": "f6d18fbe0f7be81f23becdd56605d1ac0625b5b22fcae05d7ee3780af3491ade"
     },
     {
       "archive": "03-主机包/acceptance-r2.tar.gz",
@@ -48,7 +48,7 @@
         "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
       ],
       "role": "r2",
-      "sha256": "cfbd94dc380d78c6bcc843c2b94d66d9c5c2b2f964cbdd752a4cf89bddcd6759"
+      "sha256": "9ff2531e59f44f3988fb6b3fbf3e57870dde30c4352dbb63132fb2fbe4bddbb9"
     },
     {
       "archive": "03-主机包/acceptance-r3.tar.gz",
@@ -58,7 +58,7 @@
         "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
       ],
       "role": "r3",
-      "sha256": "abed4132bba7f42e1c4b0c627578703a39018655546c8bcd7014c5f07b2452dd"
+      "sha256": "98bb6fa557d52e498b7faf7148412e9b79258334cd84b9125ee789c7fd23aa80"
     }
   ]
 }

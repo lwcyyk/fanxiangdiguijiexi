@@ -5,7 +5,7 @@
   ],
   "checks": {
     "backup_restore": {
-      "reason_zh": "未执行现场数据备份恢复演练。",
+      "reason_zh": "未执行现场验收。",
       "status": "not_run",
       "status_zh": "未执行"
     },
@@ -15,17 +15,17 @@
       "status_zh": "阻断"
     },
     "capacity": {
-      "reason_zh": "未执行现场容量与压力测试。",
+      "reason_zh": "未执行现场验收。",
       "status": "not_run",
       "status_zh": "未执行"
     },
     "monitoring": {
-      "reason_zh": "未提供现场监控系统。",
+      "reason_zh": "未执行现场验收。",
       "status": "not_run",
       "status_zh": "未执行"
     },
     "negative_fail_close": {
-      "reason_zh": "仅完成源码测试，未执行现场 Compose 负向验收。",
+      "reason_zh": "未执行现场验收。",
       "status": "not_run",
       "status_zh": "未执行"
     },
@@ -33,7 +33,7 @@
       "blocked_by": [
         "external_approval"
       ],
-      "reason_zh": "未提供独立现场网络和 Ubuntu 22.04/24.04 fresh host。",
+      "reason_zh": "未提供独立现场网络和 fresh host。",
       "status": "blocked",
       "status_zh": "阻断"
     },
@@ -51,7 +51,7 @@
       "status_zh": "阻断"
     },
     "production_cutover": {
-      "reason_zh": "按安全边界不启用正式 DNS 流量。",
+      "reason_zh": "未执行现场验收。",
       "status": "not_run",
       "status_zh": "未执行"
     },
@@ -62,10 +62,9 @@
         "provenance": "bundled-copy:12-验收证据/external-4226f3b2c9057eca8c6221f2bb4d64668c65243861dd0caf15931a0867c33c2b.json",
         "role": "site",
         "sha256": "4226f3b2c9057eca8c6221f2bb4d64668c65243861dd0caf15931a0867c33c2b",
-        "source_commit": "7a5c0fffc59cce38352cc34285b104a9ddc6140c",
+        "source_commit": "13a23b48deaa6af886b4da670ebb734018df8162",
         "timestamp": "2026-08-03T00:00:00Z"
       },
-      "reason_zh": "五个真实 OCI 归档已完成结构校验、Docker load/reimport 及 manifest digest 对账。",
       "status": "passed",
       "status_zh": "通过"
     },
@@ -78,7 +77,7 @@
       "status_zh": "阻断"
     },
     "rollback_rto": {
-      "reason_zh": "未执行现场 RTO 与正式回滚演练。",
+      "reason_zh": "未执行现场验收。",
       "status": "not_run",
       "status_zh": "未执行"
     },
@@ -94,7 +93,7 @@
       "blocked_by": [
         "external_approval"
       ],
-      "reason_zh": "当前主机不是 fresh host；仅可记录 current-host 运行状态。",
+      "reason_zh": "当前主机不是 Ubuntu 24.04 fresh host。",
       "status": "blocked",
       "status_zh": "阻断"
     }
@@ -110,7 +109,7 @@
         "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"
       ],
       "role": "management",
-      "sha256": "782921505fa2d3c932a9c6e258e1d2792037e066cd34e741ffb1601666cb3329"
+      "sha256": "9bffda5328133d7e3e67482aeeea6ac086d56ce2b07da7d4a612007f25fb9d7a"
     },
     {
       "archive": "03-主机包/acceptance-norn-a.tar.gz",
@@ -120,7 +119,7 @@
         "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
       ],
       "role": "norn-a",
-      "sha256": "f436aa05a5477879367b82df49a6240c1c0f1e9bd0cbbc3365ca63915d1f1bc7"
+      "sha256": "b7483a39a95cabd15db8576942d61f4c945964313812fb37cf46996ee4e7648d"
     },
     {
       "archive": "03-主机包/acceptance-norn-b.tar.gz",
@@ -130,7 +129,7 @@
         "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
       ],
       "role": "norn-b",
-      "sha256": "f80302cac9dc085947a1bb3aa32e8208c8aa233fe0920be278ac2c347ec18fd9"
+      "sha256": "5ef07d80a379f635ef2b4ba8a8170acf4a63ef122200404917ea6b667131303e"
     },
     {
       "archive": "03-主机包/acceptance-r1.tar.gz",
@@ -140,7 +139,7 @@
         "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
       ],
       "role": "r1",
-      "sha256": "2b33eb8775d11a234f0ed22f79e43353c2bf66700154ad05958740283a58248e"
+      "sha256": "f6d18fbe0f7be81f23becdd56605d1ac0625b5b22fcae05d7ee3780af3491ade"
     },
     {
       "archive": "03-主机包/acceptance-r2.tar.gz",
@@ -150,7 +149,7 @@
         "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
       ],
       "role": "r2",
-      "sha256": "cfbd94dc380d78c6bcc843c2b94d66d9c5c2b2f964cbdd752a4cf89bddcd6759"
+      "sha256": "9ff2531e59f44f3988fb6b3fbf3e57870dde30c4352dbb63132fb2fbe4bddbb9"
     },
     {
       "archive": "03-主机包/acceptance-r3.tar.gz",
@@ -160,37 +159,37 @@
         "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
       ],
       "role": "r3",
-      "sha256": "abed4132bba7f42e1c4b0c627578703a39018655546c8bcd7014c5f07b2452dd"
+      "sha256": "98bb6fa557d52e498b7faf7148412e9b79258334cd84b9125ee789c7fd23aa80"
     }
   ],
   "oci_validation": {
     "images": [
       {
-        "archive_sha256": "58c3229e31c1a56081044dc5fbb2e908fa662d065ac3d1e989768b1f0df81cd9",
+        "archive_sha256": "dd4348db986a629c8f9bf6874e38a75baad96e1e6c0c6545d1082118a0434fa9",
         "digest": "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8",
         "key": "knot",
         "reference": "offline/resolver-identity/knot@sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
       },
       {
-        "archive_sha256": "92e8e34bae4876dd018e93c7b78ba077a1635bbe698adfa416820fc59694da23",
+        "archive_sha256": "be05dbdbf872ec5f863684cac100aadcfee616b6b4e00cb98f40ef4723f128cc",
         "digest": "sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0",
         "key": "management",
         "reference": "offline/resolver-identity/management@sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0"
       },
       {
-        "archive_sha256": "472f5d539400b634d54da8dd288fafe01b480f8f5c03d695cdbca6c3db592558",
+        "archive_sha256": "b296a0d49b2d4f87054808e7ccda7cf1263f9c549b53c0199427990d8ad270c0",
         "digest": "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae",
         "key": "nginx",
         "reference": "offline/resolver-identity/nginx@sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
       },
       {
-        "archive_sha256": "ff26f5f87a4bd262908f1bd0538ba70dc172bc4c798f23bcecbf719019773358",
+        "archive_sha256": "989893a7ee550f5fb1260e000084e182a634d8ecf5b45969c5f9fe31b6a29b06",
         "digest": "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323",
         "key": "norn",
         "reference": "offline/resolver-identity/norn@sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"
       },
       {
-        "archive_sha256": "a1ac2cb0cafced77ef368bdf01e9cb48dc6c6feafd0d892a6bfb10b2f0ae3efc",
+        "archive_sha256": "34471fee2b260fa3d496a454298ef2881d27c4460b1991ee29ab19b5c4ca5b28",
         "digest": "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
         "key": "rust",
         "reference": "offline/resolver-identity/rust@sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244"
@@ -226,8 +225,8 @@
     "implementation": null,
     "signed": false
   },
-  "source_commit": "7a5c0fffc59cce38352cc34285b104a9ddc6140c",
-  "source_release_manifest_sha256": "fe528f19f672a50e5efe55abad4523af2ca0b30485ee29385e7d18c8d39ba68c",
+  "source_commit": "13a23b48deaa6af886b4da670ebb734018df8162",
+  "source_release_manifest_sha256": "e6bcbf6d70e0b4017c107ef1946ebc70ca024bb6b0d4777333683c4610e3d5f8",
   "topology_note": "R2/R3 configuration has no Wrapper service. The shared Rust image may contain the Wrapper binary; configuration intentionally does not make it runnable.",
   "verification_command": "./recipient-verify.sh /offline/path/to/pinned-release-public-key.pem",
   "version": "0.3.0-norn-knot-rc1"

@@ -68,7 +68,7 @@
       "properties": [
         {
           "name": "source.git.commit",
-          "value": "7a5c0fffc59cce38352cc34285b104a9ddc6140c"
+          "value": "13a23b48deaa6af886b4da670ebb734018df8162"
         }
       ],
       "type": "application",
@@ -84,7 +84,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:1f5b104a-e061-528e-69b3-84fd92ae5187",
+  "serialNumber": "urn:uuid:e819a49c-bb12-bead-cfa8-f5ceba40e292",
   "specVersion": "1.5",
   "version": 1
 }

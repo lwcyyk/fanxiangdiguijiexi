@@ -1,13 +1,41 @@
 {
-  "schema_version": "resolver-identity-domain-center-easy-image-lock-v1",
-  "source_commit": "7a5c0fffc59cce38352cc34285b104a9ddc6140c",
-  "platform": {"os": "linux", "architecture": "amd64"},
-  "runtime_registry_pulls": false,
-  "images": [
-    {"key":"knot","manifest_digest":"sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8","archive_sha256":"dd4348db986a629c8f9bf6874e38a75baad96e1e6c0c6545d1082118a0434fa9","archive":"knot-trace.oci.tar"},
-    {"key":"management","manifest_digest":"sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0","archive_sha256":"be05dbdbf872ec5f863684cac100aadcfee616b6b4e00cb98f40ef4723f128cc","archive":"management.oci.tar"},
-    {"key":"nginx","manifest_digest":"sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae","archive_sha256":"b296a0d49b2d4f87054808e7ccda7cf1263f9c549b53c0199427990d8ad270c0","archive":"mtls-read-proxy.oci.tar"},
-    {"key":"norn","manifest_digest":"sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323","archive_sha256":"989893a7ee550f5fb1260e000084e182a634d8ecf5b45969c5f9fe31b6a29b06","archive":"go-norn.oci.tar"},
-    {"key":"rust","manifest_digest":"sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244","archive_sha256":"34471fee2b260fa3d496a454298ef2881d27c4460b1991ee29ab19b5c4ca5b28","archive":"rust-data-plane.oci.tar"}
+  "schema_version":"resolver-identity-domain-center-easy-image-lock-v1",
+  "source_commit":"13a23b48deaa6af886b4da670ebb734018df8162",
+  "platform":{
+    "os":"linux",
+    "architecture":"amd64"
+  },
+  "runtime_registry_pulls":false,
+  "images":[
+    {
+      "key":"knot",
+      "manifest_digest":"sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8",
+      "archive_sha256":"dd4348db986a629c8f9bf6874e38a75baad96e1e6c0c6545d1082118a0434fa9",
+      "archive":"knot-trace.oci.tar"
+    },
+    {
+      "key":"management",
+      "manifest_digest":"sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0",
+      "archive_sha256":"be05dbdbf872ec5f863684cac100aadcfee616b6b4e00cb98f40ef4723f128cc",
+      "archive":"management.oci.tar"
+    },
+    {
+      "key":"nginx",
+      "manifest_digest":"sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae",
+      "archive_sha256":"b296a0d49b2d4f87054808e7ccda7cf1263f9c549b53c0199427990d8ad270c0",
+      "archive":"mtls-read-proxy.oci.tar"
+    },
+    {
+      "key":"norn",
+      "manifest_digest":"sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323",
+      "archive_sha256":"989893a7ee550f5fb1260e000084e182a634d8ecf5b45969c5f9fe31b6a29b06",
+      "archive":"go-norn.oci.tar"
+    },
+    {
+      "key":"rust",
+      "manifest_digest":"sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+      "archive_sha256":"34471fee2b260fa3d496a454298ef2881d27c4460b1991ee29ab19b5c4ca5b28",
+      "archive":"rust-data-plane.oci.tar"
+    }
   ]
 }
