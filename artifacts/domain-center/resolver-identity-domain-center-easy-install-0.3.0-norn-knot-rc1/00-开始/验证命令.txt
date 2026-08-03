@@ -1,0 +1,1 @@
+./recipient-verify.sh /离线路径/已固定-release-public-key.pem

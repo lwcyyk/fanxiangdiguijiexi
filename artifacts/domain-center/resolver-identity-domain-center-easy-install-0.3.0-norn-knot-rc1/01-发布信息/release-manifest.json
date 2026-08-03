@@ -1,0 +1,42 @@
+{
+  "images": [
+    {
+      "config_digest": "sha256:04dfd24faa1d450dedf025559a75fb2e8045a9477fbd17208062553a8c826fb6",
+      "key": "knot",
+      "local_import_reference": "offline/resolver-identity/knot:ri-61e01beae33fd414",
+      "manifest_digest": "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+    },
+    {
+      "config_digest": "sha256:015a1d4494eb01511aa723a90635862f8d66849c3fc38a9a9ae1a15e83f4586c",
+      "key": "management",
+      "local_import_reference": "offline/resolver-identity/management:ri-8a6d7aeb15009967",
+      "manifest_digest": "sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0"
+    },
+    {
+      "config_digest": "sha256:ce7eae171b944ad0071ef0bdf932f92423dbb049c94dc66b726dd8018f69acaa",
+      "key": "nginx",
+      "local_import_reference": "offline/resolver-identity/nginx:ri-8d9da9cfb339e414",
+      "manifest_digest": "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
+    },
+    {
+      "config_digest": "sha256:ebf87a3bc25d444ca7db149a0a9fdf91b238b53c38cec1ac7e6902b12091b342",
+      "key": "norn",
+      "local_import_reference": "offline/resolver-identity/norn:ri-ad8b495d892c35b1",
+      "manifest_digest": "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"
+    },
+    {
+      "config_digest": "sha256:3e4a31ccd54b799c67449342f9dd4225599cdc02bb18d81cf365f739456a366f",
+      "key": "rust",
+      "local_import_reference": "offline/resolver-identity/rust:ri-68ec104256119bd3",
+      "manifest_digest": "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244"
+    }
+  ],
+  "platform": {
+    "architecture": "amd64",
+    "os": "linux"
+  },
+  "schema_version": "resolver-identity-domain-center-easy-site-v1",
+  "source_commit": "d7663dddba575e16d4b925e5e1ea0522b0ba65cc",
+  "source_release_manifest_sha256": "1a0e6d3994b3764a3faf306286b13ce774db8a7b27750667562e9314abf1bb97",
+  "version": "0.3.0-norn-knot-rc1"
+}

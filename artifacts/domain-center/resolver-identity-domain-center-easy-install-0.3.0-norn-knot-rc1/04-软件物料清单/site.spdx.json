@@ -1,0 +1,153 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "comment": "release.version=0.3.0-norn-knot-rc1;source.git.commit=d7663dddba575e16d4b925e5e1ea0522b0ba65cc",
+  "creationInfo": {
+    "created": "1970-01-01T00:00:00Z",
+    "creators": [
+      "Tool: build_domain_center_site_bundle.py"
+    ]
+  },
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://resolver-identity.invalid/spdx/1f5b104ae061528e69b384fd92ae518771c6cff7896078241830f6647837ad48",
+  "name": "resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1",
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-Image-1",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:oci/knot@61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "knot",
+      "versionInfo": "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+    },
+    {
+      "SPDXID": "SPDXRef-Image-2",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:oci/management@8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "management",
+      "versionInfo": "sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0"
+    },
+    {
+      "SPDXID": "SPDXRef-Image-3",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:oci/nginx@8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "nginx",
+      "versionInfo": "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
+    },
+    {
+      "SPDXID": "SPDXRef-Image-4",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:oci/norn@ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "norn",
+      "versionInfo": "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"
+    },
+    {
+      "SPDXID": "SPDXRef-Image-5",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244"
+        }
+      ],
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:oci/rust@68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "rust",
+      "versionInfo": "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244"
+    }
+  ],
+  "relationships": [
+    {
+      "relatedSpdxElement": "SPDXRef-Image-1",
+      "relationshipType": "DESCRIBES",
+      "spdxElementId": "SPDXRef-DOCUMENT"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Image-2",
+      "relationshipType": "DESCRIBES",
+      "spdxElementId": "SPDXRef-DOCUMENT"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Image-3",
+      "relationshipType": "DESCRIBES",
+      "spdxElementId": "SPDXRef-DOCUMENT"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Image-4",
+      "relationshipType": "DESCRIBES",
+      "spdxElementId": "SPDXRef-DOCUMENT"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Image-5",
+      "relationshipType": "DESCRIBES",
+      "spdxElementId": "SPDXRef-DOCUMENT"
+    }
+  ],
+  "spdxVersion": "SPDX-2.3"
+}

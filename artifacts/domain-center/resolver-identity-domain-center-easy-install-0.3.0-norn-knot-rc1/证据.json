@@ -1,0 +1,233 @@
+{
+  "blockers": [
+    "SIGNING_BLOCKED: no externally supplied Ed25519 PEM was provided",
+    "PDF_BLOCKED: a non-loopback digest-pinned offline PDF builder image was not supplied"
+  ],
+  "checks": {
+    "backup_restore": {
+      "reason_zh": "未执行现场数据备份恢复演练。",
+      "status": "not_run",
+      "status_zh": "未执行"
+    },
+    "bundle_signing": {
+      "reason_zh": "未提供外部 Ed25519 签名密钥",
+      "status": "blocked",
+      "status_zh": "阻断"
+    },
+    "capacity": {
+      "reason_zh": "未执行现场容量与压力测试。",
+      "status": "not_run",
+      "status_zh": "未执行"
+    },
+    "monitoring": {
+      "reason_zh": "未提供现场监控系统。",
+      "status": "not_run",
+      "status_zh": "未执行"
+    },
+    "negative_fail_close": {
+      "reason_zh": "仅完成源码测试，未执行现场 Compose 负向验收。",
+      "status": "not_run",
+      "status_zh": "未执行"
+    },
+    "network_isolation": {
+      "blocked_by": [
+        "external_approval"
+      ],
+      "reason_zh": "未提供独立现场网络和 Ubuntu 22.04/24.04 fresh host。",
+      "status": "blocked",
+      "status_zh": "阻断"
+    },
+    "pdf_manual": {
+      "reason_zh": "PDF_BLOCKED: a non-loopback digest-pinned offline PDF builder image was not supplied",
+      "status": "blocked",
+      "status_zh": "阻断"
+    },
+    "pki_identity": {
+      "blocked_by": [
+        "external_approval"
+      ],
+      "reason_zh": "未提供真实现场证书、私钥或生产根 CA。",
+      "status": "blocked",
+      "status_zh": "阻断"
+    },
+    "production_cutover": {
+      "reason_zh": "按安全边界不启用正式 DNS 流量。",
+      "status": "not_run",
+      "status_zh": "未执行"
+    },
+    "real_oci": {
+      "evidence": {
+        "host": "site",
+        "path": "12-验收证据/external-d7335a3bc7d2fee1fcdcc77da2e23cc075381a09c8afee85c93012f96d3cad70.json",
+        "provenance": "bundled-copy:12-验收证据/external-d7335a3bc7d2fee1fcdcc77da2e23cc075381a09c8afee85c93012f96d3cad70.json",
+        "role": "site",
+        "sha256": "d7335a3bc7d2fee1fcdcc77da2e23cc075381a09c8afee85c93012f96d3cad70",
+        "source_commit": "d7663dddba575e16d4b925e5e1ea0522b0ba65cc",
+        "timestamp": "2026-08-03T00:00:00Z"
+      },
+      "reason_zh": "五个真实 OCI 归档已完成结构校验、Docker load/reimport 及 manifest digest 对账。",
+      "status": "passed",
+      "status_zh": "通过"
+    },
+    "resolver_trace": {
+      "blocked_by": [
+        "external_approval"
+      ],
+      "reason_zh": "未连接真实域名中心，未执行现场 Trace 验收。",
+      "status": "blocked",
+      "status_zh": "阻断"
+    },
+    "rollback_rto": {
+      "reason_zh": "未执行现场 RTO 与正式回滚演练。",
+      "status": "not_run",
+      "status_zh": "未执行"
+    },
+    "ubuntu22": {
+      "blocked_by": [
+        "external_approval"
+      ],
+      "reason_zh": "当前主机不是 Ubuntu 22.04 fresh host。",
+      "status": "blocked",
+      "status_zh": "阻断"
+    },
+    "ubuntu24": {
+      "blocked_by": [
+        "external_approval"
+      ],
+      "reason_zh": "当前主机不是 fresh host；仅可记录 current-host 运行状态。",
+      "status": "blocked",
+      "status_zh": "阻断"
+    }
+  },
+  "delivery_ready": false,
+  "host_count": 6,
+  "hosts": [
+    {
+      "archive": "03-主机包/acceptance-mgmt.tar.gz",
+      "hostname": "acceptance-mgmt",
+      "images": [
+        "sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0",
+        "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"
+      ],
+      "role": "management",
+      "sha256": "782921505fa2d3c932a9c6e258e1d2792037e066cd34e741ffb1601666cb3329"
+    },
+    {
+      "archive": "03-主机包/acceptance-norn-a.tar.gz",
+      "hostname": "acceptance-norn-a",
+      "images": [
+        "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323",
+        "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
+      ],
+      "role": "norn-a",
+      "sha256": "f436aa05a5477879367b82df49a6240c1c0f1e9bd0cbbc3365ca63915d1f1bc7"
+    },
+    {
+      "archive": "03-主机包/acceptance-norn-b.tar.gz",
+      "hostname": "acceptance-norn-b",
+      "images": [
+        "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323",
+        "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
+      ],
+      "role": "norn-b",
+      "sha256": "f80302cac9dc085947a1bb3aa32e8208c8aa233fe0920be278ac2c347ec18fd9"
+    },
+    {
+      "archive": "03-主机包/acceptance-r1.tar.gz",
+      "hostname": "acceptance-r1",
+      "images": [
+        "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+        "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+      ],
+      "role": "r1",
+      "sha256": "2b33eb8775d11a234f0ed22f79e43353c2bf66700154ad05958740283a58248e"
+    },
+    {
+      "archive": "03-主机包/acceptance-r2.tar.gz",
+      "hostname": "acceptance-r2",
+      "images": [
+        "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+        "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+      ],
+      "role": "r2",
+      "sha256": "cfbd94dc380d78c6bcc843c2b94d66d9c5c2b2f964cbdd752a4cf89bddcd6759"
+    },
+    {
+      "archive": "03-主机包/acceptance-r3.tar.gz",
+      "hostname": "acceptance-r3",
+      "images": [
+        "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+        "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+      ],
+      "role": "r3",
+      "sha256": "abed4132bba7f42e1c4b0c627578703a39018655546c8bcd7014c5f07b2452dd"
+    }
+  ],
+  "oci_validation": {
+    "images": [
+      {
+        "archive_sha256": "58c3229e31c1a56081044dc5fbb2e908fa662d065ac3d1e989768b1f0df81cd9",
+        "digest": "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8",
+        "key": "knot",
+        "reference": "offline/resolver-identity/knot@sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+      },
+      {
+        "archive_sha256": "92e8e34bae4876dd018e93c7b78ba077a1635bbe698adfa416820fc59694da23",
+        "digest": "sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0",
+        "key": "management",
+        "reference": "offline/resolver-identity/management@sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0"
+      },
+      {
+        "archive_sha256": "472f5d539400b634d54da8dd288fafe01b480f8f5c03d695cdbca6c3db592558",
+        "digest": "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae",
+        "key": "nginx",
+        "reference": "offline/resolver-identity/nginx@sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
+      },
+      {
+        "archive_sha256": "ff26f5f87a4bd262908f1bd0538ba70dc172bc4c798f23bcecbf719019773358",
+        "digest": "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323",
+        "key": "norn",
+        "reference": "offline/resolver-identity/norn@sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"
+      },
+      {
+        "archive_sha256": "a1ac2cb0cafced77ef368bdf01e9cb48dc6c6feafd0d892a6bfb10b2f0ae3efc",
+        "digest": "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+        "key": "rust",
+        "reference": "offline/resolver-identity/rust@sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244"
+      }
+    ],
+    "passed": true,
+    "strict_single_platform": {
+      "architecture": "amd64",
+      "os": "linux"
+    }
+  },
+  "pdf": {
+    "builder_image": null,
+    "detail": "PDF_BLOCKED: a non-loopback digest-pinned offline PDF builder image was not supplied",
+    "ready": false
+  },
+  "production_traffic_enabled": false,
+  "real_server_deployed": false,
+  "runtime_policy": {
+    "latest_forbidden": true,
+    "loopback_image_references_forbidden": true,
+    "offline_only": true,
+    "runtime_pulls_forbidden": true
+  },
+  "sbom": {
+    "cyclonedx_json": "04-软件物料清单/site.cdx.json",
+    "spdx_json": "04-软件物料清单/site.spdx.json"
+  },
+  "schema_version": "resolver-identity-domain-center-easy-evidence-v1",
+  "signing": {
+    "algorithm": "Ed25519",
+    "implementation": null,
+    "signed": false
+  },
+  "source_commit": "d7663dddba575e16d4b925e5e1ea0522b0ba65cc",
+  "source_release_manifest_sha256": "1a0e6d3994b3764a3faf306286b13ce774db8a7b27750667562e9314abf1bb97",
+  "topology_note": "R2/R3 configuration has no Wrapper service. The shared Rust image may contain the Wrapper binary; configuration intentionally does not make it runnable.",
+  "verification_command": "./recipient-verify.sh /offline/path/to/pinned-release-public-key.pem",
+  "version": "0.3.0-norn-knot-rc1"
+}

@@ -1,0 +1,40 @@
+{
+  "schema_version": "resolver-identity-domain-center-easy-install-test-summary-v1",
+  "generated_at": "2026-08-02T16:57:54+00:00",
+  "source_commit": "d7663dddba575e16d4b925e5e1ea0522b0ba65cc",
+  "delivery": {
+    "path": "artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1",
+    "evidence_sha256": "70b0d291a129f618b0deb99d09cf7eb893452328c47ec81d5e0358206d4138e8"
+  },
+  "local": [
+    {"id":"delivery_structure_verification","status":"passed"},
+    {"id":"recipient_structural_verification","status":"passed"},
+    {"id":"oci_validation","status":"passed"},
+    {"id":"docker_load_reimport_digest_reconciliation","status":"passed"},
+    {"id":"source_tests","status":"passed"},
+    {"id":"generator_self_test","status":"passed"},
+    {"id":"false_production_flags","status":"passed"},
+    {"id":"evidence_secret_scan","status":"passed"}
+  ],
+  "external": [
+    {"id":"backup_restore","status":"not_run"},
+    {"id":"capacity","status":"not_run"},
+    {"id":"monitoring","status":"not_run"},
+    {"id":"negative_fail_close","status":"not_run"},
+    {"id":"network_isolation","status":"blocked"},
+    {"id":"pki_identity","status":"blocked"},
+    {"id":"production_cutover","status":"not_run"},
+    {"id":"real_oci","status":"passed"},
+    {"id":"resolver_trace","status":"blocked"},
+    {"id":"rollback_rto","status":"not_run"},
+    {"id":"ubuntu22","status":"blocked"},
+    {"id":"ubuntu24","status":"blocked"},
+    {"id":"bundle_signing","status":"blocked"},
+    {"id":"pdf_manual","status":"blocked"},
+    {"id":"compose_runtime_readiness","status":"blocked"}
+  ],
+  "blocked": true,
+  "real_server_deployed": false,
+  "production_traffic_enabled": false,
+  "release_ready": false
+}
