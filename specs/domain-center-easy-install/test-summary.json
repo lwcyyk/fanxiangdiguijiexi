@@ -1,10 +1,10 @@
 {
   "schema_version": "resolver-identity-domain-center-easy-install-test-summary-v1",
   "generated_at": "2026-08-02T16:57:54+00:00",
-  "source_commit": "5c80bebb7e2c1bb08382f14935184b47dafe0163",
+  "source_commit": "7a5c0fffc59cce38352cc34285b104a9ddc6140c",
   "delivery": {
     "path": "artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1",
-    "evidence_sha256": "a886fca9f2a4419c428db0b2bfb4ef6e0c90ccedceb3464aa4c82b8335c494b6"
+    "evidence_sha256": "b6b2f36618dee5008cf32ac41b8f97b7898bf50eb0853a0b2251719b7ef7aed6"
   },
   "local": [
     {

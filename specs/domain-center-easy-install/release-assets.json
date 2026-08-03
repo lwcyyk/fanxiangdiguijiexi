@@ -1,7 +1,7 @@
 {
   "schema_version": "resolver-identity-domain-center-release-assets-v1",
   "version": "0.3.0-norn-knot-rc1",
-  "source_commit": "5c80bebb7e2c1bb08382f14935184b47dafe0163",
+  "source_commit": "7a5c0fffc59cce38352cc34285b104a9ddc6140c",
   "assets": [
     {"filename":"acceptance-mgmt.tar.gz","size":117667600,"sha256":"782921505fa2d3c932a9c6e258e1d2792037e066cd34e741ffb1601666cb3329"},
     {"filename":"acceptance-norn-a.tar.gz","size":118231250,"sha256":"f436aa05a5477879367b82df49a6240c1c0f1e9bd0cbbc3365ca63915d1f1bc7"},
