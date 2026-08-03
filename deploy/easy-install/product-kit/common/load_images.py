@@ -145,6 +145,7 @@ def main() -> int:
                 pass
             if not preexisting:
                 subprocess.run(["docker", "load", "--input", str(archive)], check=True)
+                subprocess.run(["docker", "image", "tag", config_digest, import_reference], check=True)
                 imported_tags.add(import_reference)
             verify_loaded(import_reference, config_digest)
             print(f"加载校验通过：本地标签 {import_reference}；原始 OCI manifest {original_reference}")

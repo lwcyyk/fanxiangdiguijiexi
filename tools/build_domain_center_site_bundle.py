@@ -431,6 +431,7 @@ def validate_oci_archive(
     expected_digest: str,
     platform: dict[str, str],
     expected_reference: str | None = None,
+    expected_annotation: str | None = None,
 ) -> dict[str, Any]:
     """Fully validate one strict, single-platform OCI image-layout tar."""
     if not path.is_file() or path.is_symlink():
@@ -466,9 +467,12 @@ def validate_oci_archive(
         if expected_reference is not None:
             annotations = _object(root.get("annotations"), "index manifest annotations")
             reference_name = annotations.get(OCI_REF_ANNOTATION)
-            if reference_name != expected_reference:
+            allowed_annotations = {expected_reference}
+            if expected_annotation is not None:
+                allowed_annotations.add(expected_annotation)
+            if reference_name not in allowed_annotations:
                 raise BundleError(
-                    f"OCI index manifest annotation {OCI_REF_ANNOTATION} must equal configured reference {expected_reference}"
+                    f"OCI index manifest annotation {OCI_REF_ANNOTATION} must equal one of {sorted(allowed_annotations)}"
                 )
         root_platform = _object(root.get("platform"), "index manifest platform")
         required_platform = {"os": platform["os"], "architecture": platform["architecture"]}
@@ -605,7 +609,7 @@ def validate_inputs(site_path: Path, release_path: Path) -> dict[str, Any]:
         digest = f"sha256:{match.group(2)}"
         reference = f"{repository.rstrip('/')}@{digest}"
         import_reference = _import_reference(repository.rstrip('/'), digest)
-        oci = validate_oci_archive(archive, digest, platform_clean, import_reference)
+        oci = validate_oci_archive(archive, digest, platform_clean, import_reference, version)
         clean_images[key] = {
             "archive": archive,
             "repository": repository.rstrip("/"),
@@ -1268,6 +1272,9 @@ def _write_release_handoff(root: Path, validated: dict[str, Any], host_evidence:
         "version": validated["version"],
         "source_commit": validated["source_commit"],
         "source_release_manifest_sha256": validated["release_manifest_sha256"],
+        "release_ready": False,
+        "real_server_deployed": False,
+        "production_traffic_enabled": False,
         "platform": validated["platform"],
         "images": [
             {"key": key, "manifest_digest": value["digest"], "config_digest": value["config_digest"], "local_import_reference": value["import_reference"]}
@@ -1452,8 +1459,10 @@ def verify_delivery(
         raise BundleError("PDF readiness is inconsistent with required valid PDF manuals")
     if bool(evidence.get("signing", {}).get("signed")) != signed:
         raise BundleError("delivery evidence signing state is inconsistent")
-    if evidence.get("real_server_deployed") is not False or evidence.get("production_traffic_enabled") is not False:
-        raise BundleError("bundle evidence must not claim real deployment or production traffic")
+    if evidence.get("real_server_deployed") is not False or evidence.get("production_traffic_enabled") is not False or evidence.get("release_ready") is not False:
+        raise BundleError("bundle evidence must keep release and production deployment flags false")
+    if any(release_manifest.get(key) is not False for key in ("release_ready", "real_server_deployed", "production_traffic_enabled")):
+        raise BundleError("release manifest must keep release and production deployment flags false")
     checks = _object(evidence.get("checks"), "delivery evidence checks")
     evidence_copy = root / "12-验收证据" / "证据.json"
     if not evidence_copy.is_file() or evidence_copy.is_symlink() or evidence_copy.read_bytes() != (root / "证据.json").read_bytes():
@@ -1816,6 +1825,7 @@ def build_delivery(
             "blockers": blockers,
             "checks": checks,
             "delivery_ready": not blockers and all(_status_passed(item["status"]) for item in checks.values()),
+            "release_ready": False,
             "real_server_deployed": False,
             "production_traffic_enabled": False,
             "verification_command": "./recipient-verify.sh /offline/path/to/pinned-release-public-key.pem",

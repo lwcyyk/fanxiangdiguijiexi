@@ -257,6 +257,7 @@ def test_image_lock_parser_and_full_repo_digest_check(tmp_path: Path, monkeypatc
     monkeypatch.setattr(sys, "argv", [str(IMAGE_LOADER_PATH), str(tmp_path)])
     assert image_loader.main() == 0
     assert ["docker", "load", "--input", str(archive)] in calls
+    assert ["docker", "image", "tag", config_digest, import_reference] in calls
     assert not any("pull" in item for command in calls for item in command)
 
     monkeypatch.setattr(image_loader, "inspect_image", lambda _: {"Id": "sha256:" + "0" * 64, "RepoTags": []})
@@ -696,14 +697,20 @@ def test_resolver_topology_and_r1_shadow_port():
 
 
 def test_evidence_preserves_external_statuses_and_false_deployment_claims(tmp_path: Path):
-    evidence = json.loads((_build(tmp_path) / "证据.json").read_text(encoding="utf-8"))
+    delivery = _build(tmp_path)
+    evidence = json.loads((delivery / "证据.json").read_text(encoding="utf-8"))
+    release_manifest = json.loads((delivery / "01-发布信息" / "release-manifest.json").read_text(encoding="utf-8"))
     assert evidence["checks"]["resolver_trace"]["status"] == "blocked"
     assert evidence["checks"]["resolver_trace"]["status_zh"] == "阻断"
     assert evidence["checks"]["production_cutover"]["status"] == "not_run"
     assert evidence["checks"]["production_cutover"]["status_zh"] == "未运行"
+    assert evidence["release_ready"] is False
     assert evidence["real_server_deployed"] is False
     assert evidence["production_traffic_enabled"] is False
     assert evidence["delivery_ready"] is False
+    assert release_manifest["release_ready"] is False
+    assert release_manifest["real_server_deployed"] is False
+    assert release_manifest["production_traffic_enabled"] is False
 
 
 def test_mandatory_acceptance_ids_cannot_be_omitted(tmp_path: Path):
@@ -769,13 +776,22 @@ def test_status_vocabulary_rejects_noncanonical_aliases(tmp_path: Path):
             generator.validate_inputs(site_path, release_path)
 
 
-def test_strict_oci_requires_matching_import_reference_annotation(tmp_path: Path):
+def test_strict_oci_accepts_release_version_annotation(tmp_path: Path):
     site_path, release_path = _fixture(tmp_path)
-    site = json.loads(site_path.read_text(encoding="utf-8"))
-    site["images"]["rust"]["repository"] = "registry.internal/domain-center/renamed-rust"
-    _write_json(site_path, site)
+    assert generator.validate_inputs(site_path, release_path)["images"]
+
+
+def test_strict_oci_rejects_unsupported_annotation(tmp_path: Path):
+    archive = tmp_path / "image.oci.tar"
+    digest: dict[str, str] = {}
+    generator._make_test_oci(archive, digest, "registry.internal/domain-center/rust")
     with pytest.raises(generator.BundleError, match="org.opencontainers.image.ref.name"):
-        generator.validate_inputs(site_path, release_path)
+        generator.validate_oci_archive(
+            archive,
+            f"sha256:{digest['digest']}",
+            {"os": "linux", "architecture": "amd64"},
+            "registry.internal/domain-center/renamed-rust:ri-" + digest["digest"][:16],
+        )
 
 
 def test_top_level_delivery_and_offline_recipient_verifier(tmp_path: Path):
