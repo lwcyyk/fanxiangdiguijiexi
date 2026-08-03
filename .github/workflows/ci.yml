@@ -450,12 +450,41 @@ jobs:
           for relative in ("images.lock.json", "docker-runtime-acceptance.json", "oci-acceptance.json", "recipient-verification.json"):
               record = json.loads((Path("specs/domain-center-easy-install") / relative).read_text(encoding="utf-8"))
               assert record["source_commit"] == source_commit
+          assets = json.loads(Path("specs/domain-center-easy-install/release-assets.json").read_text(encoding="utf-8"))
+          assert assets["source_commit"] == source_commit
+          assert assets["storage"] == "github-release-assets-only"
+          assert assets["release_ready"] is False
+          assert assets["real_server_deployed"] is False
+          assert assets["production_traffic_enabled"] is False
+          asset_map = {item["filename"]: item for item in assets["assets"]}
+          expected_assets = {
+              "acceptance-mgmt.tar.gz", "acceptance-norn-a.tar.gz", "acceptance-norn-b.tar.gz",
+              "acceptance-r1.tar.gz", "acceptance-r2.tar.gz", "acceptance-r3.tar.gz",
+              "go-norn.oci.tar", "knot-trace.oci.tar", "management.oci.tar",
+              "mtls-read-proxy.oci.tar", "resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1.tar.zst",
+              "rust-data-plane.oci.tar",
+          }
+          assert set(asset_map) == expected_assets
+          for item in asset_map.values():
+              assert isinstance(item["size"], int) and item["size"] > 0
+              assert len(item["sha256"]) == 64 and all(c in "0123456789abcdef" for c in item["sha256"])
           for line in Path("artifacts/domain-center/OFFLINE-SHA256SUMS").read_text(encoding="utf-8").splitlines():
               digest, relative = line.split(None, 1)
               path = Path(relative)
-              assert path.is_file()
-              actual = hashlib.sha256(path.read_bytes()).hexdigest()
-              assert actual == digest, relative
+              if path.is_file():
+                  actual = hashlib.sha256(path.read_bytes()).hexdigest()
+                  assert actual == digest, relative
+              else:
+                  assert path.name in asset_map
+                  assert asset_map[path.name]["sha256"] == digest
+          host_archives = json.loads((delivery / "12-验收证据" / "host-archives.json").read_text(encoding="utf-8"))
+          for host in host_archives["hosts"]:
+              filename = Path(host["archive"]).name
+              assert asset_map[filename]["sha256"] == host["sha256"]
+          lock = json.loads(Path("specs/domain-center-easy-install/images.lock.json").read_text(encoding="utf-8"))
+          for image in lock["images"]:
+              assert asset_map[image["archive"]]["sha256"] == image["archive_sha256"]
+              assert asset_map[image["archive"]]["manifest_digest"] == image["manifest_digest"]
           assert not list(Path("artifacts/domain-center").rglob("*.oci.tar"))
           assert not list(Path("artifacts/domain-center").rglob("*.tar.gz"))
           assert not list(Path("artifacts/domain-center").rglob("*.tar.zst"))

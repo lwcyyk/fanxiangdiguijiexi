@@ -202,7 +202,7 @@ def verify_evidence_diff(source_commit: str, evidence_commit: str) -> None:
         )
     except subprocess.CalledProcessError as error:
         raise FinalizeError("Source Commit is not an ancestor of Evidence Commit") from error
-    changed = _git("diff", "--name-only", source_commit, evidence_commit).splitlines()
+    changed = _git("-c", "core.quotePath=false", "diff", "--name-only", source_commit, evidence_commit).splitlines()
     if not changed:
         raise FinalizeError("evidence commit contains no tracked evidence changes")
     unexpected = [path for path in map(Path, changed) if not _allowed_evidence_path(path)]
