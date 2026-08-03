@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://resolver-identity.invalid/schemas/domain-center-shadow-acceptance-v1.json",
+  "title": "R1 shadow acceptance result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "name", "type", "baseline_server", "baseline_port", "shadow_server", "shadow_port", "udp", "tcp", "result", "status_zh", "real_server_deployed", "production_traffic_enabled"],
+  "properties": {
+    "schema_version": {"const": "domain-center-shadow-acceptance-v1"},
+    "name": {"type": "string", "minLength": 1},
+    "type": {"enum": ["A", "AAAA", "CNAME", "TXT"]},
+    "baseline_server": {"type": "string", "minLength": 1},
+    "baseline_port": {"type": "integer", "minimum": 1, "maximum": 65535},
+    "shadow_server": {"type": "string", "minLength": 1},
+    "shadow_port": {"const": 1053},
+    "udp": {"$ref": "#/$defs/protocol"},
+    "tcp": {"$ref": "#/$defs/protocol"},
+    "result": {"enum": ["passed", "failed"]},
+    "status_zh": {"enum": ["通过", "失败"]},
+    "real_server_deployed": {"const": false},
+    "production_traffic_enabled": {"const": false}
+  },
+  "$defs": {
+    "protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["open", "baseline_answers", "shadow_answers"],
+      "properties": {
+        "open": {"type": "boolean"},
+        "baseline_answers": {"type": "array", "items": {"type": "string"}},
+        "shadow_answers": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

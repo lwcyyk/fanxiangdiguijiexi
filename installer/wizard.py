@@ -1,0 +1,334 @@
+#!/usr/bin/env python3
+"""域名中心离线安装向导（仅使用 Python 标准库）。"""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+import re
+import shlex
+import socket
+import subprocess
+import sys
+from typing import NoReturn
+
+ROLES = ("management", "norn-a", "norn-b", "r1", "r2", "r3")
+ROLE_CN = {
+    "management": "管理节点",
+    "norn-a": "Norn A 节点",
+    "norn-b": "Norn B 节点",
+    "r1": "R1 首跳解析节点",
+    "r2": "R2 上游解析节点",
+    "r3": "R3 上游解析节点",
+}
+ERRORS = {
+    "E001": ("参数不完整或格式错误", "使用 --help 查看参数，并按站点清单填写。"),
+    "E002": ("当前主机与安装包指定主机不一致", "将安装包复制到指定主机；禁止绕过主机校验。"),
+    "E003": ("预检未通过", "按输出修复环境后重新执行；已完成步骤会安全续跑。"),
+    "E004": ("安装执行失败", "查看 support 采集包和安装状态，修复后重新执行同一命令。"),
+    "E005": ("安装包内容不可信或不完整", "重新从受信介质复制并核对发布校验值。"),
+    "E006": ("密钥材料不符合约束", "使用独立安全介质提供所需文件，勿在命令行传入密钥。"),
+    "E007": ("不支持的操作", "使用 --help 中列出的操作。"),
+    "E008": ("需要交互输入但当前为非交互模式", "提供 --role、--expected-host 和 --yes，或在终端中运行。"),
+}
+
+
+class InstallError(Exception):
+    def __init__(self, code: str, detail: str = "") -> None:
+        self.code = code
+        self.detail = detail
+        super().__init__(detail)
+
+
+def fail(code: str, detail: str = "") -> NoReturn:
+    reason, advice = ERRORS.get(code, ("未知错误", "联系发布包维护人员。"))
+    if detail:
+        reason = f"{reason}：{detail}"
+    print(f"错误代码：{code}\n原因：{reason}\n建议：{advice}", file=sys.stderr)
+    raise SystemExit(2)
+
+
+def run(command: list[str], *, env: dict[str, str] | None = None) -> None:
+    printable = " ".join(shlex.quote(item) for item in command)
+    print(f"执行：{printable}")
+    try:
+        subprocess.run(command, check=True, env=env)
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise InstallError("E004", str(exc)) from exc
+
+
+def safe_host(value: str) -> str:
+    value = value.strip().lower().rstrip(".")
+    if not re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,252}", value):
+        raise InstallError("E001", f"主机名不合法：{value!r}")
+    return value
+
+
+def local_host_names() -> set[str]:
+    names: set[str] = set()
+    for value in (socket.gethostname(), socket.getfqdn()):
+        if value:
+            names.add(safe_host(value))
+    return names
+
+
+def check_expected_host(
+    expected: str, actual_names: set[str] | None = None, *, show_mismatch: bool = False
+) -> None:
+    expected = safe_host(expected)
+    names = {safe_host(value) for value in (actual_names or local_host_names())}
+    candidates = set(names)
+    if "." not in expected:
+        candidates |= {name.split(".", 1)[0] for name in names}
+    if expected not in candidates:
+        if show_mismatch:
+            print(f"主机不一致：期望 {expected}")
+            print(f"主机不一致：实际 {', '.join(sorted(names))}")
+        raise InstallError("E002", f"期望 {expected}，实际 {', '.join(sorted(names))}")
+
+
+def prompt(label: str, default: str = "") -> str:
+    suffix = f" [{default}]" if default else ""
+    answer = input(f"{label}{suffix}：").strip()
+    return answer or default
+
+
+def load_package_metadata(root: Path) -> dict[str, object]:
+    candidates = (root / "expected-host.json", root / "package.json", root / "manifest.json", root / "EXPECTED-HOST.json")
+    for path in candidates:
+        if path.is_file():
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise InstallError("E005", f"无法读取 {path.name}：{exc}") from exc
+            if not isinstance(value, dict):
+                raise InstallError("E005", f"{path.name} 顶层必须是对象")
+            return value
+    return {}
+
+
+def infer_package_root(script: Path) -> Path:
+    candidate = script.resolve().parent.parent / "deploy" / "easy-install" / "product-kit"
+    return candidate if candidate.is_dir() else script.resolve().parent
+
+
+def select_role(args: argparse.Namespace, metadata: dict[str, object]) -> str:
+    packaged = metadata.get("role")
+    if packaged is not None:
+        if packaged not in ROLES:
+            raise InstallError("E005", f"安装包角色不合法：{packaged}")
+        if args.role is not None and args.role != packaged:
+            raise InstallError("E005", f"安装包固定角色为 {packaged}，不能改为 {args.role}")
+        return str(packaged)
+    role = args.role
+    if role:
+        if role not in ROLES:
+            raise InstallError("E001", f"角色不合法：{role}")
+        return str(role)
+    if not sys.stdin.isatty():
+        raise InstallError("E008", "缺少 --role")
+    print("请选择本机角色：")
+    for number, name in enumerate(ROLES, 1):
+        print(f"  {number}. {ROLE_CN[name]}")
+    value = prompt("序号")
+    try:
+        return ROLES[int(value) - 1]
+    except (ValueError, IndexError) as exc:
+        raise InstallError("E001", "角色序号无效") from exc
+
+
+def _unsafe_path(path: Path, *, install_root: Path | None = None) -> bool:
+    """Reject broad roots and any path reached through a symlink ancestor."""
+    absolute = path.absolute()
+    forbidden = {Path("/"), Path("/etc"), Path("/var"), Path("/home"), Path("/opt")}
+    if install_root is not None:
+        install = install_root.absolute()
+        forbidden |= {install, install / "data", install / "releases", install / "state"}
+    if absolute in forbidden:
+        return True
+    probe = absolute
+    while probe != probe.parent:
+        if probe.exists() and probe.is_symlink():
+            return True
+        probe = probe.parent
+    return False
+
+
+def validate_secret_dir(path: Path, install_root: Path | None = None) -> None:
+    if not path.is_absolute() or not path.is_dir() or _unsafe_path(path, install_root=install_root):
+        raise InstallError("E006", "密钥目录必须是已存在的专用绝对路径，不能是广泛目录或经过符号链接")
+    mode = path.stat().st_mode & 0o777
+    if mode & 0o077:
+        raise InstallError("E006", f"密钥目录权限必须不宽于 0700，当前为 {mode:04o}")
+    for child in path.iterdir():
+        if child.is_symlink():
+            raise InstallError("E006", f"密钥文件不能是符号链接：{child.name}")
+        if child.is_file() and child.stat().st_mode & 0o077:
+            raise InstallError("E006", f"密钥文件权限必须不宽于 0600：{child.name}")
+
+
+ANSWER_KEYS = {"role", "expected-host", "package-root", "config-dir", "secret-dir", "install-root", "images", "output", "yes"}
+SECRET_ANSWER_RE = re.compile(r"(?i)(secret|token|password|passphrase|mnemonic|private|credential|api.?key)")
+
+
+def load_answers(path: Path) -> dict[str, object]:
+    if not path.is_absolute() or not path.is_file() or _unsafe_path(path):
+        raise InstallError("E001", "--answers 必须是安全的绝对普通文件路径")
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise InstallError("E001", f"无法读取 answers JSON：{exc}") from exc
+    if not isinstance(value, dict):
+        raise InstallError("E001", "answers JSON 顶层必须是对象")
+    unknown = set(map(str, value)) - ANSWER_KEYS
+    secret_keys = {str(key) for key in value if SECRET_ANSWER_RE.search(str(key)) and str(key) != "secret-dir"}
+    if unknown or secret_keys:
+        rejected = sorted(unknown | secret_keys)
+        raise InstallError("E006", f"answers JSON 含未知或秘密键：{', '.join(rejected)}")
+    if "yes" in value and not isinstance(value["yes"], bool):
+        raise InstallError("E001", "answers JSON 的 yes 必须是布尔值")
+    for key, item in value.items():
+        if key != "yes" and (not isinstance(item, str) or not item.strip()):
+            raise InstallError("E001", f"answers JSON 的 {key} 必须是非空字符串")
+    return value
+
+
+def apply_answers(raw_argv: list[str]) -> list[str]:
+    answer_options = [item for item in raw_argv if item == "--answers" or item.startswith("--answers=")]
+    if not answer_options:
+        return raw_argv
+    if len(answer_options) != 1:
+        raise InstallError("E001", "--answers 只能指定一次")
+    index = next(i for i, item in enumerate(raw_argv) if item == "--answers" or item.startswith("--answers="))
+    option = raw_argv[index]
+    if option == "--answers":
+        if index + 1 >= len(raw_argv):
+            raise InstallError("E001", "--answers 缺少路径")
+        answer_path = raw_argv[index + 1]
+        cleaned = raw_argv[:index] + raw_argv[index + 2:]
+    else:
+        answer_path = option.split("=", 1)[1]
+        cleaned = raw_argv[:index] + raw_argv[index + 1:]
+    answers = load_answers(Path(answer_path))
+    present = {item.split("=", 1)[0] for item in cleaned if item.startswith("--")}
+    conflicts = sorted(f"--{key}" for key in answers if f"--{key}" in present)
+    if conflicts:
+        raise InstallError("E001", f"answers JSON 与命令行参数冲突：{', '.join(conflicts)}")
+    injected: list[str] = []
+    for key, item in answers.items():
+        option_name = f"--{key}"
+        if key == "yes":
+            if item:
+                injected.append(option_name)
+        else:
+            injected.extend((option_name, str(item)))
+    return [*cleaned, *injected]
+
+
+def reject_duplicate_options(argv: list[str]) -> None:
+    single_value = {"--role", "--expected-host", "--package-root", "--config-dir", "--secret-dir", "--install-root", "--images", "--output"}
+    seen: set[str] = set()
+    for item in argv:
+        option = item.split("=", 1)[0]
+        if option in single_value:
+            if option in seen:
+                raise InstallError("E005", f"禁止重复参数覆盖安装包绑定：{option}")
+            seen.add(option)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="域名中心离线安装向导（中文、无颜色）")
+    parser.add_argument("action", nargs="?", default="install", choices=(
+        "install", "activate", "preflight", "prepare-secrets", "status", "support", "backup", "rollback", "uninstall"
+    ))
+    parser.add_argument("--role", choices=ROLES, help="本机角色")
+    parser.add_argument("--expected-host", help="安装包指定的主机名")
+    parser.add_argument("--no-start", action="store_true", help="安装但不启动服务")
+    parser.add_argument("--package-root", type=Path, help="product-kit 根目录")
+    parser.add_argument("--config-dir", type=Path, help="本机渲染配置目录")
+    parser.add_argument("--secret-dir", type=Path, help="已准备的受限密钥目录")
+    parser.add_argument("--install-root", type=Path, default=Path("/opt/domain-center"))
+    parser.add_argument("--images", type=Path, help="离线镜像目录")
+    parser.add_argument("--output", type=Path, help="支持包或备份输出目录")
+    parser.add_argument("--show-mismatch", action="store_true", help="主机校验失败时仅显示差异（不绕过拒绝）")
+    parser.add_argument("--answers", type=Path, help="非秘密无人值守 answers JSON")
+    parser.add_argument("--yes", action="store_true", help="非交互确认")
+    parser.add_argument("--purge-data", action="store_true", help="卸载时删除本工具拥有的数据")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
+    try:
+        raw_argv = apply_answers(raw_argv)
+        reject_duplicate_options(raw_argv)
+        args = build_parser().parse_args(raw_argv)
+        package_root = (args.package_root or infer_package_root(Path(__file__))).resolve()
+        metadata_root = package_root.parent if package_root.name == "product-kit" else package_root
+        metadata = load_package_metadata(metadata_root)
+        role = select_role(args, metadata)
+        packaged_expected = metadata.get("expected_host") or metadata.get("hostname")
+        packaged_expected_is_fqdn = packaged_expected is not None and "." in safe_host(str(packaged_expected))
+        if metadata.get("expected_host") and metadata.get("hostname"):
+            expected_host = safe_host(str(metadata["expected_host"]))
+            hostname = safe_host(str(metadata["hostname"]))
+            if expected_host != hostname:
+                if "." not in expected_host or expected_host.split(".", 1)[0] != hostname:
+                    raise InstallError("E005", "安装包 expected_host 未绑定 hostname")
+        if packaged_expected is not None:
+            expected = safe_host(str(packaged_expected))
+            if args.expected_host is not None and safe_host(args.expected_host) != expected:
+                raise InstallError("E005", f"安装包固定主机为 {expected}，不能改为 {args.expected_host}")
+        else:
+            expected = safe_host(args.expected_host) if args.expected_host else None
+        if not expected:
+            if not sys.stdin.isatty():
+                raise InstallError("E008", "缺少 --expected-host")
+            expected = safe_host(prompt("本安装包指定主机名"))
+        check_expected_host(expected, show_mismatch=args.show_mismatch)
+        if packaged_expected_is_fqdn and "." not in expected:
+            raise InstallError("E005", "FQDN 安装包身份不能降级为短主机名")
+
+        role_root = package_root / role
+        control = role_root / "安装工具"
+        if not control.is_file():
+            raise InstallError("E005", f"角色工具不存在：{control}")
+        command = [str(control), args.action, "--expected-host", str(expected),
+                   "--install-root", str(args.install_root)]
+        if args.config_dir:
+            command += ["--config-dir", str(args.config_dir.resolve())]
+        if args.secret_dir:
+            secret_path = args.secret_dir.absolute()
+            if args.action != "prepare-secrets":
+                validate_secret_dir(secret_path, args.install_root)
+            command += ["--secret-dir", str(secret_path)]
+        if args.images:
+            command += ["--images", str(args.images.resolve())]
+        if args.output:
+            command += ["--output", str(args.output.resolve())]
+        if args.purge_data:
+            command.append("--purge-data")
+        if args.no_start:
+            command.append("--no-start")
+        if args.yes:
+            command.append("--yes")
+        elif args.action in {"install", "activate", "rollback", "uninstall"}:
+            if not sys.stdin.isatty():
+                raise InstallError("E008", "危险操作需要 --yes")
+            if prompt(f"确认在 {expected} 执行{args.action}？输入“是”继续") != "是":
+                print("已取消。")
+                return 0
+        run(command)
+        print(f"完成：{ROLE_CN[role]} {args.action}")
+        return 0
+    except InstallError as exc:
+        fail(exc.code, exc.detail)
+    except KeyboardInterrupt:
+        fail("E001", "操作被中断")
+    except Exception as exc:  # ensure every externally visible error follows the contract
+        fail("E004", str(exc))
+
+
+if __name__ == "__main__":
+    sys.exit(main())

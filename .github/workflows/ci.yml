@@ -148,6 +148,37 @@ jobs:
               config --quiet
           done
 
+  easy-installer:
+    name: easy installer (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13.11"
+          cache: pip
+          cache-dependency-path: requirements-ci.lock
+      - name: Install hash-locked Python test dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --require-hashes -r requirements-ci.lock
+          python -m pip install --disable-pip-version-check --no-deps --no-build-isolation -e .
+      - name: Validate deterministic offline installer
+        run: |
+          python3 -m pytest -q tests/unit/test_domain_center_easy_installer.py tests/unit/test_norn_field_delivery.py
+          python3 tools/build_domain_center_site_bundle.py self-test
+          python3 installer/wizard.py --help >/dev/null
+          python3 -m compileall -q installer deploy/easy-install/product-kit tools/build_domain_center_site_bundle.py
+          find deploy/easy-install/product-kit installer -type f -name '*.sh' -print0 |
+            xargs -0 -r -n1 bash -n
+      - name: Verify production safety declarations
+        run: |
+          ! grep -R -E 'real_server_deployed["[:space:]]*:[[:space:]]*true|production_traffic_enabled["[:space:]]*:[[:space:]]*true' \
+            deploy/easy-install installer tools/build_domain_center_site_bundle.py docs/easy-install
+
   legacy-python-image:
     name: legacy Python compatibility image
     runs-on: ubuntu-24.04
@@ -359,11 +390,15 @@ jobs:
           fetch-depth: 0
       - name: Verify integrated RC evidence boundary
         run: |
-          source_commit="$(jq -r .source_commit specs/norn-knot-rc1/test-summary.json)"
-          git cat-file -e "${source_commit}^{commit}"
+          rc_source_commit="dca8887eadf85a1575a6fe6c4c7dafb3f9ec27e5"
+          rc_evidence_commit="a4d4b648edbfbe1857533d4dcdb7517d124c2a81"
+          test "$(jq -r .source_commit specs/norn-knot-rc1/test-summary.json)" = "$rc_source_commit"
+          test "$(jq -r .git_commit specs/norn-knot-rc1/release-manifest.json)" = "$rc_source_commit"
+          git cat-file -e "${rc_source_commit}^{commit}"
+          git cat-file -e "${rc_evidence_commit}^{commit}"
           python3 tools/finalize_norn_knot_rc.py verify-evidence-diff \
-            --source-commit "$source_commit" \
-            --evidence-commit HEAD
+            --source-commit "$rc_source_commit" \
+            --evidence-commit "$rc_evidence_commit"
           jq -e '
             .release_version == "0.3.0-norn-knot-rc1" and
             .deployment.production_trace_ready == true and
@@ -373,11 +408,98 @@ jobs:
             .security_audit.secrets_found == false
           ' specs/norn-knot-rc1/test-summary.json >/dev/null
 
+  easy-installer-evidence:
+    name: easy installer evidence
+    runs-on: ubuntu-24.04
+    needs: [easy-installer]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - name: Verify easy installer evidence boundary
+        run: |
+          source_commit="$(jq -r .source_commit specs/domain-center-easy-install/test-summary.json)"
+          evidence_commit="$(git rev-parse HEAD)"
+          git cat-file -e "${source_commit}^{commit}"
+          git cat-file -e "${evidence_commit}^{commit}"
+          python3 tools/finalize_domain_center_easy_install.py verify-evidence-diff \
+            --source-commit "$source_commit" \
+            --evidence-commit "$evidence_commit"
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import subprocess
+          from pathlib import Path
+
+          source = json.loads(Path("specs/domain-center-easy-install/test-summary.json").read_text(encoding="utf-8"))
+          source_commit = source["source_commit"]
+          assert subprocess.run(
+              ["git", "merge-base", "--is-ancestor", source_commit, "HEAD"],
+              check=False,
+          ).returncode == 0
+          delivery = Path(source["delivery"]["path"])
+          evidence = json.loads((delivery / "证据.json").read_text(encoding="utf-8"))
+          assert evidence["source_commit"] == source_commit
+          assert evidence["release_ready"] is False
+          assert evidence["real_server_deployed"] is False
+          assert evidence["production_traffic_enabled"] is False
+          manifest = json.loads((delivery / "01-发布信息" / "release-manifest.json").read_text(encoding="utf-8"))
+          assert manifest["source_commit"] == source_commit
+          assert manifest["real_server_deployed"] is False
+          assert manifest["production_traffic_enabled"] is False
+          for relative in ("images.lock.json", "docker-runtime-acceptance.json", "oci-acceptance.json", "recipient-verification.json"):
+              record = json.loads((Path("specs/domain-center-easy-install") / relative).read_text(encoding="utf-8"))
+              assert record["source_commit"] == source_commit
+          assets = json.loads(Path("specs/domain-center-easy-install/release-assets.json").read_text(encoding="utf-8"))
+          assert assets["source_commit"] == source_commit
+          assert assets["storage"] == "github-release-assets-only"
+          assert assets["release_ready"] is False
+          assert assets["real_server_deployed"] is False
+          assert assets["production_traffic_enabled"] is False
+          asset_map = {item["filename"]: item for item in assets["assets"]}
+          expected_assets = {
+              "acceptance-mgmt.tar.gz", "acceptance-norn-a.tar.gz", "acceptance-norn-b.tar.gz",
+              "acceptance-r1.tar.gz", "acceptance-r2.tar.gz", "acceptance-r3.tar.gz",
+              "go-norn.oci.tar", "knot-trace.oci.tar", "management.oci.tar",
+              "mtls-read-proxy.oci.tar", "resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1.tar.zst",
+              "rust-data-plane.oci.tar",
+          }
+          assert set(asset_map) == expected_assets
+          for item in asset_map.values():
+              assert isinstance(item["size"], int) and item["size"] > 0
+              assert len(item["sha256"]) == 64 and all(c in "0123456789abcdef" for c in item["sha256"])
+          for line in Path("artifacts/domain-center/OFFLINE-SHA256SUMS").read_text(encoding="utf-8").splitlines():
+              digest, relative = line.split(None, 1)
+              path = Path(relative)
+              if path.is_file():
+                  actual = hashlib.sha256(path.read_bytes()).hexdigest()
+                  assert actual == digest, relative
+              else:
+                  assert path.name in asset_map
+                  assert asset_map[path.name]["sha256"] == digest
+          host_archives = json.loads((delivery / "12-验收证据" / "host-archives.json").read_text(encoding="utf-8"))
+          for host in host_archives["hosts"]:
+              filename = Path(host["archive"]).name
+              assert asset_map[filename]["sha256"] == host["sha256"]
+          lock = json.loads(Path("specs/domain-center-easy-install/images.lock.json").read_text(encoding="utf-8"))
+          for image in lock["images"]:
+              assert asset_map[image["archive"]]["sha256"] == image["archive_sha256"]
+              assert asset_map[image["archive"]]["manifest_digest"] == image["manifest_digest"]
+          assert not list(Path("artifacts/domain-center").rglob("*.oci.tar"))
+          assert not list(Path("artifacts/domain-center").rglob("*.tar.gz"))
+          assert not list(Path("artifacts/domain-center").rglob("*.tar.zst"))
+          assert all(
+              not path.name.endswith((".oci.tar", ".tar.gz", ".tar.zst"))
+              for path in Path("specs/domain-center-easy-install").rglob("*")
+              if path.is_file()
+          )
+          PY
+
   release-candidate-gate:
     name: release candidate gate
     runs-on: ubuntu-24.04
     if: always()
-    needs: [rust, python, solidity, compose, field-delivery, legacy-python-image, rust-production-image, knot-trace-image, production-trace-evidence, management-image, integration-evidence, full-rc-acceptance]
+    needs: [rust, python, solidity, compose, field-delivery, easy-installer, easy-installer-evidence, legacy-python-image, rust-production-image, knot-trace-image, production-trace-evidence, management-image, integration-evidence, full-rc-acceptance]
     steps:
       - name: Require every release-candidate check
         env:
@@ -386,6 +508,8 @@ jobs:
           SOLIDITY_RESULT: ${{ needs.solidity.result }}
           COMPOSE_RESULT: ${{ needs.compose.result }}
           FIELD_RESULT: ${{ needs.field-delivery.result }}
+          EASY_INSTALLER_RESULT: ${{ needs.easy-installer.result }}
+          EASY_INSTALLER_EVIDENCE_RESULT: ${{ needs.easy-installer-evidence.result }}
           LEGACY_IMAGE_RESULT: ${{ needs.legacy-python-image.result }}
           RUST_IMAGE_RESULT: ${{ needs.rust-production-image.result }}
           KNOT_IMAGE_RESULT: ${{ needs.knot-trace-image.result }}
@@ -397,7 +521,7 @@ jobs:
         run: |
           for result in \
             "$RUST_RESULT" "$PYTHON_RESULT" "$SOLIDITY_RESULT" "$COMPOSE_RESULT" \
-            "$FIELD_RESULT" "$LEGACY_IMAGE_RESULT" "$RUST_IMAGE_RESULT" \
+            "$FIELD_RESULT" "$EASY_INSTALLER_RESULT" "$EASY_INSTALLER_EVIDENCE_RESULT" "$LEGACY_IMAGE_RESULT" "$RUST_IMAGE_RESULT" \
             "$KNOT_IMAGE_RESULT" "$TRACE_EVIDENCE_RESULT" "$MANAGEMENT_IMAGE_RESULT" \
             "$INTEGRATION_EVIDENCE_RESULT"; do
             test "$result" = success

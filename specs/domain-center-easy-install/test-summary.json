@@ -1,0 +1,85 @@
+{
+  "blocked": true,
+  "delivery": {
+    "evidence_sha256": "b3e3fc50a00fec4d1a87e69f2a52249258ca8470161ef317c4afb6a7f92c23e2",
+    "path": "artifacts/domain-center/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1"
+  },
+  "external": [
+    {
+      "id": "backup_restore",
+      "status": "not_run"
+    },
+    {
+      "id": "bundle_signing",
+      "status": "blocked"
+    },
+    {
+      "id": "capacity",
+      "status": "not_run"
+    },
+    {
+      "id": "monitoring",
+      "status": "not_run"
+    },
+    {
+      "id": "negative_fail_close",
+      "status": "not_run"
+    },
+    {
+      "id": "network_isolation",
+      "status": "blocked"
+    },
+    {
+      "id": "pdf_manual",
+      "status": "blocked"
+    },
+    {
+      "id": "pki_identity",
+      "status": "blocked"
+    },
+    {
+      "id": "production_cutover",
+      "status": "not_run"
+    },
+    {
+      "id": "real_oci",
+      "status": "passed"
+    },
+    {
+      "id": "resolver_trace",
+      "status": "blocked"
+    },
+    {
+      "id": "rollback_rto",
+      "status": "not_run"
+    },
+    {
+      "id": "ubuntu22",
+      "status": "blocked"
+    },
+    {
+      "id": "ubuntu24",
+      "status": "blocked"
+    }
+  ],
+  "generated_at": "2026-08-03T06:11:51+00:00",
+  "local": [
+    {
+      "id": "delivery_verification",
+      "status": "passed"
+    },
+    {
+      "id": "false_production_flags",
+      "status": "passed"
+    },
+    {
+      "id": "evidence_secret_scan",
+      "status": "passed"
+    }
+  ],
+  "production_traffic_enabled": false,
+  "real_server_deployed": false,
+  "release_ready": false,
+  "schema_version": "resolver-identity-domain-center-easy-install-test-summary-v1",
+  "source_commit": "13a23b48deaa6af886b4da670ebb734018df8162"
+}

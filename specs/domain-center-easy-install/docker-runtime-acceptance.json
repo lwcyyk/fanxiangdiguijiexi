@@ -1,0 +1,40 @@
+{
+  "schema_version":"resolver-identity-domain-center-easy-docker-runtime-acceptance-v1",
+  "source_commit":"13a23b48deaa6af886b4da670ebb734018df8162",
+  "timestamp":"2026-08-02T16:57:54Z",
+  "host_scope":"current-host-only",
+  "docker_access":"passed",
+  "compose_interpolation":{
+    "management":"passed",
+    "norn-a":"passed",
+    "norn-b":"passed",
+    "r1":"passed",
+    "r2":"passed",
+    "r3":"passed"
+  },
+  "static_structure":{
+    "r1_wrapper":"passed",
+    "r2_wrapper_absent":"passed",
+    "r3_wrapper_absent":"passed",
+    "norn_loopback_native_grpc":"passed"
+  },
+  "smoke":{
+    "knot_trace":"passed",
+    "go_norn":"passed",
+    "management":"not_run",
+    "rust_data_plane":"not_run",
+    "mtls_read_proxy":"not_run"
+  },
+  "complete_compose_readiness":{
+    "status":"blocked",
+    "reason":"test-only PKI, Norn configuration, secrets, genesis/snapshot, and independent Compose network were not available"
+  },
+  "fresh_host_claims":{
+    "ubuntu22":"blocked",
+    "ubuntu24":"blocked"
+  },
+  "production":{
+    "real_server_deployed":false,
+    "production_traffic_enabled":false
+  }
+}

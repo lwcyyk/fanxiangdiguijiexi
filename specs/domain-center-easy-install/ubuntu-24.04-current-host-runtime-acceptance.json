@@ -1,0 +1,11 @@
+{
+  "schema_version":"resolver-identity-domain-center-easy-host-acceptance-v1",
+  "source_commit":"13a23b48deaa6af886b4da670ebb734018df8162",
+  "host":"current-host",
+  "role":"site",
+  "distribution":"Ubuntu 24.04 current host; not fresh-host evidence",
+  "status":"blocked",
+  "reason":"Docker daemon and current-host checks were available, but this machine is not a fresh host and therefore cannot establish fresh-host acceptance.",
+  "real_server_deployed":false,
+  "production_traffic_enabled":false
+}

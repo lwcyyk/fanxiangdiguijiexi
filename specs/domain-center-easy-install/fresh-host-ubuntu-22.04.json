@@ -1,0 +1,11 @@
+{
+  "schema_version":"resolver-identity-domain-center-easy-host-acceptance-v1",
+  "source_commit":"13a23b48deaa6af886b4da670ebb734018df8162",
+  "host":"external-fresh-host-required",
+  "role":"site",
+  "distribution":"Ubuntu 22.04 fresh host",
+  "status":"blocked",
+  "reason":"No Ubuntu 22.04 fresh host was provided; no claim of execution is made.",
+  "real_server_deployed":false,
+  "production_traffic_enabled":false
+}

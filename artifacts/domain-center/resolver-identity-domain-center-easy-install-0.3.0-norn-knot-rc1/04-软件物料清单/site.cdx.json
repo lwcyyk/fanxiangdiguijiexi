@@ -1,0 +1,90 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+        }
+      ],
+      "name": "knot",
+      "purl": "pkg:oci/knot@61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8",
+      "type": "container",
+      "version": "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+    },
+    {
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0"
+        }
+      ],
+      "name": "management",
+      "purl": "pkg:oci/management@8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0",
+      "type": "container",
+      "version": "sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0"
+    },
+    {
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
+        }
+      ],
+      "name": "nginx",
+      "purl": "pkg:oci/nginx@8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae",
+      "type": "container",
+      "version": "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
+    },
+    {
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"
+        }
+      ],
+      "name": "norn",
+      "purl": "pkg:oci/norn@ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323",
+      "type": "container",
+      "version": "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"
+    },
+    {
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244"
+        }
+      ],
+      "name": "rust",
+      "purl": "pkg:oci/rust@68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+      "type": "container",
+      "version": "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "name": "resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1",
+      "properties": [
+        {
+          "name": "source.git.commit",
+          "value": "13a23b48deaa6af886b4da670ebb734018df8162"
+        }
+      ],
+      "type": "application",
+      "version": "0.3.0-norn-knot-rc1"
+    },
+    "timestamp": "1970-01-01T00:00:00Z",
+    "tools": {
+      "components": [
+        {
+          "name": "build_domain_center_site_bundle.py",
+          "type": "application"
+        }
+      ]
+    }
+  },
+  "serialNumber": "urn:uuid:e819a49c-bb12-bead-cfa8-f5ceba40e292",
+  "specVersion": "1.5",
+  "version": 1
+}

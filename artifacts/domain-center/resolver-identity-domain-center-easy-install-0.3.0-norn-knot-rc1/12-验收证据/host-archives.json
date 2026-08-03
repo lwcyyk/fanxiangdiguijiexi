@@ -1,0 +1,64 @@
+{
+  "hosts": [
+    {
+      "archive": "03-主机包/acceptance-mgmt.tar.gz",
+      "hostname": "acceptance-mgmt",
+      "images": [
+        "sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0",
+        "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"
+      ],
+      "role": "management",
+      "sha256": "9bffda5328133d7e3e67482aeeea6ac086d56ce2b07da7d4a612007f25fb9d7a"
+    },
+    {
+      "archive": "03-主机包/acceptance-norn-a.tar.gz",
+      "hostname": "acceptance-norn-a",
+      "images": [
+        "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323",
+        "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
+      ],
+      "role": "norn-a",
+      "sha256": "b7483a39a95cabd15db8576942d61f4c945964313812fb37cf46996ee4e7648d"
+    },
+    {
+      "archive": "03-主机包/acceptance-norn-b.tar.gz",
+      "hostname": "acceptance-norn-b",
+      "images": [
+        "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323",
+        "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
+      ],
+      "role": "norn-b",
+      "sha256": "5ef07d80a379f635ef2b4ba8a8170acf4a63ef122200404917ea6b667131303e"
+    },
+    {
+      "archive": "03-主机包/acceptance-r1.tar.gz",
+      "hostname": "acceptance-r1",
+      "images": [
+        "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+        "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+      ],
+      "role": "r1",
+      "sha256": "f6d18fbe0f7be81f23becdd56605d1ac0625b5b22fcae05d7ee3780af3491ade"
+    },
+    {
+      "archive": "03-主机包/acceptance-r2.tar.gz",
+      "hostname": "acceptance-r2",
+      "images": [
+        "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+        "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+      ],
+      "role": "r2",
+      "sha256": "9ff2531e59f44f3988fb6b3fbf3e57870dde30c4352dbb63132fb2fbe4bddbb9"
+    },
+    {
+      "archive": "03-主机包/acceptance-r3.tar.gz",
+      "hostname": "acceptance-r3",
+      "images": [
+        "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+        "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+      ],
+      "role": "r3",
+      "sha256": "98bb6fa557d52e498b7faf7148412e9b79258334cd84b9125ee789c7fd23aa80"
+    }
+  ]
+}

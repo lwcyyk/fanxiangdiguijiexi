@@ -1,0 +1,16 @@
+{
+  "schema_version":"resolver-identity-domain-center-easy-recipient-verification-v1",
+  "source_commit":"13a23b48deaa6af886b4da670ebb734018df8162",
+  "timestamp":"2026-08-02T16:57:54Z",
+  "status":"passed",
+  "mode":"structural_only",
+  "checksums":"passed",
+  "bundle_structure":"passed",
+  "six_host_packages":"passed",
+  "embedded_oci_digest_bindings":"passed",
+  "secret_scan":"passed",
+  "signature_authenticity":"blocked: unsigned bundle; external public-key trust anchor unavailable",
+  "release_ready":false,
+  "real_server_deployed":false,
+  "production_traffic_enabled":false
+}

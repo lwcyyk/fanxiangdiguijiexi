@@ -1,0 +1,30 @@
+{
+  "schema_version": "resolver-identity-domain-center-easy-oci-evidence-v1",
+  "source_commit": "7a5c0fffc59cce38352cc34285b104a9ddc6140c",
+  "real_server_deployed": false,
+  "production_traffic_enabled": false,
+  "archives": [
+    {
+      "archive": "go-norn.oci.tar",
+      "sha256": "ff26f5f87a4bd262908f1bd0538ba70dc172bc4c798f23bcecbf719019773358"
+    },
+    {
+      "archive": "knot-trace.oci.tar",
+      "sha256": "58c3229e31c1a56081044dc5fbb2e908fa662d065ac3d1e989768b1f0df81cd9"
+    },
+    {
+      "archive": "management.oci.tar",
+      "sha256": "92e8e34bae4876dd018e93c7b78ba077a1635bbe698adfa416820fc59694da23"
+    },
+    {
+      "archive": "mtls-read-proxy.oci.tar",
+      "sha256": "472f5d539400b634d54da8dd288fafe01b480f8f5c03d695cdbca6c3db592558"
+    },
+    {
+      "archive": "rust-data-plane.oci.tar",
+      "sha256": "a1ac2cb0cafced77ef368bdf01e9cb48dc6c6feafd0d892a6bfb10b2f0ae3efc"
+    }
+  ],
+  "validation": "tools/build_domain_center_site_bundle.py validate",
+  "docker_reimport_digest_reconciliation": "passed"
+}

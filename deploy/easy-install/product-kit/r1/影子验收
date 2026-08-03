@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+"""R1 影子验收：在切流前比较入口 Wrapper 与原解析路径。"""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+import shutil
+import socket
+import struct
+import subprocess
+import sys
+
+
+def query(server: str, port: int, name: str, query_type: str, tcp: bool) -> list[str]:
+    protocol = "+tcp" if tcp else "+notcp"
+    result = subprocess.run(
+        ["dig", f"@{server}", "-p", str(port), name, query_type, protocol, "+short", "+time=3", "+tries=1"],
+        check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    return sorted(line.strip() for line in result.stdout.splitlines() if line.strip())
+
+
+def port_open(server: str, port: int, tcp: bool) -> bool:
+    info = socket.getaddrinfo(server, port, type=socket.SOCK_STREAM if tcp else socket.SOCK_DGRAM)[0]
+    sock = socket.socket(info[0], info[1], info[2])
+    sock.settimeout(3)
+    try:
+        if tcp:
+            return sock.connect_ex(info[4]) == 0
+        query_id = 0xD105
+        packet = struct.pack("!HHHHHH", query_id, 0x0100, 1, 0, 0, 0) + b"\x00\x00\x01\x00\x01"
+        sock.sendto(packet, info[4])
+        response = sock.recv(512)
+        return len(response) >= 12 and struct.unpack("!H", response[:2])[0] == query_id
+    except OSError:
+        return False
+    finally:
+        sock.close()
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="R1 影子验收（只查询，不切换 DNS 流量）")
+    parser.add_argument("--shadow-server", required=True, help="R1 Wrapper 影子地址")
+    parser.add_argument("--shadow-port", type=int, default=1053, help="固定为 1053")
+    parser.add_argument("--baseline-server", required=True, help="原 DNS 地址")
+    parser.add_argument("--baseline-port", type=int, default=53, help="原 DNS 端口")
+    parser.add_argument("--name", required=True, help="批准的测试 FQDN")
+    parser.add_argument("--type", default="A", choices=("A", "AAAA", "CNAME", "TXT"))
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
+    try:
+        if args.shadow_port != 1053:
+            raise RuntimeError("R1 Shadow 端口必须固定为 1053")
+        if shutil.which("dig") is None:
+            raise RuntimeError("缺少 dig 命令")
+        baseline_udp = query(args.baseline_server, args.baseline_port, args.name, args.type, False)
+        baseline_tcp = query(args.baseline_server, args.baseline_port, args.name, args.type, True)
+        shadow_udp = query(args.shadow_server, args.shadow_port, args.name, args.type, False)
+        shadow_tcp = query(args.shadow_server, args.shadow_port, args.name, args.type, True)
+        udp_open = port_open(args.shadow_server, args.shadow_port, False)
+        tcp_open = port_open(args.shadow_server, args.shadow_port, True)
+        passed = bool(shadow_udp and shadow_tcp and baseline_udp and baseline_tcp and shadow_udp == baseline_udp and shadow_tcp == baseline_tcp and udp_open and tcp_open)
+        evidence = {
+            "schema_version": "domain-center-shadow-acceptance-v1",
+            "name": args.name, "type": args.type, "baseline_server": args.baseline_server,
+            "baseline_port": args.baseline_port, "shadow_server": args.shadow_server,
+            "shadow_port": args.shadow_port, "udp": {"open": udp_open, "baseline_answers": baseline_udp, "shadow_answers": shadow_udp},
+            "tcp": {"open": tcp_open, "baseline_answers": baseline_tcp, "shadow_answers": shadow_tcp},
+            "result": "passed" if passed else "failed",
+            "status_zh": "通过" if passed else "失败",
+            "real_server_deployed": False,
+            "production_traffic_enabled": False,
+        }
+        rendered = json.dumps(evidence, ensure_ascii=False, indent=2) + "\n"
+        if args.output:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            temporary = args.output.with_name(f".{args.output.name}.tmp")
+            temporary.write_text(rendered, encoding="utf-8")
+            temporary.replace(args.output)
+        print(rendered, end="")
+        if evidence["result"] != "passed":
+            print("错误代码：SHADOW002\n原因：影子路径与原路径答案不一致或为空\n建议：禁止切流，检查 R1 Wrapper、上游链路和批准的测试域名。", file=sys.stderr)
+            return 2
+        return 0
+    except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
+        print(f"错误代码：SHADOW001\n原因：R1 影子验收无法执行：{exc}\n建议：安装 dig、检查两个 DNS 地址可达后重试；禁止提前切流。", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

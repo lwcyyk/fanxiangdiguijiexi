@@ -1,0 +1,28 @@
+services:
+  management-tools:
+    image: ${RI_MANAGEMENT_IMAGE:?pin management image digest}
+    profiles: [tools]
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    user: "10001:10001"
+    volumes:
+      - ${RI_MANAGEMENT_WORK_DIR:?required}:/work
+      - ${RI_MANAGEMENT_SECRET_DIR:?required}:/run/field-secrets:ro
+
+  norn-publisher:
+    image: ${RI_NORN_IMAGE:?pin Go-Norn image digest}
+    profiles: [publisher]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    user: "10003:10003"
+    networks: [field]
+    volumes:
+      - ${RI_MANAGEMENT_WORK_DIR:?required}:/work:ro
+
+networks:
+  field:
+    external: true
+    name: ${RI_FIELD_NETWORK:?required}

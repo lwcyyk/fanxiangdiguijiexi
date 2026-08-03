@@ -1,0 +1,1991 @@
+#!/usr/bin/env python3
+"""Build and verify deterministic, offline domain-center site deliveries."""
+
+from __future__ import annotations
+
+import argparse
+import gzip
+import hashlib
+import io
+import ipaddress
+import json
+import os
+import re
+import shutil
+import stat
+import subprocess
+import tarfile
+import tempfile
+from pathlib import Path, PurePosixPath
+from typing import Any, BinaryIO
+
+SCHEMA = "resolver-identity-domain-center-easy-site-v1"
+EVIDENCE_SCHEMA = "resolver-identity-domain-center-easy-evidence-v1"
+LOCK_SCHEMA = "resolver-identity-role-image-lock-v1"
+SPDX_VERSION = "SPDX-2.3"
+CDX_VERSION = "1.5"
+DELIVERY_PREFIX = "resolver-identity-domain-center-easy-install"
+REQUIRED_EXTERNAL_ACCEPTANCE_IDS = frozenset(
+    {
+        "resolver_trace",
+        "production_cutover",
+        "pki_identity",
+        "network_isolation",
+        "negative_fail_close",
+        "monitoring",
+        "backup_restore",
+        "capacity",
+        "rollback_rto",
+        "ubuntu22",
+        "ubuntu24",
+        "real_oci",
+    }
+)
+STATUS_VOCABULARY = {
+    "passed": {"通过", "已通过", "passed"},
+    "blocked": {"阻断", "已阻断", "blocked"},
+    "not_run": {"未运行", "未执行", "not_run"},
+    "failed": {"失败", "未通过", "failed"},
+}
+TOP_LEVEL_DIRECTORIES = (
+    "00-开始",
+    "01-发布信息",
+    "02-校验与签名",
+    "03-主机包",
+    "04-软件物料清单",
+    "05-PDF手册",
+    "06-配置交接",
+    "07-证书与身份",
+    "08-网络隔离",
+    "09-监控",
+    "10-备份恢复",
+    "11-容量与回滚",
+    "12-验收证据",
+)
+OCI_REF_ANNOTATION = "org.opencontainers.image.ref.name"
+ROLE_COUNTS = {
+    "management": 1,
+    "norn-a": 1,
+    "norn-b": 1,
+    "r1": 1,
+    "r2": 1,
+    "r3": 1,
+}
+ROLE_TEMPLATE = {role: role for role in ROLE_COUNTS}
+ROLE_IMAGES = {
+    "management": ("management", "norn"),
+    "norn-a": ("norn", "nginx"),
+    "norn-b": ("norn", "nginx"),
+    "r1": ("rust", "knot"),
+    "r2": ("rust", "knot"),
+    "r3": ("rust", "knot"),
+}
+COMPOSE_IMAGE_VARIABLES = {
+    "management": "RI_MANAGEMENT_IMAGE",
+    "norn": "RI_NORN_IMAGE",
+    "nginx": "RI_NGINX_IMAGE",
+    "rust": "RI_IMAGE",
+    "knot": "RI_KNOT_IMAGE",
+}
+CHINESE_ENTRY_POINTS = {
+    "开始安装.sh": "install",
+    "检查运行状态.sh": "status",
+    "准备证书和密钥.sh": "prepare-secrets",
+    "导出故障信息.sh": "support",
+    "备份.sh": "backup",
+    "回滚.sh": "rollback",
+    "卸载.sh": "uninstall",
+}
+ASCII_ENTRY_POINTS = {
+    "install": "install",
+    "status": "status",
+    "prepare-secrets": "prepare-secrets",
+    "support": "support",
+    "backup": "backup",
+    "rollback": "rollback",
+    "uninstall": "uninstall",
+}
+EXPECTED_IMAGE_KEYS = frozenset({"management", "rust", "knot", "norn", "nginx"})
+OCI_MANIFEST = "application/vnd.oci.image.manifest.v1+json"
+OCI_CONFIG = "application/vnd.oci.image.config.v1+json"
+OCI_LAYER_TYPES = frozenset(
+    {
+        "application/vnd.oci.image.layer.v1.tar",
+        "application/vnd.oci.image.layer.v1.tar+gzip",
+        "application/vnd.oci.image.layer.nondistributable.v1.tar",
+        "application/vnd.oci.image.layer.nondistributable.v1.tar+gzip",
+    }
+)
+SHA256_RE = re.compile(r"^sha256:([0-9a-f]{64})$")
+COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
+VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+HOST_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,125}[A-Za-z0-9])?$")
+IMAGE_REF_RE = re.compile(r"^([^@\s]+)@sha256:([0-9a-f]{64})$")
+SECRET_KEY_RE = re.compile(
+    r"(?:private.?key|password|passphrase|mnemonic|secret|token|credential|api.?key)",
+    re.IGNORECASE,
+)
+SECRET_BYTES_RE = re.compile(
+    rb"-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----|"
+    rb"(?<![A-Za-z0-9])gh[pousr]_[A-Za-z0-9]{30,}(?![A-Za-z0-9])|"
+    rb"(?<![A-Za-z0-9])(?:AKIA|ASIA)[A-Z0-9]{16}(?![A-Za-z0-9])"
+)
+SECRET_ASSIGNMENT_RE = re.compile(
+    rb"(?im)^[ \t]*(?:password|passphrase|secret|token|credential|api[_-]?key|[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)*_(?:password|passphrase|secret|token|credential|api[_-]?key))[ \t]*[:=][ \t]*[A-Za-z0-9+/_.-]{8,}[ \t]*$"
+)
+CONFIG_TEXT_SUFFIXES = (".env", ".conf", ".cfg", ".ini", ".yaml", ".yml", ".json", ".toml", ".sh")
+KNOWN_TEST_VECTOR_RE = re.compile(
+    r"(?:^|/)(?:opt/venv/lib/python[^/]*/site-packages/)?(?:Crypto/SelfTest/|cryptography/hazmat/primitives/serialization/|cryptography/hazmat/.*/test(?:s)?/|"
+    r"usr/lib/[^/]+/lib(?:gnutls|ssh2|unistring)\.so\.[^/]+(?:$|/))",
+    re.IGNORECASE,
+)
+FORBIDDEN_LAYER_NAME_RE = re.compile(
+    r"(?:^|/)(?:\.env(?:\..*)?|id_(?:rsa|dsa|ecdsa|ed25519)|credentials(?:\.[^/]*)?|"
+    r"(?:private[_-]?key|secret|token|password)\.(?:txt|json|ya?ml|env|pem|key|crt|conf|cfg))$",
+    re.IGNORECASE,
+)
+MAX_OCI_MEMBERS = 100_000
+MAX_OCI_JSON_BYTES = 16 * 1024 * 1024
+MAX_OCI_BLOB_BYTES = 16 * 1024 * 1024 * 1024
+MAX_LAYER_MEMBERS = 250_000
+MAX_LAYER_FILE_BYTES = 128 * 1024 * 1024
+MAX_LAYER_UNCOMPRESSED_BYTES = 8 * 1024 * 1024 * 1024
+MAX_SECRET_SCAN_BYTES = 8 * 1024 * 1024
+EXTERNAL_EVIDENCE_REQUIRED = frozenset({"path", "sha256", "timestamp", "source_commit", "host", "role", "provenance"})
+EXPECTED_PDF_NAMES = tuple(
+    f"{name}.pdf"
+    for name in ("一页纸安装卡", "域名中心图文安装手册", "技术运维手册")
+)
+REQUIRED_TOP_LEVEL_FILES = frozenset(
+    {
+        ".domain-center-easy-bundle",
+        "SHA256SUMS",
+        "recipient-verify.sh",
+        "证据.json",
+        "00-开始/验证命令.txt",
+        "01-发布信息/release-manifest.json",
+        "02-校验与签名/README.txt",
+        "04-软件物料清单/site.spdx.json",
+        "04-软件物料清单/site.cdx.json",
+        "06-配置交接/host-inventory.json",
+        "12-验收证据/host-archives.json",
+        "12-验收证据/证据.json",
+    }
+)
+WRAPPER_ALLOWED_AGENT_ENV = frozenset({"RI_AGENT_WRAPPER_TOKEN_FILE"})
+WRAPPER_STRUCTURE_RE = re.compile(
+    r"(?im)^(?:\s{0,4}wrapper\s*:|\s*command\s*:\s*.*\bri-wrapper\b|\s*profiles\s*:\s*\[[^\]\r\n]*\bfirst-hop\b|\s*[- ]+\bfirst-hop\b\s*$|\s*RI_WRAPPER_[A-Z0-9_]*\s*:)",
+)
+FORBIDDEN_OUTPUT_RE = (
+    (re.compile(rb"127\.0\.0\.1"), "loopback image/reference text"),
+    (re.compile(rb":latest(?:[^A-Za-z0-9_.-]|$)", re.IGNORECASE), "latest image reference"),
+    (
+        re.compile(rb"(?:docker|podman|nerdctl|crictl)[ \t]+(?:image[ \t]+)?pull\b", re.IGNORECASE),
+        "runtime image pull command",
+    ),
+    (re.compile(rb"pull_policy[ \t]*:", re.IGNORECASE), "runtime pull policy"),
+)
+
+
+class BundleError(ValueError):
+    """Raised when input or output violates the delivery policy."""
+
+
+def _pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise BundleError(f"duplicate JSON/YAML-subset key: {key}")
+        result[key] = value
+    return result
+
+
+def load_json(path: Path, label: str) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_pairs)
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise BundleError(
+            f"{label} must be UTF-8 JSON (the duplicate-key-safe JSON-compatible YAML subset): {error}"
+        ) from error
+
+
+def load_json_bytes(data: bytes, label: str) -> Any:
+    try:
+        return json.loads(data.decode("utf-8"), object_pairs_hook=_pairs)
+    except (UnicodeError, json.JSONDecodeError) as error:
+        raise BundleError(f"{label} is not duplicate-key-safe UTF-8 JSON: {error}") from error
+
+
+def _object(value: Any, label: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise BundleError(f"{label} must be an object")
+    return value
+
+
+def _array(value: Any, label: str) -> list[Any]:
+    if not isinstance(value, list):
+        raise BundleError(f"{label} must be an array")
+    return value
+
+
+def _text(value: Any, label: str, pattern: re.Pattern[str] | None = None) -> str:
+    if not isinstance(value, str) or not value or value != value.strip():
+        raise BundleError(f"{label} must be a non-empty trimmed string")
+    if any(ord(character) < 32 or ord(character) == 127 for character in value):
+        raise BundleError(f"{label} contains control characters")
+    if pattern is not None and pattern.fullmatch(value) is None:
+        raise BundleError(f"{label} has an invalid format")
+    return value
+
+
+def _exact_keys(value: dict[str, Any], required: set[str], optional: set[str], label: str) -> None:
+    missing = required - set(value)
+    unknown = set(value) - required - optional
+    if missing or unknown:
+        details = []
+        if missing:
+            details.append("missing " + ", ".join(sorted(missing)))
+        if unknown:
+            details.append("unknown " + ", ".join(sorted(unknown)))
+        raise BundleError(f"{label} fields are invalid: {'; '.join(details)}")
+
+
+def _reject_secret_fields(value: Any, label: str = "manifest") -> None:
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if SECRET_KEY_RE.search(key):
+                raise BundleError(f"{label}.{key} is a prohibited secret-bearing field")
+            _reject_secret_fields(child, f"{label}.{key}")
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            _reject_secret_fields(child, f"{label}[{index}]")
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _sha256_stream(handle: BinaryIO) -> tuple[str, int]:
+    digest = hashlib.sha256()
+    size = 0
+    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+        size += len(chunk)
+        digest.update(chunk)
+    return digest.hexdigest(), size
+
+
+def _json_bytes(value: Any) -> bytes:
+    return (json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
+def _write_json(path: Path, value: Any) -> None:
+    path.write_bytes(_json_bytes(value))
+    path.chmod(0o644)
+
+
+def _safe_relative(name: str, label: str) -> PurePosixPath:
+    path = PurePosixPath(name)
+    if not name or name.startswith("/") or "\\" in name or ".." in path.parts or "." in path.parts:
+        raise BundleError(f"{label} has an unsafe archive path: {name}")
+    return path
+
+
+def _descriptor(value: Any, label: str, media_types: frozenset[str] | set[str]) -> dict[str, Any]:
+    item = _object(value, label)
+    _exact_keys(item, {"mediaType", "digest", "size"}, {"platform", "annotations", "urls"}, label)
+    media_type = _text(item["mediaType"], f"{label}.mediaType")
+    if media_type not in media_types:
+        raise BundleError(f"{label}.mediaType is not an approved OCI media type")
+    digest = _text(item["digest"], f"{label}.digest")
+    if SHA256_RE.fullmatch(digest) is None:
+        raise BundleError(f"{label}.digest must be lowercase sha256")
+    size = item["size"]
+    if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+        raise BundleError(f"{label}.size must be a non-negative integer")
+    return item
+
+
+def _read_member(archive: tarfile.TarFile, members: dict[str, tarfile.TarInfo], name: str) -> bytes:
+    info = members.get(name)
+    if info is None or not info.isfile():
+        raise BundleError(f"OCI archive is missing regular file {name}")
+    if info.size > MAX_OCI_JSON_BYTES:
+        raise BundleError(f"OCI metadata member exceeds size bound: {name}")
+    handle = archive.extractfile(info)
+    if handle is None:
+        raise BundleError(f"cannot read OCI member {name}")
+    data = handle.read(MAX_OCI_JSON_BYTES + 1)
+    if len(data) != info.size or len(data) > MAX_OCI_JSON_BYTES:
+        raise BundleError(f"OCI metadata member size is inconsistent: {name}")
+    return data
+
+
+def _scan_secret_bytes(data: bytes, label: str, *, scan_assignments: bool = True) -> None:
+    if SECRET_BYTES_RE.search(data) or (scan_assignments and SECRET_ASSIGNMENT_RE.search(data)):
+        raise BundleError(f"{label} contains prohibited secret material")
+
+
+def _validate_layer_link(member: tarfile.TarInfo, normalized: str, label: str) -> None:
+    target = member.linkname
+    if not target or "\\" in target or "\x00" in target:
+        raise BundleError(f"{label} contains an unsafe symlink target: {normalized}")
+    target_path = PurePosixPath(target)
+    parts = [] if target_path.is_absolute() else list(PurePosixPath(normalized).parent.parts)
+    for part in target_path.parts:
+        if part in {"", "."}:
+            continue
+        if part == "..":
+            if not parts:
+                raise BundleError(f"{label} symlink escapes the image root: {normalized}")
+            parts.pop()
+        else:
+            parts.append(part)
+
+
+def _validate_layer_tar(data: bytes, media_type: str, label: str) -> str:
+    diff_digest = hashlib.sha256()
+    raw_size = 0
+    try:
+        raw_stream: BinaryIO = gzip.GzipFile(fileobj=io.BytesIO(data), mode="rb") if media_type.endswith("+gzip") else io.BytesIO(data)
+        while True:
+            chunk = raw_stream.read(1024 * 1024)
+            if not chunk:
+                break
+            raw_size += len(chunk)
+            if raw_size > MAX_LAYER_UNCOMPRESSED_BYTES:
+                raise BundleError(f"{label} exceeds uncompressed size bound")
+            diff_digest.update(chunk)
+    except (OSError, EOFError) as error:
+        raise BundleError(f"{label} is not valid gzip data: {error}") from error
+    total = 0
+    source = io.BytesIO(data)
+    try:
+        stream: BinaryIO = gzip.GzipFile(fileobj=source, mode="rb") if media_type.endswith("+gzip") else source
+        with tarfile.open(fileobj=stream, mode="r|") as layer:
+            seen: set[str] = set()
+            for index, member in enumerate(layer, 1):
+                if index > MAX_LAYER_MEMBERS:
+                    raise BundleError(f"{label} exceeds member-count bound")
+                normalized = _safe_relative(member.name, label).as_posix()
+                if normalized in seen:
+                    raise BundleError(f"{label} contains duplicate member {normalized}")
+                seen.add(normalized)
+                if FORBIDDEN_LAYER_NAME_RE.search(normalized):
+                    raise BundleError(f"{label} contains prohibited sensitive filename: {normalized}")
+                if member.issym() or member.islnk():
+                    _validate_layer_link(member, normalized, label)
+                if member.ischr() or member.isblk() or member.isfifo():
+                    raise BundleError(f"{label} contains prohibited special member: {normalized}")
+                if not (member.isfile() or member.isdir() or member.issym() or member.islnk()):
+                    raise BundleError(f"{label} contains unsupported member: {normalized}")
+                if member.size < 0 or member.size > MAX_LAYER_FILE_BYTES:
+                    raise BundleError(f"{label} member exceeds per-file size bound: {normalized}")
+                total += member.size
+                if total > MAX_LAYER_UNCOMPRESSED_BYTES:
+                    raise BundleError(f"{label} exceeds uncompressed size bound")
+                if member.isfile():
+                    handle = layer.extractfile(member)
+                    if handle is None:
+                        raise BundleError(f"{label} member is unreadable: {normalized}")
+                    remaining = member.size
+                    scanned = 0
+                    overlap = b""
+                    binary_file = False
+                    while remaining:
+                        chunk = handle.read(min(1024 * 1024, remaining))
+                        if not chunk:
+                            raise BundleError(f"{label} member is truncated: {normalized}")
+                        remaining -= len(chunk)
+                        if scanned == 0:
+                            binary_file = chunk.startswith(b"\x7fELF") or b"\x00" in chunk[:4096]
+                        if scanned < MAX_SECRET_SCAN_BYTES:
+                            scan_chunk = chunk[: MAX_SECRET_SCAN_BYTES - scanned]
+                            candidate = overlap + scan_chunk
+                            if not KNOWN_TEST_VECTOR_RE.search(normalized):
+                                _scan_secret_bytes(
+                                    candidate,
+                                    f"{label} regular file {normalized}",
+                                    scan_assignments=(
+                                        not binary_file
+                                        and normalized.lower().endswith(CONFIG_TEXT_SUFFIXES)
+                                    ),
+                                )
+                            overlap = candidate[-256:]
+                            scanned += len(scan_chunk)
+    except (OSError, EOFError, tarfile.TarError) as error:
+        raise BundleError(f"{label} is not a valid bounded layer tar: {error}") from error
+    return diff_digest.hexdigest()
+
+
+def _import_reference(repository: str, digest: str) -> str:
+    """Return a deterministic, importable OCI tag associated with a pinned digest."""
+    return f"{repository}:ri-{digest.split(':', 1)[1][:16]}"
+
+
+def validate_oci_archive(
+    path: Path,
+    expected_digest: str,
+    platform: dict[str, str],
+    expected_reference: str | None = None,
+    expected_annotation: str | None = None,
+) -> dict[str, Any]:
+    """Fully validate one strict, single-platform OCI image-layout tar."""
+    if not path.is_file() or path.is_symlink():
+        raise BundleError(f"OCI archive is not a regular file: {path}")
+    try:
+        archive = tarfile.open(path, mode="r:*")
+    except (OSError, tarfile.TarError) as error:
+        raise BundleError(f"cannot open OCI archive {path}: {error}") from error
+    with archive:
+        members: dict[str, tarfile.TarInfo] = {}
+        for member_index, info in enumerate(archive, 1):
+            if member_index > MAX_OCI_MEMBERS:
+                raise BundleError("OCI archive exceeds member-count bound")
+            name = _safe_relative(info.name, f"OCI archive {path}").as_posix()
+            if name in members:
+                raise BundleError(f"OCI archive contains duplicate member: {name}")
+            if info.issym() or info.islnk() or not (info.isfile() or info.isdir()):
+                raise BundleError(f"OCI archive contains a non-regular unsupported member: {name}")
+            members[name] = info
+        layout = _object(load_json_bytes(_read_member(archive, members, "oci-layout"), "oci-layout"), "oci-layout")
+        if layout != {"imageLayoutVersion": "1.0.0"}:
+            raise BundleError("oci-layout must contain exactly imageLayoutVersion 1.0.0")
+        index = _object(load_json_bytes(_read_member(archive, members, "index.json"), "index.json"), "index.json")
+        _exact_keys(index, {"schemaVersion", "manifests"}, {"mediaType", "annotations"}, "index.json")
+        if index["schemaVersion"] != 2:
+            raise BundleError("OCI index schemaVersion must be 2")
+        manifests = _array(index["manifests"], "index.json.manifests")
+        if len(manifests) != 1:
+            raise BundleError("OCI index must contain exactly one manifest descriptor")
+        root = _descriptor(manifests[0], "index.json.manifests[0]", {OCI_MANIFEST})
+        if root["digest"] != expected_digest:
+            raise BundleError(f"OCI manifest digest {root['digest']} does not equal release digest {expected_digest}")
+        if expected_reference is not None:
+            annotations = _object(root.get("annotations"), "index manifest annotations")
+            reference_name = annotations.get(OCI_REF_ANNOTATION)
+            allowed_annotations = {expected_reference}
+            if expected_annotation is not None:
+                allowed_annotations.add(expected_annotation)
+            if reference_name not in allowed_annotations:
+                raise BundleError(
+                    f"OCI index manifest annotation {OCI_REF_ANNOTATION} must equal one of {sorted(allowed_annotations)}"
+                )
+        root_platform = _object(root.get("platform"), "index manifest platform")
+        required_platform = {"os": platform["os"], "architecture": platform["architecture"]}
+        if platform.get("variant"):
+            required_platform["variant"] = platform["variant"]
+        if root_platform != required_platform:
+            raise BundleError(f"OCI index platform must equal {required_platform}")
+
+        referenced: set[str] = set()
+
+        def blob(descriptor: dict[str, Any], label: str) -> bytes:
+            if descriptor["size"] > MAX_OCI_BLOB_BYTES:
+                raise BundleError(f"{label} blob exceeds size bound")
+            digest_hex = SHA256_RE.fullmatch(descriptor["digest"]).group(1)  # type: ignore[union-attr]
+            name = f"blobs/sha256/{digest_hex}"
+            info = members.get(name)
+            if info is None or not info.isfile() or info.size != descriptor["size"]:
+                raise BundleError(f"{label} blob is missing or has inconsistent size")
+            handle = archive.extractfile(info)
+            if handle is None:
+                raise BundleError(f"cannot read {label} blob")
+            data = handle.read(descriptor["size"] + 1)
+            if len(data) != descriptor["size"] or hashlib.sha256(data).hexdigest() != digest_hex:
+                raise BundleError(f"{label} blob size or sha256 does not match its descriptor")
+            referenced.add(name)
+            return data
+
+        manifest = _object(load_json_bytes(blob(root, "manifest"), "OCI manifest"), "OCI manifest")
+        _exact_keys(manifest, {"schemaVersion", "mediaType", "config", "layers"}, {"annotations", "artifactType", "subject"}, "OCI manifest")
+        if manifest["schemaVersion"] != 2 or manifest["mediaType"] != OCI_MANIFEST:
+            raise BundleError("OCI manifest must be schemaVersion 2 with OCI manifest mediaType")
+        config_desc = _descriptor(manifest["config"], "OCI manifest config", {OCI_CONFIG})
+        layer_descs = [
+            _descriptor(item, f"OCI manifest layers[{index}]", OCI_LAYER_TYPES)
+            for index, item in enumerate(_array(manifest["layers"], "OCI manifest layers"))
+        ]
+        if not layer_descs:
+            raise BundleError("OCI manifest must contain at least one layer")
+        config = _object(load_json_bytes(blob(config_desc, "config"), "OCI config"), "OCI config")
+        _reject_secret_fields(config, "OCI config")
+        _scan_secret_bytes(_json_bytes(config), "OCI config Env/labels")
+        configured = config.get("config", {})
+        if configured is not None:
+            configured_obj = _object(configured, "OCI config.config")
+            env = configured_obj.get("Env", [])
+            if env is not None and not isinstance(env, list):
+                raise BundleError("OCI config Env must be an array")
+            labels = configured_obj.get("Labels", {})
+            if labels is not None and not isinstance(labels, dict):
+                raise BundleError("OCI config Labels must be an object")
+        if config.get("os") != platform["os"] or config.get("architecture") != platform["architecture"]:
+            raise BundleError("OCI config os/architecture does not match requested platform")
+        if platform.get("variant") and config.get("variant") != platform["variant"]:
+            raise BundleError("OCI config variant does not match requested platform")
+        rootfs = _object(config.get("rootfs"), "OCI config rootfs")
+        if rootfs.get("type") != "layers":
+            raise BundleError("OCI config rootfs.type must be layers")
+        diff_ids = _array(rootfs.get("diff_ids"), "OCI config rootfs.diff_ids")
+        if len(diff_ids) != len(layer_descs):
+            raise BundleError("OCI config diff_ids count must equal layer count")
+        for index, descriptor in enumerate(layer_descs):
+            layer_data = blob(descriptor, f"layer {index}")
+            diff_id = _validate_layer_tar(layer_data, descriptor["mediaType"], f"layer {index}")
+            if diff_ids[index] != f"sha256:{diff_id}":
+                raise BundleError(f"layer {index} uncompressed diff_id does not match config")
+        actual_blobs = {name for name, info in members.items() if info.isfile() and name.startswith("blobs/")}
+        if actual_blobs != referenced:
+            extra = sorted(actual_blobs - referenced)
+            raise BundleError(f"OCI archive contains unreferenced or non-sha256 blobs: {extra}")
+        allowed_files = {"oci-layout", "index.json", *referenced}
+        actual_files = {name for name, info in members.items() if info.isfile()}
+        if actual_files != allowed_files:
+            raise BundleError("OCI archive contains unexpected regular files")
+    return {
+        "archive_sha256": _sha256(path),
+        "manifest_digest": expected_digest,
+        "config_digest": config_desc["digest"],
+        "platform": required_platform,
+        "layer_count": len(layer_descs),
+    }
+
+
+def validate_inputs(site_path: Path, release_path: Path) -> dict[str, Any]:
+    site = _object(load_json(site_path, "site manifest"), "site manifest")
+    release = _object(load_json(release_path, "source release manifest"), "source release manifest")
+    _reject_secret_fields(site)
+    _reject_secret_fields(release, "source release manifest")
+    _exact_keys(site, {"schema_version", "release", "platform", "hosts", "images"}, {"external_requirements"}, "site manifest")
+    if site["schema_version"] != SCHEMA:
+        raise BundleError(f"schema_version must be {SCHEMA}")
+    site_release = _object(site["release"], "release")
+    _exact_keys(site_release, {"version", "source_commit", "manifest_sha256"}, set(), "release")
+    version = _text(site_release["version"], "release.version", VERSION_RE)
+    commit = _text(site_release["source_commit"], "release.source_commit", COMMIT_RE)
+    manifest_sha = _text(site_release["manifest_sha256"], "release.manifest_sha256")
+    if re.fullmatch(r"[0-9a-f]{64}", manifest_sha) is None:
+        raise BundleError("release.manifest_sha256 must be lowercase SHA-256")
+    if manifest_sha != _sha256(release_path):
+        raise BundleError("release.manifest_sha256 does not match the exact source release manifest")
+    if release.get("version") != version or release.get("git_commit") != commit:
+        raise BundleError("site version/source commit does not exactly match source release manifest")
+    source_images = _object(release.get("images"), "source release images")
+    if set(source_images) != EXPECTED_IMAGE_KEYS:
+        raise BundleError("source release manifest must contain exactly the five approved images")
+
+    platform = _object(site["platform"], "platform")
+    _exact_keys(platform, {"os", "architecture"}, {"variant"}, "platform")
+    platform_clean = {
+        "os": _text(platform["os"], "platform.os"),
+        "architecture": _text(platform["architecture"], "platform.architecture"),
+    }
+    if "variant" in platform:
+        platform_clean["variant"] = _text(platform["variant"], "platform.variant")
+    if platform_clean["os"] != "linux":
+        raise BundleError("only linux OCI images are accepted")
+
+    images = _object(site["images"], "images")
+    if set(images) != EXPECTED_IMAGE_KEYS:
+        raise BundleError("images must contain exactly management, rust, knot, norn, and nginx")
+    clean_images: dict[str, Any] = {}
+    for key in sorted(images):
+        item = _object(images[key], f"images.{key}")
+        _exact_keys(item, {"archive", "repository"}, set(), f"images.{key}")
+        archive = Path(_text(item["archive"], f"images.{key}.archive"))
+        if not archive.is_absolute():
+            archive = (site_path.parent / archive).resolve()
+        repository = _text(item["repository"], f"images.{key}.repository")
+        if "@" in repository or repository.endswith(":latest") or repository.startswith("127.0.0.1"):
+            raise BundleError(f"images.{key}.repository must be a non-loopback repository without tag/digest")
+        source_ref = _text(source_images[key], f"source release images.{key}")
+        match = IMAGE_REF_RE.fullmatch(source_ref)
+        if match is None:
+            raise BundleError(f"source release images.{key} is not digest-pinned")
+        digest = f"sha256:{match.group(2)}"
+        reference = f"{repository.rstrip('/')}@{digest}"
+        import_reference = _import_reference(repository.rstrip('/'), digest)
+        oci = validate_oci_archive(archive, digest, platform_clean, import_reference, version)
+        clean_images[key] = {
+            "archive": archive,
+            "repository": repository.rstrip("/"),
+            "reference": reference,
+            "import_reference": import_reference,
+            "digest": digest,
+            **oci,
+        }
+
+    hosts = [_object(item, f"hosts[{index}]") for index, item in enumerate(_array(site["hosts"], "hosts"))]
+    if len(hosts) != 6:
+        raise BundleError("hosts must contain exactly six entries")
+    counts = {role: 0 for role in ROLE_COUNTS}
+    names: list[str] = []
+    clean_hosts: list[dict[str, str]] = []
+    machine_ids: list[str] = []
+    management_ips: list[str] = []
+    for index, host in enumerate(hosts):
+        _exact_keys(host, {"hostname", "role"}, {"machine_id", "management_ip", "fqdn"}, f"hosts[{index}]")
+        hostname = _text(host["hostname"], f"hosts[{index}].hostname", HOST_RE)
+        role = _text(host["role"], f"hosts[{index}].role")
+        if role not in ROLE_COUNTS:
+            raise BundleError(f"hosts[{index}].role is not approved")
+        clean_host = {"hostname": hostname, "role": role}
+        if "fqdn" in host:
+            fqdn = _text(host["fqdn"], f"hosts[{index}].fqdn", HOST_RE).lower()
+            if "." not in fqdn or fqdn.split(".", 1)[0].lower() != hostname.split(".", 1)[0].lower():
+                raise BundleError(f"hosts[{index}].fqdn must bind the declared hostname")
+            clean_host["fqdn"] = fqdn
+        if "machine_id" in host:
+            machine_id = _text(host["machine_id"], f"hosts[{index}].machine_id")
+            if re.fullmatch(r"[0-9a-f]{32}", machine_id) is None:
+                raise BundleError(f"hosts[{index}].machine_id must be 32 lowercase hex characters")
+            machine_ids.append(machine_id)
+            clean_host["machine_id"] = machine_id
+        if "management_ip" in host:
+            management_ip = _text(host["management_ip"], f"hosts[{index}].management_ip")
+            try:
+                parsed_ip = ipaddress.ip_address(management_ip)
+            except ValueError as error:
+                raise BundleError(f"hosts[{index}].management_ip is invalid") from error
+            if parsed_ip.is_unspecified or parsed_ip.is_loopback or parsed_ip.is_multicast:
+                raise BundleError(f"hosts[{index}].management_ip is not an approved host address")
+            management_ips.append(management_ip)
+            clean_host["management_ip"] = management_ip
+        counts[role] += 1
+        names.append(hostname)
+        clean_hosts.append(clean_host)
+    if counts != ROLE_COUNTS:
+        raise BundleError(f"six-host role counts must equal {ROLE_COUNTS}")
+    if len(set(names)) != len(names) or len(set(machine_ids)) != len(machine_ids) or len(set(management_ips)) != len(management_ips):
+        raise BundleError("hostnames, supplied machine IDs, and supplied management IPs must be unique")
+    requirements = _object(site.get("external_requirements", {}), "external_requirements")
+    missing_requirements = REQUIRED_EXTERNAL_ACCEPTANCE_IDS - set(requirements)
+    if missing_requirements:
+        raise BundleError(
+            "external_requirements is missing mandatory acceptance IDs: "
+            + ", ".join(sorted(missing_requirements))
+        )
+    clean_requirements: dict[str, dict[str, Any]] = {}
+    for requirement_id, raw_requirement in sorted(requirements.items()):
+        if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", requirement_id) is None:
+            raise BundleError(f"external requirement id is invalid: {requirement_id!r}")
+        requirement = _object(raw_requirement, f"external_requirements.{requirement_id}")
+        _exact_keys(requirement, {"status", "status_zh"}, {"reason_zh", "blocked_by", "evidence"}, f"external_requirements.{requirement_id}")
+        status = _text(requirement["status"], f"external_requirements.{requirement_id}.status").lower()
+        status_zh = _text(requirement["status_zh"], f"external_requirements.{requirement_id}.status_zh")
+        if status not in STATUS_VOCABULARY or status_zh not in STATUS_VOCABULARY[status]:
+            raise BundleError(
+                f"external_requirements.{requirement_id} has an unsupported or inconsistent status/status_zh"
+            )
+        clean_requirement: dict[str, Any] = {"status": status, "status_zh": status_zh}
+        if "reason_zh" in requirement:
+            clean_requirement["reason_zh"] = _text(requirement["reason_zh"], f"external_requirements.{requirement_id}.reason_zh")
+        blocked_raw = requirement.get("blocked_by", [])
+        blocked_by = [blocked_raw] if isinstance(blocked_raw, str) else blocked_raw
+        if not isinstance(blocked_by, list) or not all(isinstance(item, str) and item for item in blocked_by):
+            raise BundleError(f"external_requirements.{requirement_id}.blocked_by must be a string or array of IDs")
+        if len(set(blocked_by)) != len(blocked_by):
+            raise BundleError(f"external_requirements.{requirement_id}.blocked_by contains duplicates")
+        if blocked_by:
+            clean_requirement["blocked_by"] = sorted(blocked_by)
+        if not _status_passed(status) and not blocked_by and "reason_zh" not in requirement:
+            raise BundleError(f"external_requirements.{requirement_id} non-passed status requires reason_zh or blocked_by")
+        if status == "passed" or (status == "failed" and "evidence" in requirement):
+            evidence_record = _object(requirement.get("evidence"), f"external_requirements.{requirement_id}.evidence")
+            _exact_keys(evidence_record, set(EXTERNAL_EVIDENCE_REQUIRED), set(), f"external_requirements.{requirement_id}.evidence")
+            evidence_path_text = _text(evidence_record["path"], f"external_requirements.{requirement_id}.evidence.path")
+            evidence_path = Path(evidence_path_text)
+            if not evidence_path.is_absolute():
+                evidence_path = (site_path.parent / evidence_path).resolve()
+            if not evidence_path.is_file() or evidence_path.is_symlink():
+                raise BundleError(f"external_requirements.{requirement_id}.evidence.path is missing or unsafe")
+            evidence_sha = _text(evidence_record["sha256"], f"external_requirements.{requirement_id}.evidence.sha256")
+            if re.fullmatch(r"[0-9a-f]{64}", evidence_sha) is None or _sha256(evidence_path) != evidence_sha:
+                raise BundleError(f"external_requirements.{requirement_id}.evidence sha256 mismatch")
+            timestamp = _text(evidence_record["timestamp"], f"external_requirements.{requirement_id}.evidence.timestamp")
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", timestamp) is None:
+                raise BundleError(f"external_requirements.{requirement_id}.evidence.timestamp must be UTC RFC3339 seconds")
+            if evidence_record["source_commit"] != commit:
+                raise BundleError(f"external_requirements.{requirement_id}.evidence.source_commit mismatch")
+            evidence_host = _text(evidence_record["host"], f"external_requirements.{requirement_id}.evidence.host")
+            evidence_role = _text(evidence_record["role"], f"external_requirements.{requirement_id}.evidence.role")
+            if evidence_host not in names and evidence_host != "site":
+                raise BundleError(f"external_requirements.{requirement_id}.evidence.host is not in inventory")
+            if evidence_role not in ROLE_COUNTS and evidence_role != "site":
+                raise BundleError(f"external_requirements.{requirement_id}.evidence.role is invalid")
+            clean_requirement["evidence"] = {
+                "path": evidence_path_text,
+                "sha256": evidence_sha,
+                "timestamp": timestamp,
+                "source_commit": commit,
+                "host": evidence_host,
+                "role": evidence_role,
+                "provenance": _text(evidence_record["provenance"], f"external_requirements.{requirement_id}.evidence.provenance"),
+                "_source_path": evidence_path,
+            }
+        elif "evidence" in requirement:
+            raise BundleError(f"external_requirements.{requirement_id} must not attach evidence to an unexecuted status")
+        clean_requirements[requirement_id] = clean_requirement
+    for requirement_id, requirement in clean_requirements.items():
+        for dependency in requirement.get("blocked_by", []):
+            if dependency == "external_approval":
+                continue
+            if dependency not in clean_requirements:
+                raise BundleError(f"external_requirements.{requirement_id}.blocked_by references missing dependency {dependency}")
+            if _status_passed(clean_requirements[dependency]["status"]):
+                raise BundleError(f"external_requirements.{requirement_id} is blocked by already-passed dependency {dependency}")
+    visiting: set[str] = set()
+    visited: set[str] = set()
+    def visit(requirement_id: str) -> None:
+        if requirement_id in visiting:
+            raise BundleError("external_requirements blocked_by contains a dependency cycle")
+        if requirement_id in visited:
+            return
+        visiting.add(requirement_id)
+        for dependency in clean_requirements[requirement_id].get("blocked_by", []):
+            if dependency != "external_approval":
+                visit(dependency)
+        visiting.remove(requirement_id)
+        visited.add(requirement_id)
+    for requirement_id in clean_requirements:
+        visit(requirement_id)
+    return {
+        "version": version,
+        "source_commit": commit,
+        "release_manifest_sha256": manifest_sha,
+        "platform": platform_clean,
+        "hosts": sorted(clean_hosts, key=lambda item: item["hostname"]),
+        "images": clean_images,
+        "external_requirements": clean_requirements,
+    }
+
+
+def _compose_code_line(raw: str) -> str:
+    """Strip a YAML comment without interpreting YAML or quoted values."""
+    quote: str | None = None
+    escaped = False
+    for index, character in enumerate(raw):
+        if escaped:
+            escaped = False
+            continue
+        if character == "\\" and quote == '"':
+            escaped = True
+            continue
+        if quote:
+            if character == quote:
+                quote = None
+            continue
+        if character in {'"', "'"}:
+            quote = character
+        elif character == "#" and (index == 0 or raw[index - 1].isspace()):
+            return raw[:index]
+    return raw
+
+
+def _contains_wrapper_structure(text: str) -> bool:
+    """Conservatively reject runnable Wrapper topology without a YAML dependency."""
+    profile_indent: int | None = None
+    for raw in text.splitlines():
+        line = _compose_code_line(raw).rstrip()
+        stripped = line.strip()
+        if not stripped:
+            continue
+        indent = len(line) - len(line.lstrip(" "))
+        if re.fullmatch(r"(?:['\"]wrapper['\"]|wrapper)\s*:\s*", stripped, re.IGNORECASE):
+            return True
+        if re.search(r"\b(?:entrypoint|command)\s*:", stripped, re.IGNORECASE) and "ri-wrapper" in stripped.lower():
+            return True
+        if "ri-wrapper" in stripped.lower() and (stripped.startswith("-") or profile_indent is not None):
+            return True
+        profile_match = re.match(r"profiles\s*:\s*(.*)$", stripped, re.IGNORECASE)
+        if profile_match:
+            profile_indent = indent
+            if re.search(r"(?:^|[\[,'\"\s-])first-hop(?:$|[\],'\"\s#])", profile_match.group(1), re.IGNORECASE):
+                return True
+            continue
+        if profile_indent is not None:
+            if indent <= profile_indent and not stripped.startswith("-"):
+                profile_indent = None
+            elif re.fullmatch(r"-\s*['\"]?first-hop['\"]?\s*", stripped, re.IGNORECASE):
+                return True
+        env_match = re.match(r"(?:-\s*)?['\"]?(RI_[A-Z0-9_]+)['\"]?\s*(?::|=)", stripped, re.IGNORECASE)
+        if env_match:
+            env_key = env_match.group(1).upper()
+            if env_key.startswith("RI_WRAPPER_") and env_key not in WRAPPER_ALLOWED_AGENT_ENV:
+                return True
+        if "DNS_BIND_ADDRESS" in stripped or re.search(r":1053:1053/(?:udp|tcp)\b", stripped, re.IGNORECASE):
+            return True
+    return False
+
+
+def _validate_role_structure(role_root: Path, role: str) -> None:
+    compose = role_root / "docker-compose.yml"
+    if not compose.is_file() or compose.is_symlink():
+        raise BundleError(f"{role} template must contain regular docker-compose.yml")
+    text = compose.read_text(encoding="utf-8")
+    lowered = text.lower()
+    if "pull_policy" in lowered or re.search(r"\b(?:docker|podman)\s+(?:image\s+)?pull\b", lowered):
+        raise BundleError(f"{role} Compose attempts a registry pull")
+    for match in re.finditer(r"(?m)^\s*image:\s*([^#\r\n]+)", text):
+        value = match.group(1).strip().strip('"\'')
+        if ":latest" in value.lower() or "localhost" in value.lower() or "127.0.0.1" in value:
+            raise BundleError(f"{role} Compose contains prohibited image reference")
+    if role in {"r2", "r3"} and _contains_wrapper_structure(text):
+        raise BundleError(f"{role} structurally contains Wrapper/first-hop configuration")
+    if role == "r1":
+        wrapper_services = len(re.findall(r"(?m)^\s{2}(?:['\"]wrapper['\"]|wrapper)\s*:\s*$", text, re.IGNORECASE))
+        first_hop_profiles = len(re.findall(r"\bfirst-hop\b", text, re.IGNORECASE))
+        wrapper_commands = len(re.findall(r"\bri-wrapper\b", text, re.IGNORECASE))
+        if wrapper_services != 1 or first_hop_profiles != 1 or wrapper_commands < 1:
+            raise BundleError("R1 must structurally contain exactly one first-hop Wrapper service")
+
+
+def _copy_template(source: Path, destination: Path, replacements: dict[str, str]) -> None:
+    if not source.is_dir() or source.is_symlink():
+        raise BundleError(f"required product-kit template directory is unavailable: {source}")
+    destination.mkdir(parents=True, mode=0o755)
+    os.chmod(destination, 0o755)
+    for path in sorted(source.rglob("*")):
+        relative = path.relative_to(source)
+        target = destination / relative
+        if path.is_symlink():
+            raise BundleError(f"product-kit templates must not contain symlinks: {path}")
+        if path.is_dir():
+            target.mkdir(mode=0o755)
+            continue
+        data = path.read_bytes()
+        if SECRET_BYTES_RE.search(data):
+            raise BundleError(f"product-kit template contains private credential material: {path}")
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError:
+            target.write_bytes(data)
+        else:
+            for marker, replacement in replacements.items():
+                text = text.replace(marker, replacement)
+            if path.name == "PACKAGE-VERSION":
+                text = replacements["{{VERSION}}"] + "\n"
+            if "{{" in text or "}}" in text:
+                raise BundleError(f"unresolved product-kit placeholder in {path}")
+            target.write_text(text, encoding="utf-8")
+        target.chmod(0o755 if path.stat().st_mode & 0o111 else 0o644)
+
+
+def _entry_script(root_expression: str, action: str, role: str, hostname: str) -> str:
+    return f'''#!/bin/sh
+set -eu
+ROOT={root_expression}
+exec python3 "$ROOT/wizard.py" {action} --package-root "$ROOT/product-kit" --role {role} --expected-host {hostname} --images "$ROOT/images" "$@"
+'''
+
+
+def _write_host_entry_points(host_root: Path, role: str, hostname: str) -> None:
+    scripts = host_root / "scripts"
+    _mkdir(scripts)
+    root_expression = '$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)'
+    nested_root_expression = '$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)'
+    for filename, action in CHINESE_ENTRY_POINTS.items():
+        path = host_root / filename
+        path.write_text(_entry_script(root_expression, action, role, hostname), encoding="utf-8")
+        path.chmod(0o755)
+    for name, action in ASCII_ENTRY_POINTS.items():
+        path = scripts / f"{name}.sh"
+        path.write_text(_entry_script(nested_root_expression, action, role, hostname), encoding="utf-8")
+        path.chmod(0o755)
+
+
+def _host_readme(hostname: str, role: str) -> str:
+    return f"""域名中心离线主机安装包
+
+指定主机：{hostname}
+固定角色：{role}
+
+1. 校验 SHA256SUMS 后解压到本机普通目录。
+2. 执行 ./准备证书和密钥.sh --secret-dir /绝对路径/secrets --install-root /opt/domain-center。
+3. 材料准备后执行 ./开始安装.sh --config-dir /绝对路径/config --secret-dir /绝对路径/secrets --install-root /opt/domain-center --yes。
+4. 运行 ./检查运行状态.sh 查看机器可读状态。
+
+ASCII 入口位于 scripts/。安装包只准备离线制品，不表示真实服务器已部署，也不表示生产流量已启用。
+"""
+
+
+def _write_checksums(root: Path, destination: Path, excluded: set[Path] | None = None) -> None:
+    excluded = excluded or set()
+    paths = [
+        path
+        for path in root.rglob("*")
+        if path.is_file() and not path.is_symlink() and path not in excluded and path != destination
+    ]
+    lines = [f"{_sha256(path)}  {path.relative_to(root).as_posix()}" for path in sorted(paths)]
+    destination.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    destination.chmod(0o644)
+
+
+def _mkdir(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True, mode=0o755)
+    path.chmod(0o755)
+
+
+def _write_text(path: Path, text: str, mode: int = 0o644) -> None:
+    path.write_text(text, encoding="utf-8")
+    path.chmod(mode)
+
+
+def _status_passed(status: str) -> bool:
+    return status == "passed"
+
+
+def _recipient_verify_script() -> str:
+    return '''#!/bin/sh
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+MODE=release
+PINNED_KEY=
+if [ "${1:-}" = "--structural-only" ]; then
+  MODE=structural
+  shift
+fi
+[ "$#" -le 1 ] || { echo "usage: $0 [--structural-only] [externally-pinned-public-key.pem]" >&2; exit 2; }
+PINNED_KEY=${1:-}
+PINNED_FINGERPRINT=${RELEASE_KEY_SHA256:-}
+[ -f "$ROOT/SHA256SUMS" ] || { echo "missing SHA256SUMS" >&2; exit 2; }
+(
+  cd "$ROOT"
+  sha256sum --check --strict SHA256SUMS
+)
+if [ "$MODE" = structural ]; then
+  echo "STRUCTURAL ONLY: checksums and bundle structure passed; authenticity not established; NOT RELEASE READY"
+  exit 0
+fi
+[ -f "$ROOT/SHA256SUMS.sig" ] && [ -f "$ROOT/release-public-key.pem" ] || {
+  echo "release verification failed: bundle is unsigned or signature material is incomplete" >&2
+  echo "use --structural-only only for non-release checksum diagnostics" >&2
+  exit 2
+}
+[ -n "$PINNED_KEY" ] || [ -n "$PINNED_FINGERPRINT" ] || {
+  echo "release verification failed: an external public key or RELEASE_KEY_SHA256 fingerprint is required" >&2
+  echo "the public key bundled with the release is not a trust anchor" >&2
+  exit 2
+}
+command -v openssl >/dev/null 2>&1 || { echo "openssl is required for signature verification" >&2; exit 2; }
+KEY="$ROOT/release-public-key.pem"
+TRUST=
+if [ -n "$PINNED_KEY" ]; then
+  [ -f "$PINNED_KEY" ] || { echo "pinned public key is unavailable" >&2; exit 2; }
+  cmp -s "$PINNED_KEY" "$KEY" || { echo "bundle key differs from externally pinned key" >&2; exit 2; }
+  KEY="$PINNED_KEY"
+  TRUST=trusted_pinned_key
+fi
+if [ -n "$PINNED_FINGERPRINT" ]; then
+  case "$PINNED_FINGERPRINT" in *[!0-9a-f]*) echo "external fingerprint must be 64 lowercase hexadecimal characters" >&2; exit 2;; esac
+  [ "${#PINNED_FINGERPRINT}" -eq 64 ] || { echo "external fingerprint must be 64 lowercase hexadecimal characters" >&2; exit 2; }
+  ACTUAL=$(sha256sum "$ROOT/release-public-key.pem" | cut -d' ' -f1)
+  [ "$ACTUAL" = "$PINNED_FINGERPRINT" ] || { echo "bundle key fingerprint differs from external pin" >&2; exit 2; }
+  if [ -n "$TRUST" ]; then TRUST=trusted_pinned_key_and_fingerprint; else TRUST=trusted_pinned_fingerprint; fi
+fi
+openssl pkeyutl -verify -rawin -pubin -inkey "$KEY" -in "$ROOT/SHA256SUMS" -sigfile "$ROOT/SHA256SUMS.sig" >/dev/null
+echo "release authenticity verified: signature=valid trust=$TRUST"
+'''
+
+
+def _generated_image_loader() -> str:
+    """Runtime loader for strict OCI archives carrying a standard ref.name tag."""
+    return r'''#!/usr/bin/env python3
+from __future__ import annotations
+import argparse, hashlib, json, re, subprocess, sys
+from pathlib import Path
+
+class ImageError(Exception):
+    pass
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+def parse_manifest(path: Path):
+    try:
+        obj = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ImageError(f"无法读取镜像清单：{exc}") from exc
+    if not isinstance(obj, dict) or obj.get("schema_version") != "resolver-identity-role-image-lock-v1":
+        raise ImageError("镜像清单 schema_version 不受支持")
+    entries = obj.get("images")
+    if not isinstance(entries, list) or not entries:
+        raise ImageError("镜像清单 images 必须是非空数组")
+    parsed = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ImageError("镜像清单条目必须是对象")
+        filename, checksum = entry.get("archive"), entry.get("archive_sha256")
+        reference, import_reference, digest = entry.get("reference"), entry.get("import_reference"), entry.get("digest")
+        if not isinstance(filename, str) or Path(filename).name != filename:
+            raise ImageError("归档文件名必须是单一安全文件名")
+        if not isinstance(checksum, str) or re.fullmatch(r"[0-9a-f]{64}", checksum) is None:
+            raise ImageError(f"归档校验值不合法：{filename}")
+        if not isinstance(reference, str) or not isinstance(digest, str) or not reference.endswith("@" + digest):
+            raise ImageError(f"摘要引用不合法：{filename}")
+        repository = reference.split("@", 1)[0]
+        expected_import = f"{repository}:ri-{digest.split(':', 1)[1][:16]}"
+        if import_reference != expected_import:
+            raise ImageError(f"OCI 导入引用不合法：{filename}")
+        parsed.append((path.parent / filename, checksum, reference, import_reference))
+    return parsed
+
+def inspect_exact(reference: str) -> None:
+    result = subprocess.run(
+        ["docker", "image", "inspect", reference, "--format", "{{json .RepoTags}}"],
+        check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    try:
+        tags = json.loads(result.stdout.strip())
+    except json.JSONDecodeError as exc:
+        raise ImageError(f"docker inspect 返回不可解析：{exc}") from exc
+    if not isinstance(tags, list) or reference not in tags:
+        raise ImageError(f"加载后未找到 OCI ref.name 指定的精确镜像：{reference}")
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="严格校验并加载离线 OCI 镜像")
+    parser.add_argument("directory", type=Path)
+    parser.add_argument("--verify-only", action="store_true")
+    args = parser.parse_args()
+    try:
+        entries = parse_manifest(args.directory.resolve() / "image-lock.json")
+        for archive, expected, _, _ in entries:
+            if not archive.is_file() or archive.is_symlink() or sha256(archive) != expected:
+                raise ImageError(f"归档校验失败：{archive.name}")
+        if args.verify_only:
+            return 0
+        subprocess.run(["docker", "version"], check=True, stdout=subprocess.DEVNULL)
+        for archive, _, reference, import_reference in entries:
+            subprocess.run(["docker", "load", "--input", str(archive)], check=True)
+            inspect_exact(import_reference)
+            print(f"加载后精确引用校验通过：{import_reference}；发布摘要：{reference}")
+        return 0
+    except (ImageError, OSError, subprocess.CalledProcessError) as exc:
+        print(f"错误代码：IMG002\n原因：{exc}\n建议：停止安装并重新取得受信离线镜像。", file=sys.stderr)
+        return 2
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+'''
+
+
+def _spdx(name: str, version: str, commit: str, images: list[dict[str, str]]) -> dict[str, Any]:
+    namespace_seed = hashlib.sha256(f"{name}\0{version}\0{commit}".encode()).hexdigest()
+    packages = []
+    relationships = []
+    for index, image in enumerate(images, 1):
+        package_id = f"SPDXRef-Image-{index}"
+        packages.append(
+            {
+                "SPDXID": package_id,
+                "name": image["key"],
+                "versionInfo": image["digest"],
+                "downloadLocation": "NOASSERTION",
+                "filesAnalyzed": False,
+                "licenseConcluded": "NOASSERTION",
+                "licenseDeclared": "NOASSERTION",
+                "externalRefs": [
+                    {
+                        "referenceCategory": "PACKAGE-MANAGER",
+                        "referenceType": "purl",
+                        "referenceLocator": f"pkg:oci/{image['key']}@{image['digest'].split(':', 1)[1]}",
+                    }
+                ],
+                "checksums": [{"algorithm": "SHA256", "checksumValue": image["digest"].split(":", 1)[1]}],
+            }
+        )
+        relationships.append({"spdxElementId": "SPDXRef-DOCUMENT", "relationshipType": "DESCRIBES", "relatedSpdxElement": package_id})
+    return {
+        "spdxVersion": SPDX_VERSION,
+        "dataLicense": "CC0-1.0",
+        "SPDXID": "SPDXRef-DOCUMENT",
+        "name": name,
+        "comment": f"release.version={version};source.git.commit={commit}",
+        "documentNamespace": f"https://resolver-identity.invalid/spdx/{namespace_seed}",
+        "creationInfo": {"created": "1970-01-01T00:00:00Z", "creators": ["Tool: build_domain_center_site_bundle.py"]},
+        "packages": packages,
+        "relationships": relationships,
+    }
+
+
+def _cyclonedx(name: str, version: str, commit: str, images: list[dict[str, str]]) -> dict[str, Any]:
+    serial = hashlib.sha256(f"{name}\0{version}\0{commit}".encode()).hexdigest()
+    return {
+        "bomFormat": "CycloneDX",
+        "specVersion": CDX_VERSION,
+        "serialNumber": f"urn:uuid:{serial[0:8]}-{serial[8:12]}-{serial[12:16]}-{serial[16:20]}-{serial[20:32]}",
+        "version": 1,
+        "metadata": {
+            "timestamp": "1970-01-01T00:00:00Z",
+            "component": {"type": "application", "name": name, "version": version, "properties": [{"name": "source.git.commit", "value": commit}]},
+            "tools": {"components": [{"type": "application", "name": "build_domain_center_site_bundle.py"}]},
+        },
+        "components": [
+            {
+                "type": "container",
+                "name": image["key"],
+                "version": image["digest"],
+                "purl": f"pkg:oci/{image['key']}@{image['digest'].split(':', 1)[1]}",
+                "hashes": [{"alg": "SHA-256", "content": image["digest"].split(":", 1)[1]}],
+            }
+            for image in images
+        ],
+    }
+
+
+def _tar_reproducible(source: Path, destination: Path) -> None:
+    source.chmod(0o755)
+    with destination.open("wb") as raw:
+        with gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as zipped:
+            with tarfile.open(fileobj=zipped, mode="w", format=tarfile.PAX_FORMAT) as archive:
+                for path in sorted([source, *source.rglob("*")]):
+                    relative = PurePosixPath(source.name) / PurePosixPath(path.relative_to(source).as_posix())
+                    info = archive.gettarinfo(str(path), arcname=relative.as_posix())
+                    info.uid = info.gid = 0
+                    info.uname = info.gname = "root"
+                    info.mtime = 0
+                    info.mode = 0o755 if path.is_dir() or (path.is_file() and path.stat().st_mode & 0o111) else 0o644
+                    if path.is_file():
+                        with path.open("rb") as handle:
+                            archive.addfile(info, handle)
+                    else:
+                        archive.addfile(info)
+
+
+def _openssl_public_key(key: Path, public_key: Path) -> str:
+    openssl = shutil.which("openssl")
+    if openssl is None:
+        raise BundleError("an Ed25519 signing key was supplied but openssl is unavailable")
+    if not key.is_file() or key.is_symlink():
+        raise BundleError("signing key must be an external regular PEM file")
+    mode = stat.S_IMODE(key.stat().st_mode)
+    if mode & 0o077:
+        raise BundleError("signing key permissions must not grant group/other access")
+    private = key.read_bytes()
+    if b"PRIVATE KEY" not in private:
+        raise BundleError("signing key is not a PEM private key")
+    result = subprocess.run(
+        [openssl, "pkey", "-in", str(key), "-pubout", "-out", str(public_key)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0 or b"ED25519" not in subprocess.run(
+        [openssl, "pkey", "-pubin", "-in", str(public_key), "-text", "-noout"],
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ).stdout.upper():
+        raise BundleError("signing key must be a valid Ed25519 PEM")
+    return openssl
+
+
+def _openssl_sign(key: Path, target: Path, signature: Path, public_key: Path) -> None:
+    openssl = _openssl_public_key(key, public_key) if not public_key.exists() else shutil.which("openssl")
+    if openssl is None:
+        raise BundleError("openssl is unavailable")
+    subprocess.run([openssl, "pkeyutl", "-sign", "-rawin", "-inkey", str(key), "-in", str(target), "-out", str(signature)], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+
+def _prepare_signing_public_key(root: Path, key: Path | None) -> None:
+    if key is None:
+        return
+    _openssl_public_key(key, root / "release-public-key.pem")
+    (root / "release-public-key.pem").chmod(0o644)
+
+
+def _sign_checksums(root: Path, key: Path | None) -> bool:
+    if key is None:
+        return False
+    _openssl_sign(key, root / "SHA256SUMS", root / "SHA256SUMS.sig", root / "release-public-key.pem")
+    (root / "SHA256SUMS.sig").chmod(0o644)
+    return True
+
+
+def _scan_output(root: Path) -> None:
+    policy_source_allowed = {
+        PurePosixPath("product-kit/common/lifecycle.py"),
+        PurePosixPath("product-kit/common/load_images.py"),
+        PurePosixPath("product-kit/management/nornctl.sh"),
+        PurePosixPath("product-kit/management/publish-norn.sh"),
+        PurePosixPath("product-kit/management/registry-tool.sh"),
+        PurePosixPath("product-kit/norn-a/docker-compose.yml"),
+        PurePosixPath("product-kit/norn-b/docker-compose.yml"),
+    }
+    for path in root.rglob("*"):
+        if path.is_symlink():
+            raise BundleError(f"delivery output contains a symlink: {path.relative_to(root)}")
+        if not path.is_file() or path.suffix == ".tar" or path.name.endswith(".tar.gz"):
+            continue
+        data = path.read_bytes()
+        if SECRET_BYTES_RE.search(data):
+            raise BundleError(f"delivery output contains private credential material: {path.relative_to(root)}")
+        for pattern, reason in FORBIDDEN_OUTPUT_RE:
+            if pattern.search(data):
+                relative = PurePosixPath(path.relative_to(root).as_posix())
+                if pattern.pattern == rb"127\.0\.0\.1" and any(relative.parts[-len(item.parts):] == item.parts for item in policy_source_allowed):
+                    continue
+                raise BundleError(f"delivery output contains {reason}: {path.relative_to(root)}")
+
+
+def _copy_external_evidence(root: Path, requirements: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    copied: dict[str, dict[str, Any]] = {}
+    evidence_root = root / "12-验收证据"
+    for requirement_id, requirement in sorted(requirements.items()):
+        clean = {key: value for key, value in requirement.items() if key != "evidence"}
+        evidence = requirement.get("evidence")
+        if requirement["status"] == "passed":
+            if not isinstance(evidence, dict) or not isinstance(evidence.get("_source_path"), Path):
+                raise BundleError(f"passed external evidence has no validated source file: {requirement_id}")
+            digest = evidence["sha256"]
+            source = evidence["_source_path"]
+            suffix = "".join(source.suffixes)[-32:]
+            if not re.fullmatch(r"(?:\.[A-Za-z0-9_-]+)*", suffix):
+                suffix = ""
+            filename = f"external-{digest}{suffix}"
+            target = evidence_root / filename
+            if target.exists() and _sha256(target) != digest:
+                raise BundleError(f"content-addressed evidence collision: {filename}")
+            if not target.exists():
+                shutil.copyfile(source, target)
+                target.chmod(0o644)
+            bundled = {key: value for key, value in evidence.items() if key != "_source_path"}
+            bundled["path"] = f"12-验收证据/{filename}"
+            bundled["provenance"] = f"bundled-copy:{bundled['path']}"
+            clean["evidence"] = bundled
+        elif isinstance(evidence, dict):
+            clean["evidence"] = {key: value for key, value in evidence.items() if key != "_source_path"}
+        copied[requirement_id] = clean
+    return copied
+
+
+def _write_release_handoff(root: Path, validated: dict[str, Any], host_evidence: list[dict[str, Any]]) -> None:
+    _write_json(root / "01-发布信息" / "release-manifest.json", {
+        "schema_version": SCHEMA,
+        "version": validated["version"],
+        "source_commit": validated["source_commit"],
+        "source_release_manifest_sha256": validated["release_manifest_sha256"],
+        "release_ready": False,
+        "real_server_deployed": False,
+        "production_traffic_enabled": False,
+        "platform": validated["platform"],
+        "images": [
+            {"key": key, "manifest_digest": value["digest"], "config_digest": value["config_digest"], "local_import_reference": value["import_reference"]}
+            for key, value in sorted(validated["images"].items())
+        ],
+    })
+    _write_text(root / "02-校验与签名" / "README.txt", "先运行根目录 recipient-verify.sh，并以带外固定公钥或 SHA-256 指纹建立信任；无签名时保持阻断。\n")
+    _write_json(root / "06-配置交接" / "host-inventory.json", {"hosts": validated["hosts"]})
+    _write_text(root / "06-配置交接" / "README.txt", "此目录只含非秘密主机绑定信息；证书、Token、私钥必须通过独立安全介质交接。\n")
+    _write_text(root / "07-证书与身份" / "README.txt", "不包含秘密。现场按每主机唯一原则带外交接证书、私钥与 Token，并保持阻断直至真实核验。\n")
+    _write_text(root / "08-网络隔离" / "README.txt", "记录批准的防火墙矩阵和真实隔离测试证据；本地生成器不声明现场网络已通过。\n")
+    _write_text(root / "09-监控" / "README.txt", "记录真实告警路由、抓取目标和告警演练证据；未执行时必须为 blocked/not_run。\n")
+    _write_text(root / "10-备份恢复" / "README.txt", "记录隔离恢复演练、备份摘要和 RPO/RTO；不得把生成包当作真实恢复证据。\n")
+    _write_text(root / "11-容量与回滚" / "README.txt", "记录现场容量和回滚 RTO 结果；未执行时不得声明生产就绪。\n")
+    _write_json(root / "12-验收证据" / "host-archives.json", {"hosts": host_evidence})
+
+
+def _valid_pdf(data: bytes) -> bool:
+    return len(data) > 8 and data.startswith(b"%PDF-") and data.rstrip().endswith(b"%%EOF")
+
+
+def _render_pdfs(product_kit: Path, output: Path, image: str | None) -> tuple[bool, str]:
+    documents_root = Path(__file__).resolve().parents[1] / "docs" / "easy-install"
+    documents = sorted(documents_root.glob("*.md")) if documents_root.is_dir() else []
+    if not documents:
+        return False, "PDF_BLOCKED: docs/easy-install contains no Markdown inputs"
+    if image is None or IMAGE_REF_RE.fullmatch(image) is None or image.startswith("127.0.0.1"):
+        return False, "PDF_BLOCKED: a non-loopback digest-pinned offline PDF builder image was not supplied"
+    if sorted(f"{document.stem}.pdf" for document in documents) != sorted(EXPECTED_PDF_NAMES):
+        return False, "PDF_BLOCKED: Markdown inputs do not match the required manual set"
+    runtime = shutil.which("docker") or shutil.which("podman")
+    if runtime is None:
+        return False, "PDF_BLOCKED: Docker/Podman is unavailable"
+    inspect = subprocess.run([runtime, "image", "inspect", image], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if inspect.returncode != 0:
+        return False, "PDF_BLOCKED: fixed PDF builder image is not present in the offline runtime"
+    output.mkdir(exist_ok=True)
+    comparison = output.parent / ".pdf-determinism-check"
+    comparison.mkdir(exist_ok=True)
+    for document in documents:
+        output_name = f"{document.stem}.pdf"
+        rendered: list[bytes] = []
+        for destination in (output, comparison):
+            result = subprocess.run(
+                [runtime, "run", "--rm", "--network=none", "--pull=never", "--read-only", "-e", "SOURCE_DATE_EPOCH=0", "-v", f"{document.resolve()}:/input.md:ro", "-v", f"{destination.resolve()}:/output", image, "/input.md", "-o", f"/output/{output_name}"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            pdf_path = destination / output_name
+            if result.returncode != 0 or not pdf_path.is_file() or pdf_path.is_symlink() or not _valid_pdf(pdf_path.read_bytes()):
+                shutil.rmtree(output, ignore_errors=True)
+                shutil.rmtree(comparison, ignore_errors=True)
+                return False, f"PDF_BLOCKED: fixed offline builder produced an invalid PDF for {document.name}"
+            rendered.append(pdf_path.read_bytes())
+        if rendered[0] != rendered[1]:
+            shutil.rmtree(output, ignore_errors=True)
+            shutil.rmtree(comparison, ignore_errors=True)
+            return False, f"PDF_BLOCKED: fixed offline builder output varies for {document.name}"
+    shutil.rmtree(comparison)
+    return True, "generated deterministically by fixed digest-pinned external container with network disabled"
+
+
+def _verify_checksum_file(root: Path, checksum_path: Path, ignored: set[str] | None = None) -> None:
+    ignored = ignored or set()
+    expected: dict[str, str] = {}
+    try:
+        lines = checksum_path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError) as error:
+        raise BundleError(f"cannot read {checksum_path}: {error}") from error
+    for line in lines:
+        if not re.fullmatch(r"[0-9a-f]{64}  [^\r\n]+", line):
+            raise BundleError(f"malformed checksum line in {checksum_path}")
+        digest, name = line.split("  ", 1)
+        normalized = _safe_relative(name, "checksum").as_posix()
+        if normalized in expected:
+            raise BundleError(f"duplicate checksum entry: {normalized}")
+        expected[normalized] = digest
+    actual = {
+        path.relative_to(root).as_posix()
+        for path in root.rglob("*")
+        if path.is_file() and not path.is_symlink() and path != checksum_path and path.relative_to(root).as_posix() not in ignored
+    }
+    if set(expected) != actual:
+        raise BundleError(f"checksum file set mismatch; missing={sorted(actual-set(expected))}, extra={sorted(set(expected)-actual)}")
+    for name, digest in expected.items():
+        if _sha256(root / name) != digest:
+            raise BundleError(f"checksum mismatch: {name}")
+
+
+def _verify_signature(root: Path, trusted_public_key: Path | None = None, trusted_fingerprint: str | None = None) -> dict[str, Any]:
+    signature = root / "SHA256SUMS.sig"
+    bundled_public = root / "release-public-key.pem"
+    if not signature.exists() and not bundled_public.exists():
+        if trusted_public_key is not None or trusted_fingerprint is not None:
+            raise BundleError("a trust pin was supplied but the delivery is unsigned")
+        return {"signed": False, "signature_valid": False, "trust": "unsigned"}
+    if not signature.is_file() or not bundled_public.is_file() or signature.is_symlink() or bundled_public.is_symlink():
+        raise BundleError("signature output is incomplete")
+    openssl = shutil.which("openssl")
+    if openssl is None:
+        raise BundleError("openssl is required to verify the supplied Ed25519 signature")
+    verification_key = bundled_public
+    trust = "self_signed/untrusted"
+    if trusted_public_key is not None:
+        if not trusted_public_key.is_file() or trusted_public_key.is_symlink():
+            raise BundleError("externally pinned public key must be a regular file")
+        if trusted_public_key.read_bytes() != bundled_public.read_bytes():
+            raise BundleError("bundle public key does not match externally pinned public key")
+        verification_key = trusted_public_key
+        trust = "trusted_pinned_key"
+    if trusted_fingerprint is not None:
+        if re.fullmatch(r"[0-9a-f]{64}", trusted_fingerprint) is None:
+            raise BundleError("trusted public key fingerprint must be lowercase SHA-256")
+        if hashlib.sha256(bundled_public.read_bytes()).hexdigest() != trusted_fingerprint:
+            raise BundleError("bundle public key does not match externally pinned fingerprint")
+        trust = "trusted_pinned_fingerprint" if trusted_public_key is None else "trusted_pinned_key_and_fingerprint"
+    result = subprocess.run([openssl, "pkeyutl", "-verify", "-rawin", "-pubin", "-inkey", str(verification_key), "-in", str(root / "SHA256SUMS"), "-sigfile", str(signature)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.returncode != 0:
+        raise BundleError("Ed25519 signature verification failed")
+    return {"signed": True, "signature_valid": True, "trust": trust}
+
+
+def verify_delivery(
+    root: Path,
+    *,
+    allow_blocked: bool = False,
+    structural_only: bool = False,
+    trusted_public_key: Path | None = None,
+    trusted_fingerprint: str | None = None,
+) -> dict[str, Any]:
+    if not root.is_dir() or root.is_symlink():
+        raise BundleError("delivery path must be a regular directory")
+    actual_top_directories = {path.name for path in root.iterdir() if path.is_dir() and not path.is_symlink()}
+    if actual_top_directories != set(TOP_LEVEL_DIRECTORIES):
+        raise BundleError("delivery top-level release tree is incomplete or has unexpected directories")
+    missing_top_files = sorted(name for name in REQUIRED_TOP_LEVEL_FILES if not (root / name).is_file() or (root / name).is_symlink())
+    if missing_top_files:
+        raise BundleError(f"delivery required release files are missing or unsafe: {missing_top_files}")
+    signature_files = {"SHA256SUMS.sig"}
+    _verify_checksum_file(root, root / "SHA256SUMS", signature_files if (root / "SHA256SUMS.sig").exists() else set())
+    signature_result = _verify_signature(root, trusted_public_key, trusted_fingerprint)
+    externally_trusted = signature_result["trust"] in {
+        "trusted_pinned_key",
+        "trusted_pinned_fingerprint",
+        "trusted_pinned_key_and_fingerprint",
+    }
+    if not structural_only and not externally_trusted:
+        raise BundleError(
+            "release authenticity requires a valid signature anchored by an externally supplied public key or fingerprint; "
+            "use structural_only=True only for non-release diagnostics"
+        )
+    signed = signature_result["signed"]
+    evidence = _object(load_json(root / "证据.json", "delivery evidence"), "delivery evidence")
+    if evidence.get("schema_version") != EVIDENCE_SCHEMA:
+        raise BundleError("delivery evidence schema is invalid")
+    if evidence.get("host_count") != 6:
+        raise BundleError("delivery evidence does not describe six hosts")
+    release_manifest = _object(load_json(root / "01-发布信息" / "release-manifest.json", "release manifest"), "release manifest")
+    for key in ("version", "source_commit", "source_release_manifest_sha256"):
+        if evidence.get(key) != release_manifest.get(key):
+            raise BundleError(f"delivery evidence and release manifest {key} are not cross-bound")
+    expected_delivery_name = f"{DELIVERY_PREFIX}-{evidence.get('version')}"
+    for sbom_relative in ("04-软件物料清单/site.spdx.json", "04-软件物料清单/site.cdx.json"):
+        sbom = _object(load_json(root / sbom_relative, sbom_relative), sbom_relative)
+        if sbom_relative.endswith("spdx.json"):
+            if sbom.get("name") != expected_delivery_name or sbom.get("comment") != f"release.version={evidence['version']};source.git.commit={evidence['source_commit']}":
+                raise BundleError("SPDX SBOM release identity mismatch")
+            package_versions = {item.get("versionInfo") for item in _array(sbom.get("packages"), "SPDX packages") if isinstance(item, dict)}
+        else:
+            component = _object(_object(sbom.get("metadata"), "CycloneDX metadata").get("component"), "CycloneDX component")
+            properties = {item.get("name"): item.get("value") for item in component.get("properties", []) if isinstance(item, dict)}
+            if component.get("name") != expected_delivery_name or component.get("version") != evidence["version"] or properties.get("source.git.commit") != evidence["source_commit"]:
+                raise BundleError("CycloneDX SBOM release identity mismatch")
+            package_versions = {item.get("version") for item in _array(sbom.get("components"), "CycloneDX components") if isinstance(item, dict)}
+        release_digests = {item.get("manifest_digest") for item in release_manifest.get("images", []) if isinstance(item, dict)}
+        if package_versions != release_digests:
+            raise BundleError(f"{sbom_relative} image digests are not cross-bound to release manifest")
+    pdf = _object(evidence.get("pdf"), "delivery evidence pdf")
+    actual_pdfs = sorted(path.name for path in (root / "05-PDF手册").glob("*.pdf") if path.is_file() and not path.is_symlink())
+    pdf_valid = actual_pdfs == sorted(EXPECTED_PDF_NAMES) and all(_valid_pdf((root / "05-PDF手册" / name).read_bytes()) for name in actual_pdfs)
+    if bool(pdf.get("ready")) != pdf_valid:
+        raise BundleError("PDF readiness is inconsistent with required valid PDF manuals")
+    if bool(evidence.get("signing", {}).get("signed")) != signed:
+        raise BundleError("delivery evidence signing state is inconsistent")
+    if evidence.get("real_server_deployed") is not False or evidence.get("production_traffic_enabled") is not False or evidence.get("release_ready") is not False:
+        raise BundleError("bundle evidence must keep release and production deployment flags false")
+    if any(release_manifest.get(key) is not False for key in ("release_ready", "real_server_deployed", "production_traffic_enabled")):
+        raise BundleError("release manifest must keep release and production deployment flags false")
+    checks = _object(evidence.get("checks"), "delivery evidence checks")
+    evidence_copy = root / "12-验收证据" / "证据.json"
+    if not evidence_copy.is_file() or evidence_copy.is_symlink() or evidence_copy.read_bytes() != (root / "证据.json").read_bytes():
+        raise BundleError("root evidence and 12-验收证据 copy must be byte-for-byte identical")
+    missing_checks = REQUIRED_EXTERNAL_ACCEPTANCE_IDS - set(checks)
+    if missing_checks:
+        raise BundleError("delivery evidence omits mandatory acceptance IDs: " + ", ".join(sorted(missing_checks)))
+    for check_id, raw_check in checks.items():
+        check = _object(raw_check, f"delivery evidence checks.{check_id}")
+        status = check.get("status")
+        status_zh = check.get("status_zh")
+        if status not in STATUS_VOCABULARY or status_zh not in STATUS_VOCABULARY[status]:
+            raise BundleError(f"delivery evidence check has an invalid status: {check_id}")
+        evidence_record = check.get("evidence")
+        if status == "passed" and not isinstance(evidence_record, dict):
+            raise BundleError(f"passed external evidence check lacks provenance record: {check_id}")
+        if status in {"blocked", "not_run"} and evidence_record is not None:
+            raise BundleError(f"unexecuted external evidence check must not attach evidence: {check_id}")
+        if isinstance(evidence_record, dict) and set(evidence_record) != EXTERNAL_EVIDENCE_REQUIRED:
+            raise BundleError(f"external evidence provenance fields are incomplete: {check_id}")
+        if isinstance(evidence_record, dict):
+            evidence_relative = _safe_relative(_text(evidence_record["path"], f"evidence path {check_id}"), "evidence path").as_posix()
+            evidence_path = root / evidence_relative
+            if not evidence_relative.startswith("12-验收证据/") or not evidence_path.is_file() or evidence_path.is_symlink() or _sha256(evidence_path) != evidence_record["sha256"]:
+                raise BundleError(f"external evidence file is missing or has a digest mismatch: {check_id}")
+    for check_id, raw_check in checks.items():
+        for dependency in raw_check.get("blocked_by", []):
+            if dependency != "external_approval" and dependency not in checks:
+                raise BundleError(f"delivery evidence blocked_by references missing check: {check_id}->{dependency}")
+    mandatory_passed = all(_status_passed(checks[item]["status"]) for item in REQUIRED_EXTERNAL_ACCEPTANCE_IDS)
+    all_checks_passed = mandatory_passed and all(_status_passed(item["status"]) for item in checks.values())
+    if evidence.get("delivery_ready") is not (all_checks_passed and not evidence.get("blockers")):
+        raise BundleError("delivery_ready is inconsistent with mandatory acceptance checks and blockers")
+    archives = sorted((root / "03-主机包").glob("*.tar.gz"))
+    if len(archives) != 6:
+        raise BundleError("delivery must contain exactly six host archives")
+    host_records = evidence.get("hosts")
+    if not isinstance(host_records, list) or len(host_records) != 6:
+        raise BundleError("delivery evidence must contain exactly six host records")
+    record_by_archive: dict[str, dict[str, Any]] = {}
+    role_counts = {role: 0 for role in ROLE_COUNTS}
+    for index, raw_record in enumerate(host_records):
+        record = _object(raw_record, f"delivery evidence hosts[{index}]")
+        _exact_keys(record, {"hostname", "role", "archive", "sha256", "images"}, set(), f"delivery evidence hosts[{index}]")
+        role = _text(record["role"], f"delivery evidence hosts[{index}].role")
+        if role not in role_counts:
+            raise BundleError("delivery evidence contains an unknown host role")
+        role_counts[role] += 1
+        archive_name = _safe_relative(_text(record["archive"], "host archive evidence path"), "host archive evidence path").as_posix()
+        if archive_name in record_by_archive:
+            raise BundleError("delivery evidence repeats a host archive")
+        record_by_archive[archive_name] = record
+    if role_counts != ROLE_COUNTS:
+        raise BundleError(f"delivery evidence role counts must equal {ROLE_COUNTS}")
+    actual_archive_names = {path.relative_to(root).as_posix() for path in archives}
+    if set(record_by_archive) != actual_archive_names:
+        raise BundleError("delivery evidence host archive set is inconsistent")
+    for archive_path in archives:
+        archive_relative = archive_path.relative_to(root).as_posix()
+        record = record_by_archive[archive_relative]
+        if record["sha256"] != _sha256(archive_path):
+            raise BundleError(f"delivery evidence digest mismatch: {archive_relative}")
+        hostname = _text(record["hostname"], "host evidence hostname", HOST_RE)
+        role = record["role"]
+        expected_image_digests = record["images"]
+        if not isinstance(expected_image_digests, list) or len(expected_image_digests) != len(ROLE_IMAGES[role]):
+            raise BundleError(f"delivery evidence image list is invalid: {hostname}")
+        try:
+            with tarfile.open(archive_path, "r:gz") as archive:
+                names: set[str] = set()
+                files: dict[str, bytes] = {}
+                modes: dict[str, int] = {}
+                for member in archive:
+                    name = _safe_relative(member.name, f"host archive {archive_path.name}").as_posix()
+                    if name in names or member.issym() or member.islnk() or not (member.isfile() or member.isdir()):
+                        raise BundleError(f"unsafe/duplicate/special host archive member: {name}")
+                    names.add(name)
+                    modes[name] = stat.S_IMODE(member.mode)
+                    if member.isfile():
+                        handle = archive.extractfile(member)
+                        if handle is None:
+                            raise BundleError(f"unreadable host archive member: {name}")
+                        files[name] = handle.read()
+                checksum_names = [name for name in files if name.endswith("/SHA256SUMS")]
+                if len(checksum_names) != 1:
+                    raise BundleError(f"host archive {archive_path.name} has no unique checksum file")
+                prefix = checksum_names[0][: -len("SHA256SUMS")]
+                if prefix != f"{hostname}/":
+                    raise BundleError(f"host archive {archive_path.name} has the wrong root directory")
+                metadata_name = prefix + "metadata/host.json"
+                lock_name = prefix + "images/image-lock.json"
+                metadata = _object(load_json_bytes(files.get(metadata_name, b""), metadata_name), metadata_name)
+                if metadata.get("hostname") != hostname or metadata.get("role") != role or metadata.get("expected_host") not in {hostname, metadata.get("fqdn")}:
+                    raise BundleError(f"host archive metadata mismatch: {hostname}")
+                lock = _object(load_json_bytes(files.get(lock_name, b""), lock_name), lock_name)
+                if lock.get("schema_version") != LOCK_SCHEMA or lock.get("hostname") != hostname or lock.get("role") != role:
+                    raise BundleError(f"host archive image lock metadata mismatch: {hostname}")
+                required_members = {
+                    prefix + "README-请先阅读.txt",
+                    prefix + "expected-host.json",
+                    prefix + "wizard.py",
+                    prefix + "config/host-inventory.json",
+                    prefix + "config/inventory.env",
+                    prefix + "config/.env",
+                    prefix + f"product-kit/{role}/docker-compose.yml",
+                    prefix + "product-kit/common/lifecycle.py",
+                    prefix + "product-kit/common/load_images.py",
+                    prefix + "product-kit/common/role_entry.py",
+                    *{prefix + name for name in CHINESE_ENTRY_POINTS},
+                    *{prefix + f"scripts/{name}.sh" for name in ASCII_ENTRY_POINTS},
+                }
+                missing_members = sorted(required_members - set(files))
+                if missing_members:
+                    raise BundleError(f"host archive is not standalone; missing={missing_members}")
+                expected_launchers = {
+                    *{prefix + name for name in CHINESE_ENTRY_POINTS},
+                    *{prefix + f"scripts/{name}.sh" for name in ASCII_ENTRY_POINTS},
+                    prefix + "product-kit/common/load_images.py",
+                }
+                for launcher in expected_launchers:
+                    if modes.get(launcher, 0) != 0o755:
+                        raise BundleError(f"host archive launcher is not mode 0755: {launcher}")
+                compose_text = files[prefix + f"product-kit/{role}/docker-compose.yml"].decode("utf-8")
+                if role in {"r2", "r3"} and WRAPPER_STRUCTURE_RE.search(compose_text):
+                    raise BundleError(f"host archive {role} contains Wrapper/first-hop structure")
+                expected_host_name = prefix + "expected-host.json"
+                expected_host = _object(load_json_bytes(files.get(expected_host_name, b""), expected_host_name), expected_host_name)
+                if expected_host != metadata:
+                    raise BundleError(f"host archive expected-host metadata mismatch: {hostname}")
+                lock_images = _array(lock.get("images"), f"{hostname} image lock images")
+                if len(lock_images) != len(ROLE_IMAGES[role]):
+                    raise BundleError(f"host archive has the wrong role-local image count: {hostname}")
+                lock_keys: list[str] = []
+                lock_digests: list[str] = []
+                for lock_index, raw_image in enumerate(lock_images):
+                    image = _object(raw_image, f"{hostname} image lock[{lock_index}]")
+                    _exact_keys(image, {"key", "reference", "import_reference", "digest", "config_digest", "archive", "archive_sha256"}, set(), f"{hostname} image lock[{lock_index}]")
+                    key = _text(image["key"], f"{hostname} image key")
+                    reference = _text(image["reference"], f"{hostname} image reference")
+                    import_reference = _text(image["import_reference"], f"{hostname} image import reference")
+                    digest = _text(image["digest"], f"{hostname} image digest")
+                    config_digest = _text(image["config_digest"], f"{hostname} image config digest")
+                    if key not in ROLE_IMAGES[role] or IMAGE_REF_RE.fullmatch(reference) is None or not reference.endswith("@" + digest) or SHA256_RE.fullmatch(config_digest) is None:
+                        raise BundleError(f"host archive has an invalid image lock: {hostname}")
+                    if import_reference != _import_reference(reference.split("@", 1)[0], digest):
+                        raise BundleError(f"host archive has invalid OCI import reference metadata: {hostname}")
+                    archive_member = prefix + "images/" + _safe_relative(_text(image["archive"], "image archive path"), "image archive path").as_posix()
+                    image_data = files.get(archive_member)
+                    if image_data is None or hashlib.sha256(image_data).hexdigest() != image["archive_sha256"]:
+                        raise BundleError(f"host archive image tar digest mismatch: {hostname}/{key}")
+                    lock_keys.append(key)
+                    lock_digests.append(digest)
+                if tuple(lock_keys) != ROLE_IMAGES[role] or lock_digests != expected_image_digests:
+                    raise BundleError(f"host archive role-local image lock is inconsistent: {hostname}")
+                listed: dict[str, str] = {}
+                for line in files[checksum_names[0]].decode("utf-8").splitlines():
+                    if not re.fullmatch(r"[0-9a-f]{64}  [^\r\n]+", line):
+                        raise BundleError(f"host archive {archive_path.name} has malformed checksums")
+                    digest, relative = line.split("  ", 1)
+                    if relative in listed:
+                        raise BundleError(f"host archive {archive_path.name} repeats checksum path")
+                    listed[relative] = digest
+                actual = {name[len(prefix):] for name in files if name != checksum_names[0]}
+                if set(listed) != actual:
+                    raise BundleError(f"host archive {archive_path.name} checksum file set mismatch")
+                actual_top_launchers = {
+                    relative for relative in actual
+                    if "/" not in relative and relative.endswith(".sh")
+                }
+                if actual_top_launchers != set(CHINESE_ENTRY_POINTS):
+                    raise BundleError(f"host archive {archive_path.name} has stale/missing top-level launcher aliases")
+                actual_ascii_launchers = {
+                    relative for relative in actual
+                    if relative.startswith("scripts/") and relative.endswith(".sh")
+                }
+                if actual_ascii_launchers != {f"scripts/{name}.sh" for name in ASCII_ENTRY_POINTS}:
+                    raise BundleError(f"host archive {archive_path.name} has stale/missing ASCII launcher aliases")
+                for relative, digest in listed.items():
+                    if hashlib.sha256(files[prefix + relative]).hexdigest() != digest:
+                        raise BundleError(f"host archive {archive_path.name} checksum mismatch: {relative}")
+        except (OSError, UnicodeError, tarfile.TarError) as error:
+            raise BundleError(f"invalid host archive {archive_path}: {error}") from error
+    _scan_output(root)
+    blockers = evidence.get("blockers")
+    if not isinstance(blockers, list) or not all(isinstance(item, str) for item in blockers):
+        raise BundleError("delivery evidence blockers must be an array of strings")
+    if blockers and not allow_blocked:
+        raise BundleError("delivery verifies structurally but remains blocked: " + "; ".join(blockers))
+    blocked = bool(blockers) or any(not _status_passed(item["status"]) for item in checks.values())
+    if blocked and not allow_blocked:
+        raise BundleError("delivery verifies structurally but has non-passed checks")
+    return {
+        "verified": True,
+        "release_authentic": externally_trusted,
+        "verification_mode": "structural_only" if structural_only else "release",
+        **signature_result,
+        "blocked": blocked,
+        "blockers": blockers,
+    }
+
+
+def build_delivery(
+    site_path: Path,
+    release_path: Path,
+    product_kit: Path,
+    output_parent: Path,
+    signing_key: Path | None,
+    pdf_builder_image: str | None,
+    *,
+    force: bool = False,
+) -> Path:
+    validated = validate_inputs(site_path, release_path)
+    def _inventory_tree(path: Path) -> dict[str, str]:
+        result: dict[str, str] = {}
+        for member in path.rglob("*"):
+            relative = member.relative_to(path).as_posix()
+            if member.is_symlink():
+                result[relative] = "symlink"
+            elif member.is_dir():
+                result[relative + "/"] = f"directory:{stat.S_IMODE(member.stat().st_mode):04o}"
+            elif member.is_file():
+                result[relative] = f"file:{stat.S_IMODE(member.stat().st_mode):04o}:{_sha256(member)}"
+        return result
+
+    if not product_kit.is_dir() or product_kit.is_symlink():
+        raise BundleError("product-kit must be an existing regular directory")
+    product_kit_before = _inventory_tree(product_kit)
+    delivery_name = f"{DELIVERY_PREFIX}-{validated['version']}"
+    destination = output_parent / delivery_name
+    if destination.exists():
+        if not force:
+            raise BundleError(f"output already exists: {destination}; use --force only for a generated delivery")
+        marker = destination / ".domain-center-easy-bundle"
+        if not marker.is_file() or marker.read_text(encoding="ascii") != SCHEMA + "\n":
+            raise BundleError("refusing to replace a directory without the managed bundle marker")
+    output_parent.mkdir(parents=True, exist_ok=True, mode=0o755)
+    output_parent.chmod(0o755)
+    with tempfile.TemporaryDirectory(prefix="domain-center-easy-", dir=output_parent) as temporary:
+        root = Path(temporary) / delivery_name
+        _mkdir(root)
+        for directory in TOP_LEVEL_DIRECTORIES:
+            _mkdir(root / directory)
+        _write_text(root / ".domain-center-easy-bundle", SCHEMA + "\n")
+        host_archives = root / "03-主机包"
+        all_image_records = [
+            {"key": key, "digest": image["digest"], "reference": image["reference"], "archive_sha256": image["archive_sha256"]}
+            for key, image in sorted(validated["images"].items())
+        ]
+        host_evidence = []
+        with tempfile.TemporaryDirectory(prefix="host-build-", dir=output_parent) as host_temporary:
+            build_root = Path(host_temporary)
+            for host in validated["hosts"]:
+                hostname, role = host["hostname"], host["role"]
+                _validate_role_structure(product_kit / ROLE_TEMPLATE[role], role)
+                host_root = build_root / hostname
+                product_root = host_root / "product-kit"
+                template_target = product_root / role
+                lock_images = []
+                for key in ROLE_IMAGES[role]:
+                    image = validated["images"][key]
+                    lock_images.append({"key": key, "reference": image["reference"], "import_reference": image["import_reference"], "digest": image["digest"], "config_digest": image["config_digest"], "archive": f"{key}.oci.tar", "archive_sha256": image["archive_sha256"]})
+                replacements = {
+                    "{{HOSTNAME}}": hostname,
+                    "{{ROLE}}": role,
+                    "{{VERSION}}": validated["version"],
+                    "{{SOURCE_COMMIT}}": validated["source_commit"],
+                }
+                for image in lock_images:
+                    replacements[f"{{{{IMAGE_{image['key'].upper().replace('-', '_')}}}}}"] = image["import_reference"]
+                _copy_template(product_kit / ROLE_TEMPLATE[role], template_target, replacements)
+                _validate_role_structure(template_target, role)
+                config_target = host_root / "config"
+                _mkdir(config_target)
+                env_lines = [
+                    f"RI_FIELD_HOST_ID={hostname}",
+                    f"RI_FIELD_ROLE={role}",
+                    f"RI_FIELD_COMPOSE_PROJECT=ri-{hostname}",
+                    "RI_FIELD_NETWORK=ri-field-network",
+                    f"RI_FIELD_DATA_DIR=/var/lib/resolver-identity/{hostname}",
+                    f"RI_TRACE_SOCKET_HOST_DIR=/var/lib/resolver-identity/{hostname}/trace",
+                    "RI_TRACE_PRODUCER_UID=10002",
+                    "RI_TRACE_PRODUCER_GID=10002",
+                    "RI_KNOT_RESOLVER_UID=10003",
+                    f"RI_RELEASE_VERSION={validated['version']}",
+                    f"RI_SOURCE_COMMIT={validated['source_commit']}",
+                ]
+                for image in lock_images:
+                    env_lines.append(f"{COMPOSE_IMAGE_VARIABLES[image['key']]}={image['import_reference']}")
+                for key in ("machine_id", "management_ip", "fqdn"):
+                    if key in host:
+                        env_lines.append(f"RI_INVENTORY_{key.upper()}={host[key]}")
+                _write_text(config_target / "inventory.env", "\n".join(env_lines) + "\n")
+                _write_text(config_target / ".env", "\n".join(env_lines) + "\n")
+                _write_json(config_target / "host-inventory.json", host)
+                common_target = product_root / "common"
+                _mkdir(common_target)
+                for common_name in ("lifecycle.py", "load_images.py", "role_entry.py"):
+                    common_source = product_kit / "common" / common_name
+                    if not common_source.is_file() or common_source.is_symlink():
+                        raise BundleError(f"required package runtime is unavailable: {common_source}")
+                    if common_name == "load_images.py":
+                        shutil.copyfile(common_source, common_target / common_name)
+                        (common_target / common_name).chmod(0o755)
+                    else:
+                        shutil.copy2(common_source, common_target / common_name)
+                        (common_target / common_name).chmod(0o644)
+                wizard_source = Path(__file__).resolve().parents[1] / "installer" / "wizard.py"
+                if not wizard_source.is_file() or wizard_source.is_symlink():
+                    raise BundleError(f"required package wizard is unavailable: {wizard_source}")
+                shutil.copy2(wizard_source, host_root / "wizard.py")
+                (host_root / "wizard.py").chmod(0o644)
+                image_dir = host_root / "images"
+                _mkdir(image_dir)
+                for image in lock_images:
+                    shutil.copyfile(validated["images"][image["key"]]["archive"], image_dir / image["archive"])
+                    (image_dir / image["archive"]).chmod(0o644)
+                lock = {"schema_version": LOCK_SCHEMA, "hostname": hostname, "role": role, "images": lock_images}
+                _write_json(image_dir / "image-lock.json", lock)
+                metadata = host_root / "metadata"
+                _mkdir(metadata)
+                host_metadata = {"schema_version": SCHEMA, "expected_host": host.get("fqdn", hostname), "hostname": hostname, "role": role, "version": validated["version"], "source_commit": validated["source_commit"], "release_manifest_sha256": validated["release_manifest_sha256"], "platform": validated["platform"], **{key: host[key] for key in ("machine_id", "management_ip", "fqdn") if key in host}, **({"expected_ips": [host["management_ip"]]} if "management_ip" in host else {})}
+                _write_json(host_root / "expected-host.json", host_metadata)
+                _write_json(metadata / "host.json", host_metadata)
+                _write_json(metadata / "sbom.spdx.json", _spdx(hostname, validated["version"], validated["source_commit"], lock_images))
+                _write_json(metadata / "sbom.cdx.json", _cyclonedx(hostname, validated["version"], validated["source_commit"], lock_images))
+                _write_text(host_root / "README-请先阅读.txt", _host_readme(hostname, role))
+                _write_host_entry_points(host_root, role, hostname)
+                _scan_output(host_root)
+                _write_checksums(host_root, host_root / "SHA256SUMS")
+                archive_path = host_archives / f"{hostname}.tar.gz"
+                _tar_reproducible(host_root, archive_path)
+                archive_path.chmod(0o644)
+                host_evidence.append({"hostname": hostname, "role": role, "archive": f"03-主机包/{archive_path.name}", "sha256": _sha256(archive_path), "images": [item["digest"] for item in lock_images]})
+        sbom_dir = root / "04-软件物料清单"
+        _write_json(sbom_dir / "site.spdx.json", _spdx(delivery_name, validated["version"], validated["source_commit"], all_image_records))
+        _write_json(sbom_dir / "site.cdx.json", _cyclonedx(delivery_name, validated["version"], validated["source_commit"], all_image_records))
+        _write_release_handoff(root, validated, host_evidence)
+        pdf_ready, pdf_detail = _render_pdfs(product_kit, root / "05-PDF手册", pdf_builder_image)
+        blockers = []
+        checks: dict[str, dict[str, Any]] = _copy_external_evidence(root, validated["external_requirements"])
+        if signing_key is None:
+            blockers.append("SIGNING_BLOCKED: no externally supplied Ed25519 PEM was provided")
+            checks["bundle_signing"] = {"status": "blocked", "status_zh": "阻断", "reason_zh": "未提供外部 Ed25519 签名密钥"}
+        if not pdf_ready:
+            blockers.append(pdf_detail)
+            checks["pdf_manual"] = {"status": "blocked", "status_zh": "阻断", "reason_zh": pdf_detail}
+        evidence = {
+            "schema_version": EVIDENCE_SCHEMA,
+            "version": validated["version"],
+            "source_commit": validated["source_commit"],
+            "source_release_manifest_sha256": validated["release_manifest_sha256"],
+            "host_count": 6,
+            "hosts": host_evidence,
+            "oci_validation": {"passed": True, "strict_single_platform": validated["platform"], "images": all_image_records},
+            "sbom": {"spdx_json": "04-软件物料清单/site.spdx.json", "cyclonedx_json": "04-软件物料清单/site.cdx.json"},
+            "signing": {"signed": signing_key is not None, "algorithm": "Ed25519", "implementation": "openssl" if signing_key is not None else None},
+            "pdf": {"ready": pdf_ready, "builder_image": pdf_builder_image, "detail": pdf_detail},
+            "runtime_policy": {"offline_only": True, "runtime_pulls_forbidden": True, "latest_forbidden": True, "loopback_image_references_forbidden": True},
+            "topology_note": "R2/R3 configuration has no Wrapper service. The shared Rust image may contain the Wrapper binary; configuration intentionally does not make it runnable.",
+            "blockers": blockers,
+            "checks": checks,
+            "delivery_ready": not blockers and all(_status_passed(item["status"]) for item in checks.values()),
+            "release_ready": False,
+            "real_server_deployed": False,
+            "production_traffic_enabled": False,
+            "verification_command": "./recipient-verify.sh /offline/path/to/pinned-release-public-key.pem",
+        }
+        _write_json(root / "12-验收证据" / "证据.json", evidence)
+        shutil.copyfile(root / "12-验收证据" / "证据.json", root / "证据.json")
+        (root / "证据.json").chmod(0o644)
+        _write_text(root / "00-开始" / "验证命令.txt", "./recipient-verify.sh /离线路径/已固定-release-public-key.pem\n")
+        _write_text(root / "recipient-verify.sh", _recipient_verify_script(), 0o755)
+        _prepare_signing_public_key(root, signing_key)
+        _scan_output(root)
+        checksum_exclusions = {root / "SHA256SUMS.sig"}
+        _write_checksums(root, root / "SHA256SUMS", checksum_exclusions)
+        _sign_checksums(root, signing_key)
+        if _inventory_tree(product_kit) != product_kit_before:
+            raise BundleError("product-kit changed during generation; generator never mutates product-kit")
+        verify_delivery(root, allow_blocked=True, structural_only=True)
+        if destination.exists():
+            shutil.rmtree(destination)
+        os.replace(root, destination)
+    return destination
+
+
+def _make_test_oci(path: Path, digest_out: dict[str, str], repository: str | None = None) -> None:
+    layer_stream = io.BytesIO()
+    with tarfile.open(fileobj=layer_stream, mode="w") as layer:
+        data = b"offline\n"
+        info = tarfile.TarInfo("payload.txt")
+        info.size = len(data)
+        info.mtime = 0
+        layer.addfile(info, io.BytesIO(data))
+    layer_data = layer_stream.getvalue()
+    layer_digest = hashlib.sha256(layer_data).hexdigest()
+    config_data = json.dumps({"architecture": "amd64", "os": "linux", "rootfs": {"type": "layers", "diff_ids": [f"sha256:{layer_digest}"]}}, separators=(",", ":"), sort_keys=True).encode()
+    config_digest = hashlib.sha256(config_data).hexdigest()
+    manifest_data = json.dumps({"schemaVersion": 2, "mediaType": OCI_MANIFEST, "config": {"mediaType": OCI_CONFIG, "digest": f"sha256:{config_digest}", "size": len(config_data)}, "layers": [{"mediaType": "application/vnd.oci.image.layer.v1.tar", "digest": f"sha256:{layer_digest}", "size": len(layer_data)}]}, separators=(",", ":"), sort_keys=True).encode()
+    manifest_digest = hashlib.sha256(manifest_data).hexdigest()
+    index_data = json.dumps(
+        {
+            "schemaVersion": 2,
+            "manifests": [
+                {
+                    "mediaType": OCI_MANIFEST,
+                    "digest": f"sha256:{manifest_digest}",
+                    "size": len(manifest_data),
+                    "platform": {"os": "linux", "architecture": "amd64"},
+                    **({"annotations": {OCI_REF_ANNOTATION: _import_reference(repository, f"sha256:{manifest_digest}")}} if repository else {}),
+                }
+            ],
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    files = {"oci-layout": b'{"imageLayoutVersion":"1.0.0"}', "index.json": index_data, f"blobs/sha256/{config_digest}": config_data, f"blobs/sha256/{layer_digest}": layer_data, f"blobs/sha256/{manifest_digest}": manifest_data}
+    with tarfile.open(path, "w") as archive:
+        for name, data in sorted(files.items()):
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            info.mtime = 0
+            archive.addfile(info, io.BytesIO(data))
+    digest_out["digest"] = manifest_digest
+
+
+def self_test() -> None:
+    with tempfile.TemporaryDirectory(prefix="domain-center-self-test-") as temporary:
+        root = Path(temporary)
+        oci = root / "image.tar"
+        digest: dict[str, str] = {}
+        _make_test_oci(oci, digest, "registry.internal/example/test")
+        validate_oci_archive(oci, f"sha256:{digest['digest']}", {"os": "linux", "architecture": "amd64"})
+        try:
+            load_json_bytes(b'{"a":1,"a":2}', "duplicate test")
+        except BundleError:
+            pass
+        else:
+            raise AssertionError("duplicate JSON key was accepted")
+        release = {"version": "test-1", "git_commit": "a" * 40, "images": {key: f"127.0.0.1:5000/example/{key}@sha256:{digest['digest']}" for key in EXPECTED_IMAGE_KEYS}}
+        release_path = root / "release.json"
+        _write_json(release_path, release)
+        site = {"schema_version": SCHEMA, "release": {"version": "test-1", "source_commit": "a" * 40, "manifest_sha256": _sha256(release_path)}, "platform": {"os": "linux", "architecture": "amd64"}, "hosts": [{"hostname": "mgmt-01", "role": "management"}, {"hostname": "node-a-01", "role": "norn-a"}, {"hostname": "node-b-01", "role": "norn-b"}, {"hostname": "resolver-r1", "role": "r1"}, {"hostname": "resolver-r2", "role": "r2"}, {"hostname": "resolver-r3", "role": "r3"}], "images": {key: {"archive": str(oci), "repository": "registry.internal/example/test"} for key in EXPECTED_IMAGE_KEYS}, "external_requirements": {requirement_id: {"status": "not_run", "status_zh": "未运行", "blocked_by": "external_approval"} for requirement_id in REQUIRED_EXTERNAL_ACCEPTANCE_IDS}}
+        site_path = root / "site.json"
+        _write_json(site_path, site)
+        kit = root / "product-kit"
+        source_kit = Path(__file__).resolve().parents[1] / "deploy" / "easy-install" / "product-kit"
+        shutil.copytree(source_kit, kit)
+        destination = build_delivery(site_path, release_path, kit, root / "out", None, None)
+        first_hashes = {path.relative_to(destination).as_posix(): _sha256(path) for path in destination.rglob("*") if path.is_file()}
+        verify_delivery(destination, allow_blocked=True, structural_only=True)
+        destination = build_delivery(site_path, release_path, kit, root / "out", None, None, force=True)
+        second_hashes = {path.relative_to(destination).as_posix(): _sha256(path) for path in destination.rglob("*") if path.is_file()}
+        if first_hashes != second_hashes:
+            raise AssertionError("delivery generation is not deterministic")
+        openssl = shutil.which("openssl")
+        if openssl is not None:
+            key = root / "signing-key.pem"
+            subprocess.run([openssl, "genpkey", "-algorithm", "ED25519", "-out", str(key)], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            key.chmod(0o600)
+            destination = build_delivery(site_path, release_path, kit, root / "out", key, None, force=True)
+            signed_result = verify_delivery(destination, allow_blocked=True, structural_only=True)
+            if not signed_result["signed"] or signed_result["release_authentic"]:
+                raise AssertionError("signed delivery structural verification reported incorrect trust")
+            trusted_result = verify_delivery(
+                destination,
+                allow_blocked=True,
+                trusted_public_key=destination / "release-public-key.pem",
+            )
+            if not trusted_result["release_authentic"]:
+                raise AssertionError("externally pinned signed delivery did not verify authentically")
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    for name in ("validate", "build"):
+        child = subparsers.add_parser(name, formatter_class=lambda prog: argparse.HelpFormatter(prog, width=160))
+        child.add_argument("--site-manifest", "--manifest", type=Path, required=True)
+        child.add_argument("--release-manifest", type=Path, required=True)
+        if name == "build":
+            child.add_argument("--product-kit", type=Path, required=True)
+            child.add_argument("--output", "--output-parent", dest="output", type=Path, required=True, help="parent directory; creates resolver-identity-domain-center-easy-install-<version>")
+            child.add_argument("--signing-key", type=Path, help="external Ed25519 private-key PEM; never copied")
+            child.add_argument("--pdf-builder-image", help="locally present, digest-pinned Pandoc-compatible image")
+            child.add_argument("--force", action="store_true")
+    verify = subparsers.add_parser("verify")
+    verify.add_argument("delivery", type=Path)
+    verify.add_argument("--allow-blocked", action="store_true", help="allow semantically blocked checks after verification")
+    verify.add_argument("--structural-only", action="store_true", help="checksum/structure diagnostics only; never reports release authenticity")
+    trust = verify.add_mutually_exclusive_group()
+    trust.add_argument("--trusted-public-key", type=Path, help="externally distributed pinned Ed25519 public-key PEM")
+    trust.add_argument("--trusted-key-sha256", help="externally pinned lowercase SHA-256 of release-public-key.pem")
+    subparsers.add_parser("self-test")
+    return parser
+
+
+def main() -> int:
+    arguments = _parser().parse_args()
+    try:
+        if arguments.command == "validate":
+            validated = validate_inputs(arguments.site_manifest.resolve(), arguments.release_manifest.resolve())
+            print(json.dumps({"valid": True, "version": validated["version"], "source_commit": validated["source_commit"], "host_count": len(validated["hosts"]), "image_count": len(validated["images"])}, sort_keys=True))
+        elif arguments.command == "build":
+            destination = build_delivery(arguments.site_manifest.resolve(), arguments.release_manifest.resolve(), arguments.product_kit.resolve(), arguments.output.resolve(), arguments.signing_key.resolve() if arguments.signing_key else None, arguments.pdf_builder_image, force=arguments.force)
+            evidence = load_json(destination / "证据.json", "delivery evidence")
+            print(json.dumps({"built": True, "delivery": str(destination), "delivery_ready": evidence["delivery_ready"], "blockers": evidence["blockers"]}, ensure_ascii=False, sort_keys=True))
+        elif arguments.command == "verify":
+            print(json.dumps(verify_delivery(
+                arguments.delivery.resolve(),
+                allow_blocked=arguments.allow_blocked,
+                structural_only=arguments.structural_only,
+                trusted_public_key=arguments.trusted_public_key.resolve() if arguments.trusted_public_key else None,
+                trusted_fingerprint=arguments.trusted_key_sha256,
+            ), ensure_ascii=False, sort_keys=True))
+        else:
+            self_test()
+            print(json.dumps({"self_test": "passed"}))
+    except (BundleError, OSError, subprocess.CalledProcessError) as error:
+        print(f"error: {error}", file=os.sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
