@@ -12,6 +12,9 @@ import sys
 import tarfile
 from types import ModuleType, SimpleNamespace
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
 import pytest
 
 
@@ -21,6 +24,8 @@ PRODUCT_KIT = REPO_ROOT / "deploy" / "easy-install" / "product-kit"
 WIZARD_PATH = REPO_ROOT / "installer" / "wizard.py"
 LIFECYCLE_PATH = PRODUCT_KIT / "common" / "lifecycle.py"
 IMAGE_LOADER_PATH = PRODUCT_KIT / "common" / "load_images.py"
+KEY_MATERIAL_PATH = PRODUCT_KIT / "common" / "key_material.py"
+SECRET_GENERATOR_PATH = REPO_ROOT / "tools" / "generate_management_secrets.py"
 
 
 def _load_module(name: str, path: Path) -> ModuleType:
@@ -34,8 +39,128 @@ def _load_module(name: str, path: Path) -> ModuleType:
 
 generator = _load_module("build_domain_center_site_bundle", GENERATOR_PATH)
 wizard = _load_module("domain_center_installer_wizard", WIZARD_PATH)
+key_material = _load_module("key_material", KEY_MATERIAL_PATH)
 lifecycle = _load_module("domain_center_product_lifecycle", LIFECYCLE_PATH)
 image_loader = _load_module("domain_center_product_load_images", IMAGE_LOADER_PATH)
+secret_generator = _load_module("domain_center_secret_generator", SECRET_GENERATOR_PATH)
+
+
+def _write_management_keys(root: Path, *, identity: Ed25519PrivateKey | None = None, snapshot: Ed25519PrivateKey | None = None, publication: Ed25519PrivateKey | None = None) -> None:
+    root.mkdir()
+    keys = [identity or Ed25519PrivateKey.generate(), snapshot or Ed25519PrivateKey.generate(), publication or Ed25519PrivateKey.generate()]
+    enc = serialization.NoEncryption()
+    values = (
+        keys[0].private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, enc),
+        keys[1].private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, enc),
+        keys[2].private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.OpenSSH, enc),
+    )
+    for name, value in zip(secret_generator.NAMES, values):
+        path = root / name
+        path.write_bytes(value)
+        path.chmod(0o600)
+    root.chmod(0o700)
+
+
+def test_management_secret_contract_accepts_three_independent_keys(tmp_path: Path):
+    root = tmp_path / "management-secrets"
+    _write_management_keys(root)
+    metadata = key_material.validate_management_keys(root)
+    assert set(metadata) == set(secret_generator.NAMES)
+    assert {item["algorithm"] for item in metadata.values()} == {"Ed25519"}
+    assert all(len(item["public_key_sha256"]) == 64 for item in metadata.values())
+
+
+def test_management_secret_generator_requires_root_and_test_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    root = tmp_path / "management-secrets"
+    with pytest.raises(ValueError, match="test-only"):
+        secret_generator.generate(root, test_only=False)
+    if os.geteuid() != 0:
+        pytest.skip("generator ownership contract requires root")
+    result = secret_generator.generate(root, test_only=True)
+    assert result["warning"] == "TEST ONLY — NOT FOR PRODUCTION"
+    assert set(result["files"]) == set(secret_generator.NAMES)
+    with pytest.raises(FileExistsError):
+        secret_generator.generate(root, test_only=True)
+
+
+def test_management_secret_contract_rejects_empty_text_symlink_and_permissions(tmp_path: Path):
+    root = tmp_path / "management-secrets"
+    _write_management_keys(root)
+    identity = root / secret_generator.NAMES[0]
+    original = identity.read_bytes()
+    identity.write_bytes(b"")
+    with pytest.raises(key_material.KeyMaterialError, match="non-empty"):
+        key_material.validate_management_keys(root)
+    identity.write_bytes(original)
+    identity.chmod(0o644)
+    with pytest.raises(key_material.KeyMaterialError, match="0600"):
+        key_material.validate_management_keys(root)
+    identity.unlink()
+    identity.symlink_to(root / secret_generator.NAMES[1])
+    with pytest.raises(key_material.KeyMaterialError, match="non-empty"):
+        key_material.validate_management_keys(root)
+
+
+def test_management_secret_contract_rejects_wrong_algorithm_and_malformed_keys(tmp_path: Path):
+    root = tmp_path / "management-secrets"
+    _write_management_keys(root)
+    identity = root / secret_generator.NAMES[0]
+    snapshot = root / secret_generator.NAMES[1]
+    publication = root / secret_generator.NAMES[2]
+    enc = serialization.NoEncryption()
+
+    identity.write_bytes(b"not pem")
+    with pytest.raises(key_material.KeyMaterialError):
+        key_material.validate_management_keys(root)
+
+    from cryptography.hazmat.primitives.asymmetric import ec, rsa
+
+    identity.write_bytes(rsa.generate_private_key(public_exponent=65537, key_size=2048).private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, enc))
+    identity.chmod(0o600)
+    with pytest.raises(key_material.KeyMaterialError, match="Ed25519"):
+        key_material.validate_management_keys(root)
+
+    identity.write_bytes(ec.generate_private_key(ec.SECP256R1()).private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, enc))
+    with pytest.raises(key_material.KeyMaterialError, match="Ed25519"):
+        key_material.validate_management_keys(root)
+
+    identity.write_bytes(b"-----BEGIN PRIVATE KEY-----\ncorrupt\n-----END PRIVATE KEY-----\n")
+    with pytest.raises(key_material.KeyMaterialError):
+        key_material.validate_management_keys(root)
+
+    identity.write_bytes(Ed25519PrivateKey.generate().private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, enc))
+    encrypted_issuer = Ed25519PrivateKey.generate().private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.BestAvailableEncryption(b"test"))
+    snapshot.write_bytes(encrypted_issuer)
+    snapshot.chmod(0o600)
+    with pytest.raises(key_material.KeyMaterialError):
+        key_material.validate_management_keys(root)
+
+    snapshot.write_bytes(Ed25519PrivateKey.generate().private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, enc))
+
+
+def test_management_secret_contract_rejects_encrypted_openssh_key(tmp_path: Path):
+    pytest.importorskip("bcrypt")
+    root = tmp_path / "management-secrets"
+    _write_management_keys(root)
+    publication = root / secret_generator.NAMES[2]
+    encrypted_ssh = Ed25519PrivateKey.generate().private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.OpenSSH, serialization.BestAvailableEncryption(b"test"))
+    publication.write_bytes(encrypted_ssh)
+    publication.chmod(0o600)
+    with pytest.raises(key_material.KeyMaterialError):
+        key_material.validate_management_keys(root)
+
+
+def test_management_secret_contract_rejects_duplicate_and_reused_keys(tmp_path: Path):
+    root = tmp_path / "management-secrets"
+    issuer = Ed25519PrivateKey.generate()
+    _write_management_keys(root, identity=issuer, snapshot=issuer)
+    with pytest.raises(key_material.KeyMaterialError, match="distinct"):
+        key_material.validate_management_keys(root)
+    root = tmp_path / "management-secrets-reused"
+    issuer = Ed25519PrivateKey.generate()
+    _write_management_keys(root, identity=issuer, publication=issuer)
+    with pytest.raises(key_material.KeyMaterialError, match="reuse"):
+        key_material.validate_management_keys(root)
 
 
 def _write_json(path: Path, value: object) -> None:

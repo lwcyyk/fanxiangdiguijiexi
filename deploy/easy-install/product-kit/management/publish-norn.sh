@@ -32,6 +32,31 @@ else
     printf 'field publication target must be the local end of an authenticated SSH tunnel\n' >&2
     exit 1
   }
+  identity="${RI_MANAGEMENT_SECRET_DIR:?management secret directory is required}/publication-ssh-identity"
+  [[ -f "${identity}" && ! -L "${identity}" ]] || {
+    printf 'publication SSH identity is missing or unsafe\n' >&2
+    exit 1
+  }
+  [[ "$(stat -c '%a' "${identity}")" == "600" ]] || {
+    printf 'publication SSH identity permissions must be 0600\n' >&2
+    exit 1
+  }
+  known_hosts="${RI_NORN_SSH_KNOWN_HOSTS:?pinned known_hosts is required}"
+  ssh_host="${RI_NORN_SSH_HOST:?SSH publication host is required}"
+  ssh_user="${RI_NORN_SSH_USER:?SSH publication user is required}"
+  ssh_port="${RI_NORN_SSH_PORT:-22}"
+  remote_target="${RI_NORN_SSH_REMOTE_TARGET:?SSH remote publication target is required}"
+  local_port="${target#127.0.0.1:}"
+  ssh -i "${identity}" -p "${ssh_port}" -o IdentitiesOnly=yes -o BatchMode=yes \
+    -o StrictHostKeyChecking=yes -o UserKnownHostsFile="${known_hosts}" \
+    -N -L "127.0.0.1:${local_port}:${remote_target}" "${ssh_user}@${ssh_host}" &
+  tunnel_pid=$!
+  trap 'kill "${tunnel_pid}" 2>/dev/null || true' EXIT
+  sleep 1
+  kill -0 "${tunnel_pid}" 2>/dev/null || {
+    printf 'SSH publication tunnel failed to start\n' >&2
+    exit 1
+  }
   network_args=(--network host)
 fi
 

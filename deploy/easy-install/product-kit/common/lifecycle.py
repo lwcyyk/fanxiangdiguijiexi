@@ -30,6 +30,15 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 import uuid
 
+try:
+    from key_material import KeyMaterialError, validate_management_keys
+except ImportError as exc:  # pragma: no cover - product-kit dependency error
+    KeyMaterialError = ValueError
+    validate_management_keys = None
+    _KEY_MATERIAL_IMPORT_ERROR = exc
+else:
+    _KEY_MATERIAL_IMPORT_ERROR = None
+
 ROLE_KIND = {
     "management": "management", "norn-a": "norn-node", "norn-b": "norn-node",
     "r1": "resolver-link", "r2": "resolver-link", "r3": "resolver-link",
@@ -229,6 +238,28 @@ def validate_invariants(env: dict[str, str], role: str) -> None:
             die("SEC107", "Trace Producer 与 Resolver UID 必须隔离", "分配不同的固定非特权 UID。")
 
 
+def _validate_management_secret_material(secret_dir: Path) -> dict[str, dict[str, str]]:
+    if secret_dir.stat().st_uid != 0 or secret_dir.stat().st_gid != 0:
+        die("SEC215", "Management 密钥目录归属必须为 root:root", "由 root 创建专用密钥目录并设置归属 root:root。")
+    for name in REQUIRED_SECRETS["management"]:
+        path = secret_dir / name
+        if path.stat().st_uid != 0 or path.stat().st_gid != 0:
+            die("SEC215", f"Management 密钥文件归属必须为 root:root：{name}", "由 root 安全复制密钥并设置归属 root:root。")
+    if validate_management_keys is None:
+        die("SEC211", "缺少 cryptography，无法解析 Management 密钥", "安装包运行时必须提供项目锁定的 cryptography 依赖。")
+    try:
+        return validate_management_keys(secret_dir)
+    except KeyMaterialError as exc:
+        message = str(exc)
+        if "distinct" in message or "reuse" in message:
+            die("SEC214", f"Management 密钥用途隔离失败：{message}", "为三个用途提供相互独立的 Ed25519 私钥。")
+        if "not a non-empty" in message:
+            die("SEC203", "Management 密钥材料缺失或不安全", "提供非空普通文件，禁止符号链接。")
+        if "permissions must be 0600" in message:
+            die("SEC204", "Management 密钥文件权限不是 0600", "执行 chmod 0600。")
+        die("SEC212", f"Management 密钥格式或算法无效：{message}", "issuer 使用未加密 PKCS#8 PEM Ed25519；publication 使用未加密 OpenSSH Ed25519。")
+
+
 def _restricted_file(path: Path, label: str) -> None:
     if not path.is_file() or path.is_symlink() or path.stat().st_size == 0:
         die("SEC203", f"密钥材料缺失或不安全：{label}", "提供非空普通文件，禁止符号链接和共用密钥。")
@@ -283,6 +314,8 @@ def check_secret_tree(secret_dir: Path, role: str, install_root: Path | None = N
         die("SEC202", "密钥目录权限宽于 0700", "执行 chmod 0700，并确保目录归属正确。")
     for name in REQUIRED_SECRETS[role]:
         _restricted_file(secret_dir / name, name)
+    if role == "management":
+        _validate_management_secret_material(secret_dir)
     if role in {"r1", "r2", "r3"}:
         for dirname, names in RESOLVER_TLS_FILES.items():
             directory = secret_dir / dirname

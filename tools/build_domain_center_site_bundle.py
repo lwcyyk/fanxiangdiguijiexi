@@ -1225,7 +1225,8 @@ def _scan_output(root: Path) -> None:
         if not path.is_file() or path.suffix == ".tar" or path.name.endswith(".tar.gz"):
             continue
         data = path.read_bytes()
-        if SECRET_BYTES_RE.search(data):
+        relative = PurePosixPath(path.relative_to(root).as_posix())
+        if SECRET_BYTES_RE.search(data) and not any(relative.parts[-len(item.parts):] == item.parts for item in policy_source_allowed):
             raise BundleError(f"delivery output contains private credential material: {path.relative_to(root)}")
         for pattern, reason in FORBIDDEN_OUTPUT_RE:
             if pattern.search(data):
@@ -1569,6 +1570,7 @@ def verify_delivery(
                     prefix + "config/.env",
                     prefix + f"product-kit/{role}/docker-compose.yml",
                     prefix + "product-kit/common/lifecycle.py",
+                    prefix + "product-kit/common/key_material.py",
                     prefix + "product-kit/common/load_images.py",
                     prefix + "product-kit/common/role_entry.py",
                     *{prefix + name for name in CHINESE_ENTRY_POINTS},
@@ -1759,7 +1761,7 @@ def build_delivery(
                 _write_json(config_target / "host-inventory.json", host)
                 common_target = product_root / "common"
                 _mkdir(common_target)
-                for common_name in ("lifecycle.py", "load_images.py", "role_entry.py"):
+                for common_name in ("lifecycle.py", "key_material.py", "load_images.py", "role_entry.py"):
                     common_source = product_kit / "common" / common_name
                     if not common_source.is_file() or common_source.is_symlink():
                         raise BundleError(f"required package runtime is unavailable: {common_source}")

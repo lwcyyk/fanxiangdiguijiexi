@@ -28,6 +28,20 @@ def verify_object_signature(obj_dict: dict, secret: str) -> bool:
     return False
 
 
+def sign_object_ed25519_file(obj_dict: dict, private_key_path: str | Path, *, format_name: str = "pkcs8-pem") -> str:
+    from pathlib import Path
+    from resolver_identity.crypto.key_material import load_management_issuer_key
+
+    if format_name != "pkcs8-pem":
+        raise ValueError("Management signing files must use pkcs8-pem")
+    return sign_object_ed25519_key(obj_dict, load_management_issuer_key(Path(private_key_path)))
+
+
+def sign_object_ed25519_key(obj_dict: dict, private_key: object) -> str:
+    signature = private_key.sign(canonical_json_bytes(obj_dict))
+    return ED25519_PREFIX + base64.b64encode(signature).decode("ascii")
+
+
 def sign_object_ed25519(obj_dict: dict, private_key_b64: str) -> str:
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 

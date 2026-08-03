@@ -18,6 +18,7 @@ from resolver_identity.crypto.keys import IssuerKeyRegistry
 from resolver_identity.crypto.merkle import merkle_leaf, merkle_root
 from resolver_identity.crypto.signatures import (
     sign_object_ed25519,
+    sign_object_ed25519_file,
     verify_object_signature_with_registry,
 )
 from resolver_identity.models.endpoint import ResolverEndpoint
@@ -36,6 +37,7 @@ def main() -> None:
     sign = subparsers.add_parser("sign")
     sign.add_argument("--input", required=True)
     sign.add_argument("--private-key-file", required=True)
+    sign.add_argument("--private-key-format", choices=("raw-b64", "pkcs8-pem"), default="raw-b64")
     sign.add_argument("--output", required=True)
 
     verify_identities = subparsers.add_parser("verify-identities")
@@ -56,6 +58,7 @@ def main() -> None:
     norn.add_argument("--issuer", required=True)
     norn.add_argument("--key-id", required=True)
     norn.add_argument("--private-key-file", required=True)
+    norn.add_argument("--private-key-format", choices=("raw-b64", "pkcs8-pem"), default="raw-b64")
     norn.add_argument("--issuer-keys", required=True)
     norn.add_argument("--output", required=True)
 
@@ -77,6 +80,7 @@ def main() -> None:
     external.add_argument("--issuer", required=True)
     external.add_argument("--key-id", required=True)
     external.add_argument("--private-key-file", required=True)
+    external.add_argument("--private-key-format", choices=("raw-b64", "pkcs8-pem"), default="raw-b64")
     external.add_argument("--issuer-keys", required=True)
     external.add_argument("--output", required=True)
 
@@ -115,7 +119,12 @@ def main() -> None:
 
     args = parser.parse_args()
     if args.command == "sign":
-        sign_identities(Path(args.input), Path(args.private_key_file), Path(args.output))
+        sign_identities(
+            Path(args.input),
+            Path(args.private_key_file),
+            Path(args.output),
+            private_key_format=args.private_key_format,
+        )
         return
     if args.command == "verify-identities":
         identities = load_identities(
@@ -139,7 +148,7 @@ def main() -> None:
             key_id=args.key_id,
         )
         private_key = Path(args.private_key_file).read_text(encoding="utf-8").strip()
-        snapshot["signature"] = sign_object_ed25519(snapshot, private_key)
+        snapshot["signature"] = sign_object_ed25519_file(snapshot, args.private_key_file) if args.private_key_format == "pkcs8-pem" else sign_object_ed25519(snapshot, private_key)
         keys = IssuerKeyRegistry.from_file(args.issuer_keys)
         if not verify_object_signature_with_registry(snapshot, keys):
             raise ValueError("new Norn snapshot does not verify with issuer bundle")
@@ -187,7 +196,7 @@ def main() -> None:
             key_id=args.key_id,
         )
         private_key = Path(args.private_key_file).read_text(encoding="utf-8").strip()
-        snapshot["signature"] = sign_object_ed25519(snapshot, private_key)
+        snapshot["signature"] = sign_object_ed25519_file(snapshot, args.private_key_file) if args.private_key_format == "pkcs8-pem" else sign_object_ed25519(snapshot, private_key)
         keys = IssuerKeyRegistry.from_file(args.issuer_keys)
         if not verify_object_signature_with_registry(snapshot, keys):
             raise ValueError("new external snapshot does not verify with issuer bundle")
@@ -317,12 +326,12 @@ def main() -> None:
     )
 
 
-def sign_identities(input_path: Path, private_key_path: Path, output_path: Path) -> None:
+def sign_identities(input_path: Path, private_key_path: Path, output_path: Path, *, private_key_format: str = "raw-b64") -> None:
     payload = json.loads(input_path.read_text(encoding="utf-8"))
     identities = payload.get("identities")
     if not isinstance(identities, list) or not identities:
         raise ValueError("unsigned artifact must contain a non-empty identities list")
-    private_key = private_key_path.read_text(encoding="utf-8").strip()
+    private_key = private_key_path.read_text(encoding="utf-8").strip() if private_key_format == "raw-b64" else None
     for identity in identities:
         identity.pop("signature", None)
         identity["endpoints"] = [
@@ -332,7 +341,11 @@ def sign_identities(input_path: Path, private_key_path: Path, output_path: Path)
         if identity.get("agent") is not None:
             identity["agent"]["algorithm"] = str(identity["agent"]["algorithm"]).lower()
         validate_identity_structure(identity)
-        identity["signature"] = sign_object_ed25519(identity, private_key)
+        identity["signature"] = (
+            sign_object_ed25519(identity, private_key)
+            if private_key_format == "raw-b64"
+            else sign_object_ed25519_file(identity, private_key_path)
+        )
     write_json_atomic(output_path, {"identities": identities})
 
 
