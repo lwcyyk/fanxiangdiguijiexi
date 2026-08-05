@@ -3,6 +3,7 @@ pub mod crypto;
 pub mod endpoint;
 pub mod evidence;
 pub mod policy;
+pub mod tls;
 
 pub use canonical::{canonical_json_bytes, canonical_json_text, strip_signatures};
 pub use crypto::{
@@ -17,3 +18,4 @@ pub use evidence::{
     TraceEventKind, TraceEventV2, VerificationMode,
 };
 pub use policy::{EvidencePolicy, EvidenceValidationError, EvidenceValidator, IssuerKeyRegistry};
+pub use tls::install_rustls_crypto_provider;

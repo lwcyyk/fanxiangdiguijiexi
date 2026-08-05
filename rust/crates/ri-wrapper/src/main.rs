@@ -22,6 +22,7 @@ type AnyError = Box<dyn std::error::Error + Send + Sync>;
 
 #[tokio::main]
 async fn main() -> Result<(), AnyError> {
+    ri_core::install_rustls_crypto_provider()?;
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
