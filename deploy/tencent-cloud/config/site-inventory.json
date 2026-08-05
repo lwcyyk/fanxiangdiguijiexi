@@ -32,7 +32,7 @@
     "snapshot_key_id": "snapshot-key-1",
     "confirmations": 12,
     "registry_start_height": 0,
-    "max_scan_blocks": 10000,
+    "max_scan_blocks": 100000,
     "genesis_hash": null,
     "nodes": [
       {
