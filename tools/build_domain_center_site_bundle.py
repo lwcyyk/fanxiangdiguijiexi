@@ -432,6 +432,7 @@ def validate_oci_archive(
     platform: dict[str, str],
     expected_reference: str | None = None,
     expected_annotation: str | None = None,
+    expected_source_commit: str | None = None,
 ) -> dict[str, Any]:
     """Fully validate one strict, single-platform OCI image-layout tar."""
     if not path.is_file() or path.is_symlink():
@@ -474,6 +475,14 @@ def validate_oci_archive(
                 raise BundleError(
                     f"OCI index manifest annotation {OCI_REF_ANNOTATION} must equal one of {sorted(allowed_annotations)}"
                 )
+        else:
+            annotations = _object(root.get("annotations"), "index manifest annotations")
+            reference_name = annotations.get(OCI_REF_ANNOTATION)
+        image_source_commit = None
+        for annotation_key in ("org.opencontainers.image.revision", "org.opencontainers.image.source-commit"):
+            if annotation_key in annotations:
+                image_source_commit = _text(annotations[annotation_key], f"index manifest annotations.{annotation_key}")
+                break
         root_platform = _object(root.get("platform"), "index manifest platform")
         required_platform = {"os": platform["os"], "architecture": platform["architecture"]}
         if platform.get("variant"):
@@ -515,6 +524,7 @@ def validate_oci_archive(
         _reject_secret_fields(config, "OCI config")
         _scan_secret_bytes(_json_bytes(config), "OCI config Env/labels")
         configured = config.get("config", {})
+        image_source_commit = image_source_commit or None
         if configured is not None:
             configured_obj = _object(configured, "OCI config.config")
             env = configured_obj.get("Env", [])
@@ -523,6 +533,13 @@ def validate_oci_archive(
             labels = configured_obj.get("Labels", {})
             if labels is not None and not isinstance(labels, dict):
                 raise BundleError("OCI config Labels must be an object")
+            if image_source_commit is None:
+                for annotation_key in ("org.opencontainers.image.revision", "org.opencontainers.image.source-commit"):
+                    if annotation_key in labels:
+                        image_source_commit = _text(labels[annotation_key], f"OCI config labels.{annotation_key}")
+                        break
+        if expected_source_commit is not None and image_source_commit != expected_source_commit:
+            raise BundleError("OCI image source commit annotation does not match declared source commit")
         if config.get("os") != platform["os"] or config.get("architecture") != platform["architecture"]:
             raise BundleError("OCI config os/architecture does not match requested platform")
         if platform.get("variant") and config.get("variant") != platform["variant"]:
@@ -550,8 +567,11 @@ def validate_oci_archive(
         "archive_sha256": _sha256(path),
         "manifest_digest": expected_digest,
         "config_digest": config_desc["digest"],
+        "layer_digests": [descriptor["digest"] for descriptor in layer_descs],
         "platform": required_platform,
         "layer_count": len(layer_descs),
+        "image_annotation": reference_name,
+        "image_source_commit": image_source_commit,
     }
 
 
@@ -595,21 +615,33 @@ def validate_inputs(site_path: Path, release_path: Path) -> dict[str, Any]:
     clean_images: dict[str, Any] = {}
     for key in sorted(images):
         item = _object(images[key], f"images.{key}")
-        _exact_keys(item, {"archive", "repository"}, set(), f"images.{key}")
+        _exact_keys(item, {"archive", "repository"}, {"image_annotation", "image_source_commit"}, f"images.{key}")
         archive = Path(_text(item["archive"], f"images.{key}.archive"))
         if not archive.is_absolute():
             archive = (site_path.parent / archive).resolve()
         repository = _text(item["repository"], f"images.{key}.repository")
         if "@" in repository or repository.endswith(":latest") or repository.startswith("127.0.0.1"):
             raise BundleError(f"images.{key}.repository must be a non-loopback repository without tag/digest")
-        source_ref = _text(source_images[key], f"source release images.{key}")
+        source_item = source_images[key]
+        if isinstance(source_item, str):
+            source_ref = _text(source_item, f"source release images.{key}")
+            declared_annotation = item.get("image_annotation")
+            declared_source_commit = item.get("image_source_commit")
+        else:
+            source_record = _object(source_item, f"source release images.{key}")
+            _exact_keys(source_record, {"reference"}, {"image_reference", "image_annotation", "image_source_commit", "archive", "archive_sha256", "manifest_digest", "config_digest", "layer_digests", "platform"}, f"source release images.{key}")
+            source_ref = _text(source_record.get("image_reference") or source_record.get("reference"), f"source release images.{key}.reference")
+            declared_annotation = item.get("image_annotation", source_record.get("image_annotation"))
+            declared_source_commit = item.get("image_source_commit", source_record.get("image_source_commit"))
         match = IMAGE_REF_RE.fullmatch(source_ref)
         if match is None:
             raise BundleError(f"source release images.{key} is not digest-pinned")
         digest = f"sha256:{match.group(2)}"
         reference = f"{repository.rstrip('/')}@{digest}"
         import_reference = _import_reference(repository.rstrip('/'), digest)
-        oci = validate_oci_archive(archive, digest, platform_clean, import_reference, version)
+        expected_annotation = _text(declared_annotation, f"images.{key}.image_annotation") if declared_annotation is not None else import_reference
+        expected_source_commit = _text(declared_source_commit, f"images.{key}.image_source_commit", COMMIT_RE) if declared_source_commit is not None else None
+        oci = validate_oci_archive(archive, digest, platform_clean, import_reference, expected_annotation, expected_source_commit)
         clean_images[key] = {
             "archive": archive,
             "repository": repository.rstrip("/"),
