@@ -1,0 +1,9 @@
+{
+  "norn": {
+    "genesis_hash": "0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+    "node_a_peer_id": "QmSaP2PN2iTvP6gLxiiKowwjEi2XT4sHN9Cw4reZ3Uivod",
+    "node_b_peer_id": "QmVUentXiXEW1CdbZxJAk3fec6Fkb5Nt1RHGWQ9xxh2uBx",
+    "node_a_p2p": "ri-norn-a.cloud.lab",
+    "node_b_p2p": "ri-norn-b.cloud.lab"
+  }
+}

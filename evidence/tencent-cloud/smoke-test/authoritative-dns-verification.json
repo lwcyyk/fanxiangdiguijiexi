@@ -1,0 +1,25 @@
+{
+  "schema_version": "tencent-cloud-smoke-test-v1",
+  "captured_at": "2026-08-05T17:10:00Z",
+  "subject": "test authoritative DNS (terminal hop of the intended e2e path)",
+  "server": "BIND (named) on ri-authdns-cloud, listen 10.206.16.13:53 UDP+TCP, non-recursive, allow-query 10.206.16.0/20",
+  "zone": "ri-test.invalid",
+  "method": "raw UDP DNS query from ri-norn-a-cloud (inside VPC) toward 10.206.16.13:53",
+  "results": [
+    { "qname": "www.ri-test.invalid", "qtype": "A",    "answers": 1, "rcode": 0 },
+    { "qname": "www.ri-test.invalid", "qtype": "AAAA", "answers": 1, "rcode": 0 },
+    { "qname": "txt.ri-test.invalid", "qtype": "TXT",  "answers": 1, "rcode": 0 },
+    { "qname": "ns1.ri-test.invalid", "qtype": "A",    "answers": 1, "rcode": 0 }
+  ],
+  "zone_file_summary": {
+    "apex": "SOA/NS only (A query at apex correctly returns NODATA)",
+    "records": [
+      "ns1.ri-test.invalid A 10.206.16.13",
+      "www.ri-test.invalid A 192.0.2.10",
+      "www.ri-test.invalid AAAA 2001:db8::10",
+      "txt.ri-test.invalid TXT \"resolver-identity-lab-test\""
+    ]
+  },
+  "verdict": "authoritative zone answers correctly from inside the VPC",
+  "note": "formal resolver-identity authdns role package was NOT installed on this host; the test authoritative DNS function is delivered by this BIND configuration"
+}

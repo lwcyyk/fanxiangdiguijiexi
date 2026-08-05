@@ -1,0 +1,59 @@
+{
+  "schema_version": "tencent-cloud-oci-rc2-verification-v1",
+  "release": "0.3.0-norn-knot-rc2",
+  "platform": {"os": "linux", "architecture": "amd64"},
+  "verified_at_utc": "2026-08-05T00:00:00Z",
+  "note": "RC2 derives from the frozen RC1 rust-data-plane.oci.tar by appending a single layer with the five rebuilt data-plane binaries. The RC1 archive is byte-for-byte unchanged (sha256 34471fee...). The RC2 binaries were rebuilt in the official rust:1.97.0-bookworm builder (glibc 2.36) after host validation caught a glibc 2.38 incompatibility in the initially-assembled RC2 image; max GLIBC symbol now 2.34, matching the RC1 baseline. The archive was re-packaged once (archive_sha256 7ecf293c -> 3fdcfd73) to drop two unreferenced blobs inherited from the RC1 layout (frozen RC1 config sha256:3e4a31cc... and manifest sha256:68ec1042...); the manifest/config/layer digests and all retained blob bytes are unchanged, so the loaded image is identical.",
+  "host_validation": {
+    "host": "ri-r3",
+    "public_ip": "118.195.189.105",
+    "docker_load": "ok",
+    "loaded_image_id": "sha256:02034f740200fb522ae99d939b026f5a7ba6e67dfefede1dc6f1edd9fa2de022",
+    "image_id_equals_manifest_digest": true,
+    "container_smoke": {
+      "container": "rc2-smoke-agent",
+      "binary": "/usr/local/bin/ri-agent",
+      "status": "passed",
+      "uptime_seconds": 184,
+      "restart_count": 0,
+      "exit_code": 0,
+      "panic_markers_in_logs": 0,
+      "healthz": "{\"ok\":true,\"schema_version\":\"dns-query-evidence-graph-v2\",\"server_id\":\"operator/L01/r3\"}",
+      "readyz_http_without_fresh_registry": 503,
+      "metrics_graph_counter_present": true
+    }
+  },
+  "host_validation_recheck_clean_archive": {
+    "reason": "archive re-packaged to drop two unreferenced RC1-origin blobs; manifest/config/layer digests and retained blob bytes unchanged",
+    "host": "ri-r3",
+    "archive_sha256": "3fdcfd7330ad87dd2c2e6d8dc04f667831abd72fdd6643c4cf90cc5bb575f8ff",
+    "docker_load": "ok",
+    "loaded_image_id": "sha256:02034f740200fb522ae99d939b026f5a7ba6e67dfefede1dc6f1edd9fa2de022",
+    "image_id_equals_manifest_digest": true,
+    "container_smoke": {
+      "container": "rc2-smoke-agent",
+      "status": "passed",
+      "restart_count": 0,
+      "exit_code": 0,
+      "panic_markers_in_logs": 0,
+      "healthz": "{\"ok\":true,\"schema_version\":\"dns-query-evidence-graph-v2\",\"server_id\":\"operator/L01/r3\"}",
+      "readyz_http_without_fresh_registry": 503,
+      "metrics_graph_counter_present": true
+    }
+  },
+  "images": {
+    "rust-rc2": {
+      "archive": "rust-data-plane-oci-rc2.tar",
+      "archive_sha256": "3fdcfd7330ad87dd2c2e6d8dc04f667831abd72fdd6643c4cf90cc5bb575f8ff",
+      "manifest_digest": "sha256:02034f740200fb522ae99d939b026f5a7ba6e67dfefede1dc6f1edd9fa2de022",
+      "config_digest": "sha256:bfb145487d051ba4508a99037eb3ed179bbacc73f1b13cc1a83ca4bda4367be0",
+      "layer_count": 10
+    }
+  },
+  "rc1_untouched": {
+    "archive": "rust-data-plane.oci.tar",
+    "archive_sha256": "34471fee2b260fa3d496a454298ef2881d27c4460b1991ee29ab19b5c4ca5b28",
+    "manifest_digest": "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+    "assertion": "byte-for-byte identical; frozen RC1 commit 928ed0e never modified"
+  }
+}

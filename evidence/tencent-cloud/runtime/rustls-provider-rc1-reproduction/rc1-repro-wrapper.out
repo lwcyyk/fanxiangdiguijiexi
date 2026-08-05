@@ -1,0 +1,4 @@
+[2m2026-08-05T10:20:17.382328Z[0m [32m INFO[0m [2mri_wrapper[0m[2m:[0m UDP DNS wrapper listening [3mbind[0m[2m=[0m127.0.0.1:15353
+[2m2026-08-05T10:20:17.382335Z[0m [32m INFO[0m [2mri_wrapper[0m[2m:[0m TCP DNS wrapper listening [3mbind[0m[2m=[0m127.0.0.1:15354
+[2m2026-08-05T10:20:17.382391Z[0m [32m INFO[0m [2mri_wrapper[0m[2m:[0m Wrapper monitoring listening [3mbind[0m[2m=[0m127.0.0.1:19443
+EXIT_CODE=124

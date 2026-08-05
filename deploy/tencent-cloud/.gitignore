@@ -1,0 +1,12 @@
+# Tencent Cloud lab delivery artifacts.
+#
+# The host-package archives (03-主机包/*.tar.gz) and OCI archives are large
+# generated build outputs. They are kept on disk as frozen deployment
+# artifacts (matching the RC1 delivery convention, which was never committed)
+# and are recorded in git by their SHA-256 digests and evidence files instead.
+# Small delivery metadata (manifests, SHA256SUMS, evidence JSON, READMEs) IS
+# tracked.
+
+packages/**/03-主机包/*.tar.gz
+packages/**/images/*.oci.tar
+oci/**/*.tar

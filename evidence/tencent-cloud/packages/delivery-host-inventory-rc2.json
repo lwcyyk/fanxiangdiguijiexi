@@ -1,0 +1,40 @@
+{
+  "hosts": [
+    {
+      "fqdn": "ri-management.cloud.lab",
+      "hostname": "ri-management",
+      "management_ip": "10.206.16.15",
+      "role": "management"
+    },
+    {
+      "fqdn": "ri-norn-a.cloud.lab",
+      "hostname": "ri-norn-a",
+      "management_ip": "10.206.16.3",
+      "role": "norn-a"
+    },
+    {
+      "fqdn": "ri-norn-b.cloud.lab",
+      "hostname": "ri-norn-b",
+      "management_ip": "10.206.16.5",
+      "role": "norn-b"
+    },
+    {
+      "fqdn": "ri-r1.cloud.lab",
+      "hostname": "ri-r1",
+      "management_ip": "10.206.16.14",
+      "role": "r1"
+    },
+    {
+      "fqdn": "ri-r2.cloud.lab",
+      "hostname": "ri-r2",
+      "management_ip": "10.206.16.17",
+      "role": "r2"
+    },
+    {
+      "fqdn": "ri-r3.cloud.lab",
+      "hostname": "ri-r3",
+      "management_ip": "10.206.16.7",
+      "role": "r3"
+    }
+  ]
+}

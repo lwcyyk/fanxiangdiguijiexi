@@ -1,8 +1,10 @@
 # DNS 全路径服务身份认证
 
-当前集成候选版本为 `0.3.0-norn-knot-rc1`。它组合 Go-Norn 双节点 Registry、
+当前集成候选版本为 `0.3.0-norn-knot-rc2`。它组合 Go-Norn 双节点 Registry、
 Knot Resolver 6.3.0 真实内部 Trace 和 Rust V2 数据面；该版本仍是现场 Shadow
 部署前的 Release Candidate，不表示已连接真实服务器或启用生产 DNS 流量。
+RC2 相对 RC1 的唯一变化是修复 ri-agent / ri-wrapper 的 rustls CryptoProvider
+启动 panic（进程级固定 ring 提供方），RC1 发布物保持冻结不变。
 
 本项目在不修改客户端 DNS 报文格式的前提下，先验证一次查询实际使用的 DNS
 服务身份，再决定是否向客户端释放原始响应。验证范围包括 Recursive、Forwarder，

@@ -1,0 +1,20 @@
+[Unit]
+Description=Resolver Identity norn activate probe relay (deployment-only)
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/domain-center-install/cloud-928ed0e/bin/probe-relay.py \
+    --secret-dir /opt/domain-center-install/cloud-928ed0e/secret \
+    --upstream-host __UPSTREAM_HOST__ --upstream-port 8443
+Restart=on-failure
+RestartSec=3
+# The relay reads root-only secret material and binds the loopback probe port.
+User=root
+Group=root
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

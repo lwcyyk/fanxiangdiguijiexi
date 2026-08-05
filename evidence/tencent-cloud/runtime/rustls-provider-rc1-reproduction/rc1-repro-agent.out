@@ -1,0 +1,18 @@
+
+thread 'main' (872053) panicked at /home/lwc/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-0.23.42/src/crypto/mod.rs:249:14:
+
+Could not automatically determine the process-level CryptoProvider from Rustls crate features.
+Call CryptoProvider::install_default() before this point to select a provider manually, or make sure exactly one of the 'aws-lc-rs' and 'ring' features is enabled.
+See the documentation of the CryptoProvider type for more information.
+            
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::option::expect_failed
+   3: <rustls::webpki::client_verifier::WebPkiClientVerifier>::builder
+   4: ri_agent::mtls_server_config
+   5: ri_agent::main::{closure#0}
+   6: <tokio::runtime::park::CachedParkThread>::block_on::<ri_agent::main::{closure#0}>
+   7: ri_agent::main
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+EXIT_CODE=101

@@ -1,0 +1,204 @@
+{
+  "blockers": [
+    "PDF_BLOCKED: a non-loopback digest-pinned offline PDF builder image was not supplied"
+  ],
+  "checks": {
+    "backup_restore": {
+      "reason_zh": "腾讯云研究环境未执行备份恢复演练。",
+      "status": "not_run",
+      "status_zh": "未运行"
+    },
+    "capacity": {
+      "reason_zh": "2 核 2 GiB 研究配置未做生产容量验收。",
+      "status": "not_run",
+      "status_zh": "未运行"
+    },
+    "monitoring": {
+      "reason_zh": "腾讯云研究环境未接入生产监控。",
+      "status": "not_run",
+      "status_zh": "未运行"
+    },
+    "negative_fail_close": {
+      "reason_zh": "腾讯云研究环境待执行最小失败-关闭场景测试。",
+      "status": "not_run",
+      "status_zh": "未运行"
+    },
+    "network_isolation": {
+      "reason_zh": "腾讯云研究环境未完成完整网络隔离验收。",
+      "status": "not_run",
+      "status_zh": "未运行"
+    },
+    "pdf_manual": {
+      "reason_zh": "PDF_BLOCKED: a non-loopback digest-pinned offline PDF builder image was not supplied",
+      "status": "blocked",
+      "status_zh": "阻断"
+    },
+    "pki_identity": {
+      "reason_zh": "腾讯云研究环境使用 TEST ONLY 测试 PKI，未进行生产证书核验。",
+      "status": "not_run",
+      "status_zh": "未运行"
+    },
+    "production_cutover": {
+      "reason_zh": "腾讯云研究环境不是生产切换目标。",
+      "status": "not_run",
+      "status_zh": "未运行"
+    },
+    "real_oci": {
+      "reason_zh": "腾讯云研究环境复用冻结 OCI 归档，尚未做生产级真实 OCI 验收。",
+      "status": "not_run",
+      "status_zh": "未运行"
+    },
+    "resolver_trace": {
+      "reason_zh": "腾讯云研究环境部署尚未执行真实解析链追踪验收。",
+      "status": "not_run",
+      "status_zh": "未运行"
+    },
+    "rollback_rto": {
+      "reason_zh": "腾讯云研究环境未执行回滚 RTO 验收。",
+      "status": "not_run",
+      "status_zh": "未运行"
+    },
+    "ubuntu22": {
+      "reason_zh": "腾讯云研究环境为 Ubuntu 24.04，未执行 Ubuntu 22.04 验收。",
+      "status": "not_run",
+      "status_zh": "未运行"
+    },
+    "ubuntu24": {
+      "reason_zh": "腾讯云研究环境尚未执行 Ubuntu 24.04 完整验收。",
+      "status": "not_run",
+      "status_zh": "未运行"
+    }
+  },
+  "delivery_ready": false,
+  "host_count": 6,
+  "hosts": [
+    {
+      "archive": "03-主机包/ri-management.tar.gz",
+      "hostname": "ri-management",
+      "images": [
+        "sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0",
+        "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"
+      ],
+      "role": "management",
+      "sha256": "e3f33455e52d31516ebc80e099d2aaea8c5e28d937d212909fcc3f38642bda8e"
+    },
+    {
+      "archive": "03-主机包/ri-norn-a.tar.gz",
+      "hostname": "ri-norn-a",
+      "images": [
+        "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323",
+        "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
+      ],
+      "role": "norn-a",
+      "sha256": "a5e1c1834c4f07d32c4fb94feed7466d9d417f6e598ea256fa18da375051ec48"
+    },
+    {
+      "archive": "03-主机包/ri-norn-b.tar.gz",
+      "hostname": "ri-norn-b",
+      "images": [
+        "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323",
+        "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
+      ],
+      "role": "norn-b",
+      "sha256": "72a623c0aa6eba1cb24a7d1d02043551383abf41e23b47917affa26c9299af3e"
+    },
+    {
+      "archive": "03-主机包/ri-r1.tar.gz",
+      "hostname": "ri-r1",
+      "images": [
+        "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+        "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+      ],
+      "role": "r1",
+      "sha256": "0af216f663d096f7bcd7d814393740289e60993bb187312a59fc2076c31b8887"
+    },
+    {
+      "archive": "03-主机包/ri-r2.tar.gz",
+      "hostname": "ri-r2",
+      "images": [
+        "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+        "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+      ],
+      "role": "r2",
+      "sha256": "f69f321606fcaf539ae07d8b4048a3e25c5fa8b70e791de78fc2bf8cfebb48b1"
+    },
+    {
+      "archive": "03-主机包/ri-r3.tar.gz",
+      "hostname": "ri-r3",
+      "images": [
+        "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+        "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+      ],
+      "role": "r3",
+      "sha256": "532a55982f6bcaf3673890a579ebbc456cbf4cf6b46616186ebeff7c00820615"
+    }
+  ],
+  "oci_validation": {
+    "images": [
+      {
+        "archive_sha256": "dd4348db986a629c8f9bf6874e38a75baad96e1e6c0c6545d1082118a0434fa9",
+        "digest": "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8",
+        "key": "knot",
+        "reference": "offline/resolver-identity/knot@sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+      },
+      {
+        "archive_sha256": "be05dbdbf872ec5f863684cac100aadcfee616b6b4e00cb98f40ef4723f128cc",
+        "digest": "sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0",
+        "key": "management",
+        "reference": "offline/resolver-identity/management@sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0"
+      },
+      {
+        "archive_sha256": "b296a0d49b2d4f87054808e7ccda7cf1263f9c549b53c0199427990d8ad270c0",
+        "digest": "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae",
+        "key": "nginx",
+        "reference": "offline/resolver-identity/nginx@sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
+      },
+      {
+        "archive_sha256": "989893a7ee550f5fb1260e000084e182a634d8ecf5b45969c5f9fe31b6a29b06",
+        "digest": "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323",
+        "key": "norn",
+        "reference": "offline/resolver-identity/norn@sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"
+      },
+      {
+        "archive_sha256": "34471fee2b260fa3d496a454298ef2881d27c4460b1991ee29ab19b5c4ca5b28",
+        "digest": "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+        "key": "rust",
+        "reference": "offline/resolver-identity/rust@sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244"
+      }
+    ],
+    "passed": true,
+    "strict_single_platform": {
+      "architecture": "amd64",
+      "os": "linux"
+    }
+  },
+  "pdf": {
+    "builder_image": null,
+    "detail": "PDF_BLOCKED: a non-loopback digest-pinned offline PDF builder image was not supplied",
+    "ready": false
+  },
+  "production_traffic_enabled": false,
+  "real_server_deployed": false,
+  "release_ready": false,
+  "runtime_policy": {
+    "latest_forbidden": true,
+    "loopback_image_references_forbidden": true,
+    "offline_only": true,
+    "runtime_pulls_forbidden": true
+  },
+  "sbom": {
+    "cyclonedx_json": "04-软件物料清单/site.cdx.json",
+    "spdx_json": "04-软件物料清单/site.spdx.json"
+  },
+  "schema_version": "resolver-identity-domain-center-easy-evidence-v1",
+  "signing": {
+    "algorithm": "Ed25519",
+    "implementation": "openssl",
+    "signed": true
+  },
+  "source_commit": "928ed0e69fcf71149f4e224124b6a21e7c34aca0",
+  "source_release_manifest_sha256": "8020f5bab26ebf5a6dc50a75ad57b0263997191c823727dbc66ef2a31303caae",
+  "topology_note": "R2/R3 configuration has no Wrapper service. The shared Rust image may contain the Wrapper binary; configuration intentionally does not make it runnable.",
+  "verification_command": "./recipient-verify.sh /offline/path/to/pinned-release-public-key.pem",
+  "version": "0.3.0-norn-knot-rc1"
+}

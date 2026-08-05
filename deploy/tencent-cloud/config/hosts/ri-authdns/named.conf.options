@@ -1,0 +1,23 @@
+// Test authoritative DNS for the resolver-identity Tencent Cloud lab.
+// Non-recursive, listens only on the lab private address, serves ri-test.invalid.
+options {
+    directory "/var/cache/bind";
+
+    // Bind only the lab private address; the loopback stub stays with systemd-resolved.
+    listen-on { 10.206.16.13; };
+    listen-on-v6 { none; };
+
+    // Authoritative only: no recursion, no recursion queries accepted.
+    recursion no;
+    allow-query { 10.206.16.0/20; 127.0.0.1; };
+    allow-transfer { none; };
+    allow-recursion { none; };
+
+    // Test zone has no DNSSEC; disable validation so answers are served plainly.
+    dnssec-validation no;
+
+    minimal-responses yes;
+    version none;
+    hostname none;
+    server-id none;
+};

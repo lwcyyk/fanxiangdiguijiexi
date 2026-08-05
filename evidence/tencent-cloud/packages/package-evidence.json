@@ -1,0 +1,42 @@
+{
+  "schema_version": "tencent-cloud-package-evidence-v1",
+  "delivery": "resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1",
+  "delivery_path": "deploy/tencent-cloud/packages/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1",
+  "generated_at_utc": "2026-08-05T00:00:00Z",
+  "source_commit": "928ed0e69fcf71149f4e224124b6a21e7c34aca0",
+  "source_release_manifest_sha256": "8020f5bab26ebf5a6dc50a75ad57b0263997191c823727dbc66ef2a31303caae",
+  "binding_keys": {
+    "hostname": "present and unique per host",
+    "fqdn": "*.cloud.lab, binds hostname",
+    "management_ip": "private_ip, unique per host, validated by lifecycle expected_ips",
+    "machine_id": "OMITTED from package binding — all seven Tencent hosts share an identical machine-id (fd410411419d40079742fdbc36dec028) due to image cloning; the frozen builder rejects duplicate machine_ids, and fabricating unique values is forbidden. Authoritative binding is hostname/fqdn/private_ip. Real machine-id recorded in inventory/evidence only.",
+    "architecture": "amd64 (linux/amd64 platform)",
+    "role": "management/norn-a/norn-b/r1/r2/r3",
+    "release_manifest": "sha256 pinned in expected-host.json",
+    "source_commit": "928ed0e69fcf71149f4e224124b6a21e7c34aca0 in inventory.env and metadata"
+  },
+  "host_packages": {
+    "ri-management": "e3f33455e52d31516ebc80e099d2aaea8c5e28d937d212909fcc3f38642bda8e",
+    "ri-norn-a": "a5e1c1834c4f07d32c4fb94feed7466d9d417f6e598ea256fa18da375051ec48",
+    "ri-norn-b": "72a623c0aa6eba1cb24a7d1d02043551383abf41e23b47917affa26c9299af3e",
+    "ri-r1": "0af216f663d096f7bcd7d814393740289e60993bb187312a59fc2076c31b8887",
+    "ri-r2": "f69f321606fcaf539ae07d8b4048a3e25c5fa8b70e791de78fc2bf8cfebb48b1",
+    "ri-r3": "532a55982f6bcaf3673890a579ebbc456cbf4cf6b46616186ebeff7c00820615"
+  },
+  "signing": {
+    "algorithm": "Ed25519",
+    "implementation": "openssl",
+    "signed": true,
+    "public_key_fingerprint": "delivery release-public-key.pem; test-only key lives outside the repo at /home/lwc/domain-center-release-assets/cloud-928ed0e/signing/ (not committed)",
+    "delivery_verification": {
+      "release_authentic": true,
+      "signature_valid": true,
+      "trust": "trusted_pinned_key",
+      "verification_mode": "release"
+    }
+  },
+  "blockers": ["PDF_BLOCKED: a non-loopback digest-pinned offline PDF builder image was not supplied"],
+  "delivery_ready": false,
+  "production_flags": {"real_server_deployed": false, "production_traffic_enabled": false, "release_ready": false},
+  "r1_package_naming": "frozen generator names host archives by hostname (03-主机包/ri-r1.tar.gz); there is no ri-resolver.tar.gz convention in commit 928ed0e, so the 'keep official name' condition does not apply."
+}

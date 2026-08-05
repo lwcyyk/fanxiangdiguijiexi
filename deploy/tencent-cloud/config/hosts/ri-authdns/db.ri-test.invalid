@@ -1,0 +1,12 @@
+$TTL 3600
+@       IN      SOA     ns1.ri-test.invalid. hostmaster.ri-test.invalid. (
+                        2026080501      ; serial
+                        3600            ; refresh
+                        900             ; retry
+                        604800          ; expire
+                        300 )           ; minimum
+@       IN      NS      ns1.ri-test.invalid.
+ns1     IN      A       10.206.16.13
+www     IN      A       192.0.2.10
+www     IN      AAAA    2001:db8::10
+txt     IN      TXT     "resolver-identity-lab-test"

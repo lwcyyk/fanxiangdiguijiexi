@@ -1,0 +1,97 @@
+{
+  "schema_version": "tencent-cloud-deployment-state-v1",
+  "captured_at": "2026-08-05T17:15:00Z",
+  "release": {
+    "version": "0.3.0-norn-knot-rc1",
+    "source_commit": "928ed0e69fcf71149f4e224124b6a21e7c34aca0",
+    "source_frozen": true
+  },
+  "environment": {
+    "cloud_research_environment": true,
+    "two_gib_test_profile": true,
+    "control_ip": "10.206.16.0/20"
+  },
+  "hosts": [
+    {
+      "alias": "ri-management-cloud",
+      "public_ip": "118.195.220.95",
+      "private_ip": "10.206.16.11",
+      "role": "management",
+      "wizard_install_state": "complete",
+      "notes": "control node; registry chain-prep artifacts in /opt/domain-center-install/cloud-928ed0e/work/; probe-relay transport currently inactive (not a data-plane dependency)"
+    },
+    {
+      "alias": "ri-norn-a-cloud",
+      "public_ip": "119.45.242.175",
+      "private_ip": "10.206.16.3",
+      "role": "norn-a",
+      "wizard_install_state": "complete",
+      "runtime": "ri-norn-a-norn-node-1 Up; ri-norn-a-norn-read-proxy-1 Up; read-proxy serving 10.206.16.3:8443"
+    },
+    {
+      "alias": "ri-norn-b-cloud",
+      "public_ip": "118.195.187.68",
+      "private_ip": "10.206.16.4",
+      "role": "norn-b",
+      "wizard_install_state": "complete",
+      "runtime": "ri-norn-b-norn-node-1 Up; ri-norn-b-norn-read-proxy-1 Up"
+    },
+    {
+      "alias": "ri-authdns-cloud",
+      "public_ip": "119.45.203.204",
+      "private_ip": "10.206.16.13",
+      "role": "authdns",
+      "wizard_install_state": "NOT_INSTALLED",
+      "runtime": "BIND (named) authoritative on 10.206.16.13:53 UDP+TCP; zone ri-test.invalid; non-recursive",
+      "notes": "test authoritative DNS function delivered via hand-configured BIND, not the formal authdns role package (no /opt/domain-center-install/cloud-928ed0e on this host)"
+    },
+    {
+      "alias": "ri-r1-cloud",
+      "public_ip": "1.13.159.107",
+      "private_ip": "10.206.16.14",
+      "role": "r1",
+      "wizard_install_state": "NOT_INSTALLED",
+      "notes": "packages/preflight/OCI/config/identity material ready; install halted per core-program-anomaly stop condition"
+    },
+    {
+      "alias": "ri-r2-cloud",
+      "public_ip": "118.195.130.7",
+      "private_ip": "10.206.16.17",
+      "role": "r2",
+      "wizard_install_state": "NOT_INSTALLED",
+      "notes": "packages/preflight/OCI/config/identity material ready; install halted per core-program-anomaly stop condition"
+    },
+    {
+      "alias": "ri-r3-cloud",
+      "public_ip": "118.195.189.105",
+      "private_ip": "10.206.16.7",
+      "role": "r3",
+      "wizard_install_state": "staged",
+      "notes": "install complete; activate blocked RUN002/E004 (agent panic); current symlink rolled back; compose stack stopped cleanly; evidence DB intact"
+    }
+  ],
+  "chain_prep": {
+    "plan_hash": "0x2312fc49...",
+    "checkpoint": 1118,
+    "snapshot_state_root": "0x5e956d5c0b35cbd8fa952551925c82ef7a6affac5b6a1471a51524907c71bbbf",
+    "published_transaction_hash": "4d3059bd9f901b74f1dddf1f929061ec710bd0edcf1e5e84b124e4f968bbe169",
+    "heads": "1296/1296",
+    "identities_signed": 3,
+    "issuer_keys": 2
+  },
+  "flags": {
+    "source_frozen": true,
+    "cloud_research_environment": true,
+    "two_gib_test_profile": true,
+    "cloud_bound_packages_generated": true,
+    "all_formal_preflights_passed": true,
+    "OCI_imported": true,
+    "formal_role_packages_installed": false,
+    "cloud_system_running": false,
+    "end_to_end_dns_passed": false,
+    "out_of_band_identity_verification_passed": false,
+    "minimum_fail_close_test_passed": false,
+    "production_flags": false
+  },
+  "stop_reason": "core program anomaly — frozen rust OCI agent binary deterministically panics (rustls CryptoProvider); see docs/tencent-cloud/FROZEN-ARTIFACT-ANOMALY.md"
+}

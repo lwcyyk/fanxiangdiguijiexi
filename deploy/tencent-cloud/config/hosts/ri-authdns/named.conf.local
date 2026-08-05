@@ -1,0 +1,5 @@
+// Test authoritative zone for the resolver-identity lab.
+zone "ri-test.invalid" {
+    type master;
+    file "/etc/bind/db.ri-test.invalid";
+};

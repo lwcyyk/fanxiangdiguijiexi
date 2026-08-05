@@ -1,0 +1,30 @@
+{
+  "schema_version": "resolver-identity-norn-field-release-v1",
+  "version": "0.3.0-norn-knot-rc2",
+  "git_commit": "fc6cc19ee569225f0dbc420199980dba742a7137",
+  "delivery_modes": {
+    "internal_registry": true,
+    "offline_archives_included": false,
+    "offline_image_archives": true
+  },
+  "deployment_status": "field-delivery-candidate-not-production-deployed",
+  "field_package_ready": true,
+  "images": {
+    "knot": "offline/resolver-identity/knot@sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8",
+    "management": "offline/resolver-identity/management@sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0",
+    "nginx": "offline/resolver-identity/nginx@sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae",
+    "norn": "offline/resolver-identity/norn@sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323",
+    "rust": "offline/resolver-identity/rust@sha256:02034f740200fb522ae99d939b026f5a7ba6e67dfefede1dc6f1edd9fa2de022"
+  },
+  "packages": [],
+  "p0_blockers": [],
+  "production_trace_ready": false,
+  "production_traffic_enabled": false,
+  "real_server_deployed": false,
+  "resolver_trace": {
+    "resolver": "Knot Resolver",
+    "upstream_commit": "124d9357dc1c7c1b87f9eb40b4d1b225c3d1132e",
+    "version": "6.3.0"
+  },
+  "simulated_server_count": 6
+}

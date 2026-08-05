@@ -1,0 +1,20 @@
+{
+  "schema_version": "oci-sensitive-info-scan-v1",
+  "archive": "rust-data-plane-oci-rc2.tar",
+  "archive_sha256": "3fdcfd7330ad87dd2c2e6d8dc04f667831abd72fdd6643c4cf90cc5bb575f8ff",
+  "scanned_at_utc": "2026-08-05T00:00:00Z",
+  "repack_note": "Archive re-packaged to drop two unreferenced RC1-origin blobs (config sha256:3e4a31cc..., manifest sha256:68ec1042...); manifest/config/layer digests and retained content unchanged.",
+  "method": "extract OCI layout; scan index.json/config/manifest blobs for PEM/secret/token markers; scan every layer tar member name for key/secret/token/.pem/.crt/.csr; scan member contents for PEM PRIVATE KEY blocks",
+  "result": "clean",
+  "rc2_binaries_layer": {
+    "members": ["usr/local/bin/ri-agent", "usr/local/bin/ri-wrapper", "usr/local/bin/ri-trace-adapter", "usr/local/bin/ri-registry-sync", "usr/local/bin/ri-knot-trace-producer"],
+    "sensitive_names": "none",
+    "embedded_private_keys": "none"
+  },
+  "false_positives_noted": {
+    "json_blobs": "none",
+    "base_layer_standard_files": ["usr/bin/apt-key", "usr/lib/x86_64-linux-gnu/security/pam_keyinit.so", "usr/share/keyrings/debian-archive-*.gpg", "etc/ssl/certs/ca-certificates.crt"],
+    "embedded_PRIVATE_KEY_string_constant_in_base_binaries": ["usr/bin/gpgv", "usr/lib/x86_64-linux-gnu/libgnutls.so.30.34.3"]
+  },
+  "conclusion": "No private keys, seeds, tokens, or sensitive material are present in the RC2 additions. All matched strings are standard debian bookworm base-layer files or code-string constants in stock binaries, inherited unchanged from the frozen RC1 base layers."
+}

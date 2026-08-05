@@ -1,0 +1,61 @@
+{
+  "schema_version": "resolver-identity-domain-center-easy-site-v1",
+  "release": {
+    "version": "0.3.0-norn-knot-rc2",
+    "source_commit": "fc6cc19ee569225f0dbc420199980dba742a7137",
+    "manifest_sha256": "8d438471433e9e242b5df645d71a98b7cfc979ae0db1f5d78f7a290cb27e6fc0"
+  },
+  "platform": {
+    "os": "linux",
+    "architecture": "amd64"
+  },
+  "hosts": [
+    {"hostname": "ri-management", "role": "management", "fqdn": "ri-management.cloud.lab", "management_ip": "10.206.16.15"},
+    {"hostname": "ri-norn-a", "role": "norn-a", "fqdn": "ri-norn-a.cloud.lab", "management_ip": "10.206.16.3"},
+    {"hostname": "ri-norn-b", "role": "norn-b", "fqdn": "ri-norn-b.cloud.lab", "management_ip": "10.206.16.5"},
+    {"hostname": "ri-r1", "role": "r1", "fqdn": "ri-r1.cloud.lab", "management_ip": "10.206.16.14"},
+    {"hostname": "ri-r2", "role": "r2", "fqdn": "ri-r2.cloud.lab", "management_ip": "10.206.16.17"},
+    {"hostname": "ri-r3", "role": "r3", "fqdn": "ri-r3.cloud.lab", "management_ip": "10.206.16.7"}
+  ],
+  "images": {
+    "management": {
+      "archive": "/home/lwc/domain-center-release-assets/0.3.0-norn-knot-rc1/management.oci.tar",
+      "repository": "offline/resolver-identity/management",
+      "image_annotation": "0.3.0-norn-knot-rc1"
+    },
+    "rust": {
+      "archive": "/home/lwc/fanxiangdiguijiexi/deploy/tencent-cloud/oci/rc2/rust-data-plane-oci-rc2.tar",
+      "repository": "offline/resolver-identity/rust",
+      "image_annotation": "0.3.0-norn-knot-rc2"
+    },
+    "knot": {
+      "archive": "/home/lwc/domain-center-release-assets/0.3.0-norn-knot-rc1/knot-trace.oci.tar",
+      "repository": "offline/resolver-identity/knot",
+      "image_annotation": "0.3.0-norn-knot-rc1"
+    },
+    "norn": {
+      "archive": "/home/lwc/domain-center-release-assets/0.3.0-norn-knot-rc1/go-norn.oci.tar",
+      "repository": "offline/resolver-identity/norn",
+      "image_annotation": "0.3.0-norn-knot-rc1"
+    },
+    "nginx": {
+      "archive": "/home/lwc/domain-center-release-assets/0.3.0-norn-knot-rc1/mtls-read-proxy.oci.tar",
+      "repository": "offline/resolver-identity/nginx",
+      "image_annotation": "0.3.0-norn-knot-rc1"
+    }
+  },
+  "external_requirements": {
+    "resolver_trace": {"status": "not_run", "status_zh": "未运行", "reason_zh": "腾讯云研究环境部署尚未执行真实解析链追踪验收。"},
+    "production_cutover": {"status": "not_run", "status_zh": "未运行", "reason_zh": "腾讯云研究环境不是生产切换目标。"},
+    "pki_identity": {"status": "not_run", "status_zh": "未运行", "reason_zh": "腾讯云研究环境使用 TEST ONLY 测试 PKI，未进行生产证书核验。"},
+    "network_isolation": {"status": "not_run", "status_zh": "未运行", "reason_zh": "腾讯云研究环境未完成完整网络隔离验收。"},
+    "negative_fail_close": {"status": "not_run", "status_zh": "未运行", "reason_zh": "腾讯云研究环境待执行最小失败-关闭场景测试。"},
+    "monitoring": {"status": "not_run", "status_zh": "未运行", "reason_zh": "腾讯云研究环境未接入生产监控。"},
+    "backup_restore": {"status": "not_run", "status_zh": "未运行", "reason_zh": "腾讯云研究环境未执行备份恢复演练。"},
+    "capacity": {"status": "not_run", "status_zh": "未运行", "reason_zh": "2 核 2 GiB 研究配置未做生产容量验收。"},
+    "rollback_rto": {"status": "not_run", "status_zh": "未运行", "reason_zh": "腾讯云研究环境未执行回滚 RTO 验收。"},
+    "ubuntu22": {"status": "not_run", "status_zh": "未运行", "reason_zh": "腾讯云研究环境为 Ubuntu 24.04，未执行 Ubuntu 22.04 验收。"},
+    "ubuntu24": {"status": "not_run", "status_zh": "未运行", "reason_zh": "腾讯云研究环境尚未执行 Ubuntu 24.04 完整验收。"},
+    "real_oci": {"status": "not_run", "status_zh": "未运行", "reason_zh": "腾讯云研究环境复用冻结 OCI 归档，尚未做生产级真实 OCI 验收。"}
+  }
+}

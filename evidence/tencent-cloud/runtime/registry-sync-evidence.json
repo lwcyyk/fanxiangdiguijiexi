@@ -1,0 +1,15 @@
+{
+  "schema_version": "tencent-cloud-registry-sync-evidence-v1",
+  "captured_at": "2026-08-05T17:11:00Z",
+  "host": "ri-r3-cloud",
+  "db": "/var/lib/resolver-identity/ri-r3/evidence-v2.db",
+  "runtime_log_line": "finalized Registry snapshot reconciled count=3",
+  "sqlite": {
+    "integrity_check": "ok",
+    "ri_v2_registry_snapshot": 3,
+    "ri_v2_meta": 9,
+    "ri_v2_identities": 3,
+    "state_root": "0x5e956d5c0b35cbd8fa952551925c82ef7a6affac5b6a1471a51524907c71bbbf"
+  },
+  "interpretation": "the resolver-side registry-sync component reached the norn control plane over mTLS and reconciled the signed registry snapshot (3 identities), matching the management-side chain prep state_root. Control-plane norn<->resolver path verified."
+}

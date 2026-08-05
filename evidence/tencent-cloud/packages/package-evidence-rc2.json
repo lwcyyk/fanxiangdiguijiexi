@@ -1,0 +1,53 @@
+{
+  "schema_version": "tencent-cloud-package-evidence-rc2-v1",
+  "delivery": "resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc2",
+  "delivery_path": "deploy/tencent-cloud/packages/resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc2",
+  "generated_at_utc": "2026-08-05T00:00:00Z",
+  "source_commit": "fc6cc19ee569225f0dbc420199980dba742a7137",
+  "source_release_manifest_sha256": "8d438471433e9e242b5df645d71a98b7cfc979ae0db1f5d78f7a290cb27e6fc0",
+  "rc1_frozen_untouched": {
+    "delivery": "resolver-identity-domain-center-easy-install-0.3.0-norn-knot-rc1",
+    "commit": "928ed0e69fcf71149f4e224124b6a21e7c34aca0",
+    "assertion": "RC1 delivery directory byte-for-byte unchanged; never rewritten"
+  },
+  "host_packages": {
+    "ri-management": "e3f33455e52d31516ebc80e099d2aaea8c5e28d937d212909fcc3f38642bda8e",
+    "ri-norn-a": "a5e1c1834c4f07d32c4fb94feed7466d9d417f6e598ea256fa18da375051ec48",
+    "ri-norn-b": "72a623c0aa6eba1cb24a7d1d02043551383abf41e23b47917affa26c9299af3e",
+    "ri-r1": "7ac97962b5f1caddbb47dacbcc8882651392527078ca61be7678ecc4fbc3e8bf",
+    "ri-r2": "1cdd6c75b2a037ed0cc959a81219fb7e8ba43da926c93944ea60f198c2ece713",
+    "ri-r3": "554106b02080f586524d053ca0e7d9d5560ea4bea78d311df76e4c6c09e1d1f6"
+  },
+  "management_norn_substitution": {
+    "policy": "do NOT regenerate Management/Norn A/Norn B; byte-identical RC1 originals substituted into the RC2 delivery",
+    "ri-management": "e3f33455e52d31516ebc80e099d2aaea8c5e28d937d212909fcc3f38642bda8e",
+    "ri-norn-a": "a5e1c1834c4f07d32c4fb94feed7466d9d417f6e598ea256fa18da375051ec48",
+    "ri-norn-b": "72a623c0aa6eba1cb24a7d1d02043551383abf41e23b47917affa26c9299af3e"
+  },
+  "resolver_packages_regenerated_with_rc2_rust": {
+    "ri-r1": "7ac97962b5f1caddbb47dacbcc8882651392527078ca61be7678ecc4fbc3e8bf",
+    "ri-r2": "1cdd6c75b2a037ed0cc959a81219fb7e8ba43da926c93944ea60f198c2ece713",
+    "ri-r3": "554106b02080f586524d053ca0e7d9d5560ea4bea78d311df76e4c6c09e1d1f6",
+    "rust_image_manifest_digest": "sha256:02034f740200fb522ae99d939b026f5a7ba6e67dfefede1dc6f1edd9fa2de022",
+    "rust_import_reference": "offline/resolver-identity/rust:ri-02034f740200fb52"
+  },
+  "signing": {
+    "algorithm": "Ed25519",
+    "implementation": "openssl",
+    "signed": true,
+    "public_key_fingerprint": "256f76e73894f53111ffbb1cee47e2de878f71b1c8e46d6cfe6718cc69a8711a",
+    "delivery_verification": {
+      "release_authentic": true,
+      "signature_valid": true,
+      "trust": "trusted_pinned_fingerprint",
+      "verification_mode": "release"
+    }
+  },
+  "blockers": [
+    "PDF_BLOCKED: a non-loopback digest-pinned offline PDF builder image was not supplied"
+  ],
+  "notes": [
+    "host bindings kept: R1=ri-r1/1.13.159.107/10.206.16.14, R2=ri-r2/118.195.130.7/10.206.16.17, R3=ri-r3/118.195.189.105/10.206.16.7",
+    "Management/Norn A/Norn B/registry data/identity material/chain data/evidence DB kept untouched"
+  ]
+}

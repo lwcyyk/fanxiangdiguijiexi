@@ -1,0 +1,143 @@
+aws-lc-rs v1.17.3
+├── rustls v0.23.42
+│   ├── axum-server v0.8.0
+│   │   ├── axum-server feature "arc-swap"
+│   │   │   └── axum-server feature "tls-rustls-no-provider"
+│   │   │       └── axum-server feature "tls-rustls"
+│   │   │           └── ri-agent v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-agent)
+│   │   │               └── ri-agent feature "default" (command-line)
+│   │   ├── axum-server feature "default"
+│   │   │   └── ri-agent v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-agent) (*)
+│   │   ├── axum-server feature "rustls"
+│   │   │   ├── axum-server feature "tls-rustls" (*)
+│   │   │   └── axum-server feature "tls-rustls-no-provider" (*)
+│   │   ├── axum-server feature "rustls-pki-types"
+│   │   │   └── axum-server feature "tls-rustls-no-provider" (*)
+│   │   ├── axum-server feature "tls-rustls" (*)
+│   │   ├── axum-server feature "tls-rustls-no-provider" (*)
+│   │   └── axum-server feature "tokio-rustls"
+│   │       └── axum-server feature "tls-rustls-no-provider" (*)
+│   └── hyper-rustls v0.27.9
+│       ├── hyper-rustls feature "aws-lc-rs"
+│       │   └── reqwest feature "__rustls-aws-lc-rs"
+│       │       └── reqwest feature "rustls"
+│       │           ├── ri-agent v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-agent) (*)
+│       │           ├── ri-chain-adapter v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-chain-adapter)
+│       │           │   └── ri-chain-adapter feature "default" (command-line)
+│       │           │       └── ri-registry-sync v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-registry-sync)
+│       │           │           └── ri-registry-sync feature "default" (command-line)
+│       │           ├── ri-trace-adapter v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-trace-adapter)
+│       │           │   └── ri-trace-adapter feature "default" (command-line)
+│       │           └── ri-wrapper v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-wrapper)
+│       │               └── ri-wrapper feature "default" (command-line)
+│       ├── hyper-rustls feature "http1"
+│       │   └── reqwest v0.13.4
+│       │       ├── reqwest feature "__rustls"
+│       │       │   └── reqwest feature "rustls" (*)
+│       │       ├── reqwest feature "__rustls-aws-lc-rs" (*)
+│       │       ├── reqwest feature "__tls"
+│       │       │   └── reqwest feature "__rustls" (*)
+│       │       ├── reqwest feature "json"
+│       │       │   ├── ri-agent v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-agent) (*)
+│       │       │   ├── ri-chain-adapter v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-chain-adapter) (*)
+│       │       │   ├── ri-trace-adapter v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-trace-adapter) (*)
+│       │       │   └── ri-wrapper v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-wrapper) (*)
+│       │       ├── reqwest feature "rustls" (*)
+│       │       └── reqwest feature "stream"
+│       │           ├── ri-agent v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-agent) (*)
+│       │           ├── ri-chain-adapter v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-chain-adapter) (*)
+│       │           ├── ri-trace-adapter v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-trace-adapter) (*)
+│       │           └── ri-wrapper v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-wrapper) (*)
+│       └── hyper-rustls feature "tls12"
+│           └── reqwest v0.13.4 (*)
+│   ├── rustls feature "aws-lc-rs"
+│   │   ├── axum-server feature "tls-rustls" (*)
+│   │   ├── rustls feature "aws_lc_rs"
+│   │   │   ├── rustls feature "aws-lc-rs" (*)
+│   │   │   ├── rustls feature "default"
+│   │   │   │   ├── ri-agent v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-agent) (*)
+│   │   │   │   └── ri-chain-adapter v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-chain-adapter) (*)
+│   │   │   ├── rustls feature "prefer-post-quantum"
+│   │   │   │   └── rustls feature "default" (*)
+│   │   │   ├── tokio-rustls feature "aws_lc_rs"
+│   │   │   │   └── tokio-rustls feature "aws-lc-rs"
+│   │   │   │       └── reqwest feature "__rustls-aws-lc-rs" (*)
+│   │   │   └── hyper-rustls feature "aws-lc-rs" (*)
+│   │   └── reqwest feature "__rustls-aws-lc-rs" (*)
+│   ├── rustls feature "aws_lc_rs" (*)
+│   ├── rustls feature "default" (*)
+│   ├── rustls feature "log"
+│   │   └── rustls feature "logging"
+│   │       ├── rustls feature "default" (*)
+│   │       └── tokio-rustls feature "logging"
+│   │           └── tonic v0.13.1
+│   │               ├── tonic feature "_tls-any"
+│   │               │   ├── tonic feature "tls-ring"
+│   │               │   │   └── ri-chain-adapter v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-chain-adapter) (*)
+│   │               │   └── tonic feature "tls-webpki-roots"
+│   │               │       └── ri-chain-adapter v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-chain-adapter) (*)
+│   │               ├── tonic feature "channel"
+│   │               │   ├── tonic feature "tls-webpki-roots" (*)
+│   │               │   └── tonic feature "transport"
+│   │               │       └── ri-chain-adapter v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-chain-adapter) (*)
+│   │               │       └── tonic feature "default"
+│   │               │           └── ri-chain-adapter v0.3.0-norn-knot-rc1 (/home/lwc/fanxiangdiguijiexi/rust/crates/ri-chain-adapter) (*)
+│   │               ├── tonic feature "codegen"
+│   │               │   └── tonic feature "default" (*)
+│   │               ├── tonic feature "default" (*)
+│   │               ├── tonic feature "prost"
+│   │               │   └── tonic feature "default" (*)
+│   │               ├── tonic feature "router"
+│   │               │   └── tonic feature "default" (*)
+│   │               ├── tonic feature "server"
+│   │               │   └── tonic feature "transport" (*)
+│   │               ├── tonic feature "tls-ring" (*)
+│   │               ├── tonic feature "tls-webpki-roots" (*)
+│   │               ├── tonic feature "tokio-rustls"
+│   │               │   └── tonic feature "tls-ring" (*)
+│   │               └── tonic feature "transport" (*)
+│   ├── rustls feature "logging" (*)
+│   ├── rustls feature "prefer-post-quantum" (*)
+│   ├── rustls feature "ring"
+│   │   └── tokio-rustls feature "ring"
+│   │       └── tonic feature "tls-ring" (*)
+│   ├── rustls feature "std"
+│   │   ├── reqwest v0.13.4 (*)
+│   │   ├── rustls-platform-verifier v0.7.0
+│   │   │   └── rustls-platform-verifier feature "default"
+│   │   │       └── reqwest v0.13.4 (*)
+│   │   └── tokio-rustls v0.26.4
+│   │       ├── axum-server v0.8.0 (*)
+│   │       └── hyper-rustls v0.27.9 (*)
+│   │       ├── tokio-rustls feature "aws-lc-rs" (*)
+│   │       ├── tokio-rustls feature "aws_lc_rs" (*)
+│   │       ├── tokio-rustls feature "logging" (*)
+│   │       ├── tokio-rustls feature "ring" (*)
+│   │       └── tokio-rustls feature "tls12"
+│   │           ├── reqwest v0.13.4 (*)
+│   │           └── tonic v0.13.1 (*)
+│   │           └── hyper-rustls feature "tls12" (*)
+│   │   └── rustls feature "default" (*)
+│   └── rustls feature "tls12"
+│       └── reqwest v0.13.4 (*)
+│       ├── rustls feature "default" (*)
+│       ├── tokio-rustls feature "tls12" (*)
+│       └── hyper-rustls feature "tls12" (*)
+└── rustls-webpki v0.103.13
+    └── rustls-platform-verifier v0.7.0 (*)
+    ├── rustls-webpki feature "alloc"
+    │   └── rustls v0.23.42 (*)
+    │   └── rustls-webpki feature "std"
+    │       └── rustls feature "std" (*)
+    ├── rustls-webpki feature "aws-lc-rs"
+    │   ├── rustls feature "aws_lc_rs" (*)
+    │   └── rustls-webpki feature "aws-lc-rs" (*)
+    ├── rustls-webpki feature "ring"
+    │   └── rustls feature "ring" (*)
+    └── rustls-webpki feature "std" (*)
+├── aws-lc-rs feature "aws-lc-sys"
+│   ├── rustls feature "aws_lc_rs" (*)
+│   └── rustls-webpki feature "aws-lc-rs" (*)
+└── aws-lc-rs feature "prebuilt-nasm"
+    ├── rustls feature "aws_lc_rs" (*)
+    └── rustls-webpki feature "aws-lc-rs" (*)

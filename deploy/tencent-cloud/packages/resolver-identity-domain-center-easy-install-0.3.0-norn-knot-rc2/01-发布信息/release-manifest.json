@@ -1,0 +1,45 @@
+{
+  "images": [
+    {
+      "config_digest": "sha256:04dfd24faa1d450dedf025559a75fb2e8045a9477fbd17208062553a8c826fb6",
+      "key": "knot",
+      "local_import_reference": "offline/resolver-identity/knot:ri-61e01beae33fd414",
+      "manifest_digest": "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+    },
+    {
+      "config_digest": "sha256:015a1d4494eb01511aa723a90635862f8d66849c3fc38a9a9ae1a15e83f4586c",
+      "key": "management",
+      "local_import_reference": "offline/resolver-identity/management:ri-8a6d7aeb15009967",
+      "manifest_digest": "sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0"
+    },
+    {
+      "config_digest": "sha256:ce7eae171b944ad0071ef0bdf932f92423dbb049c94dc66b726dd8018f69acaa",
+      "key": "nginx",
+      "local_import_reference": "offline/resolver-identity/nginx:ri-8d9da9cfb339e414",
+      "manifest_digest": "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
+    },
+    {
+      "config_digest": "sha256:ebf87a3bc25d444ca7db149a0a9fdf91b238b53c38cec1ac7e6902b12091b342",
+      "key": "norn",
+      "local_import_reference": "offline/resolver-identity/norn:ri-ad8b495d892c35b1",
+      "manifest_digest": "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"
+    },
+    {
+      "config_digest": "sha256:bfb145487d051ba4508a99037eb3ed179bbacc73f1b13cc1a83ca4bda4367be0",
+      "key": "rust",
+      "local_import_reference": "offline/resolver-identity/rust:ri-02034f740200fb52",
+      "manifest_digest": "sha256:02034f740200fb522ae99d939b026f5a7ba6e67dfefede1dc6f1edd9fa2de022"
+    }
+  ],
+  "platform": {
+    "architecture": "amd64",
+    "os": "linux"
+  },
+  "production_traffic_enabled": false,
+  "real_server_deployed": false,
+  "release_ready": false,
+  "schema_version": "resolver-identity-domain-center-easy-site-v1",
+  "source_commit": "fc6cc19ee569225f0dbc420199980dba742a7137",
+  "source_release_manifest_sha256": "8d438471433e9e242b5df645d71a98b7cfc979ae0db1f5d78f7a290cb27e6fc0",
+  "version": "0.3.0-norn-knot-rc2"
+}

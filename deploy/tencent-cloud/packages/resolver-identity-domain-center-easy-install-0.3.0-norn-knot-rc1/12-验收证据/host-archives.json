@@ -1,0 +1,64 @@
+{
+  "hosts": [
+    {
+      "archive": "03-主机包/ri-management.tar.gz",
+      "hostname": "ri-management",
+      "images": [
+        "sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0",
+        "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323"
+      ],
+      "role": "management",
+      "sha256": "e3f33455e52d31516ebc80e099d2aaea8c5e28d937d212909fcc3f38642bda8e"
+    },
+    {
+      "archive": "03-主机包/ri-norn-a.tar.gz",
+      "hostname": "ri-norn-a",
+      "images": [
+        "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323",
+        "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
+      ],
+      "role": "norn-a",
+      "sha256": "a5e1c1834c4f07d32c4fb94feed7466d9d417f6e598ea256fa18da375051ec48"
+    },
+    {
+      "archive": "03-主机包/ri-norn-b.tar.gz",
+      "hostname": "ri-norn-b",
+      "images": [
+        "sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323",
+        "sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae"
+      ],
+      "role": "norn-b",
+      "sha256": "72a623c0aa6eba1cb24a7d1d02043551383abf41e23b47917affa26c9299af3e"
+    },
+    {
+      "archive": "03-主机包/ri-r1.tar.gz",
+      "hostname": "ri-r1",
+      "images": [
+        "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+        "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+      ],
+      "role": "r1",
+      "sha256": "0af216f663d096f7bcd7d814393740289e60993bb187312a59fc2076c31b8887"
+    },
+    {
+      "archive": "03-主机包/ri-r2.tar.gz",
+      "hostname": "ri-r2",
+      "images": [
+        "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+        "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+      ],
+      "role": "r2",
+      "sha256": "f69f321606fcaf539ae07d8b4048a3e25c5fa8b70e791de78fc2bf8cfebb48b1"
+    },
+    {
+      "archive": "03-主机包/ri-r3.tar.gz",
+      "hostname": "ri-r3",
+      "images": [
+        "sha256:68ec104256119bd3cee736bc2ebb1f327370d31df3598606d7668ce84eda7244",
+        "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8"
+      ],
+      "role": "r3",
+      "sha256": "532a55982f6bcaf3673890a579ebbc456cbf4cf6b46616186ebeff7c00820615"
+    }
+  ]
+}
