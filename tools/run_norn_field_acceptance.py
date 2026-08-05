@@ -29,9 +29,15 @@ NORN_COMMIT = "a7be734ac2e829e2076d06d45719d2716abd3d72"
 SCHEMA_HASH = "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499"
 REGISTRY_ADDRESS = "0x1000000000000000000000000000000000000001"
 REGISTRY_KEY = "resolver-identity-registry-v2"
-VERSION = "0.3.0-norn-knot-rc1"
-SECOND_VERSION = "0.3.0-norn-knot-rc2"
-THIRD_VERSION = "0.3.0-norn-knot-rc3"
+# VERSION is the release under test; the whole lab (install, runtime, boundary
+# checks, and the final report) is stamped with it. SECOND/THIRD_VERSIONS are
+# synthetic series labels that only exercise the upgrade/rollback machinery in
+# lifecycle_acceptance (field.render stamps packages from the same tree), so
+# they are simply the next labels after VERSION — they do not claim that a
+# real rc3/rc4 release exists.
+VERSION = "0.3.0-norn-knot-rc2"
+SECOND_VERSION = "0.3.0-norn-knot-rc3"
+THIRD_VERSION = "0.3.0-norn-knot-rc4"
 REGISTRY_HELPER = (
     "registry:2.8.3@"
     "sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373"
@@ -199,12 +205,18 @@ class Lab:
             ["git", "-C", str(REPO_ROOT), "branch", "--show-current"],
             text=True,
         ).strip()
-        if branch != "release/norn-knot-rc1":
+        allowed_branches = {
+            "release/norn-knot-rc1",  # frozen RC1, only to prove it fails
+            "release/norn-knot-rc2",
+            "fix/rustls-crypto-provider-rc2",
+        }
+        if branch not in allowed_branches:
             raise AcceptanceError(f"unexpected branch: {branch}")
         if not self.trace_acceptance.is_file():
             raise AcceptanceError("production Trace acceptance evidence is missing")
         for command in (
             "cargo",
+            "curl",
             "docker",
             "forge",
             "git",
@@ -1637,15 +1649,63 @@ class Lab:
         self.positive["non_evm_legacy_columns_empty"] = "passed"
         return checkpoints
 
+    def _curl_agent(self, resolver: dict[str, Any], path: str) -> tuple[int, str]:
+        """mTLS probe of a resolver agent's published HTTPS endpoint.
+
+        The agent publishes 8443 on the simulated host loopback address
+        (RI_MANAGEMENT_BIND_ADDRESS). ``--resolve agent:8443:<loopback>`` keeps
+        the TLS server name as ``agent`` so the server certificate (SAN: agent,
+        resolver host) validates normally — certificate validation is never
+        relaxed. Client authentication uses the agent-client certificate signed
+        by the agent's client CA.
+
+        Returns ``(curl_exit_code, stdout)`` without raising, so readiness
+        probes can retry while the process boots.
+        """
+        host = resolver["host"]
+        bind_address = self.resolver_runtime_env[host]["RI_MANAGEMENT_BIND_ADDRESS"]
+        tls = Path(resolver["agent_tls_dir"])
+        result = subprocess.run(
+            [
+                "curl",
+                "--silent",
+                "--show-error",
+                "--fail-with-body",
+                "--max-time",
+                "5",
+                "--resolve",
+                f"agent:8443:{bind_address}",
+                "--cacert",
+                str(tls / "agent-ca.crt"),
+                "--cert",
+                str(tls / "agent-client.crt"),
+                "--key",
+                str(tls / "agent-client.key"),
+                f"https://agent:8443{path}",
+            ],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=False,
+        )
+        return result.returncode, result.stdout
+
     def start_agents_and_check_boundaries(self) -> None:
         for resolver in self.inventory["resolvers"]:
             host = resolver["host"]
+            # The lab starts and probes all three agents sequentially, so the last
+            # resolver's /readyz probe can land more than the production 15s
+            # readiness window after its registry-sync. Widen the window for the
+            # lab only (the deployed cloud .env keeps the production default);
+            # fail-close semantics are still exercised by the negative runtime
+            # tests and the agent_startup regression test.
             self._resolver_compose(
                 host,
                 "up",
                 "-d",
                 "--no-deps",
                 "agent",
+                env_overrides={"RI_REGISTRY_MAX_STALENESS_SECONDS": "300"},
                 name=f"start-agent-{host}",
             )
             container = self._resolver_compose(
@@ -1686,6 +1746,78 @@ class Lab:
             ).stdout.strip()
             if resolver["role"] == "upstream" and wrapper_id:
                 raise AcceptanceError(f"upstream {host} started Wrapper")
+
+            # --- Live container / restart-loop checks. The RC1 agent panicked
+            #     deterministically at startup (exit 101, rustls CryptoProvider)
+            #     and entered a `unless-stopped` restart loop; inspecting only the
+            #     config could never detect that. A live, ready, request-serving
+            #     agent is now required, not assumed. ---
+            state = inspect["State"]
+            if not state.get("Running"):
+                raise AcceptanceError(
+                    f"Agent on {host} is not running: "
+                    f"ExitCode={state.get('ExitCode')} Error={state.get('Error')!r}"
+                )
+            restart_count = int(inspect.get("RestartCount", 0))
+            if restart_count != 0:
+                raise AcceptanceError(
+                    f"Agent on {host} restarted {restart_count} times (restart loop)"
+                )
+            if state.get("ExitCode") == 101:
+                raise AcceptanceError(
+                    f"Agent on {host} exited 101 (rustls CryptoProvider panic regression)"
+                )
+            logs = self.run(
+                f"agent-logs-{host}",
+                ["docker", "logs", container],
+                record=False,
+            ).stdout
+            if "panicked" in logs or "CryptoProvider" in logs:
+                raise AcceptanceError(f"Agent on {host} printed a panic in its logs")
+
+            # Real readiness over the agent's own mTLS HTTPS endpoint, retried
+            # until the process has bound and served a request.
+            def agent_healthy() -> str | None:
+                code, body = self._curl_agent(resolver, "/healthz")
+                if code != 0:
+                    return None
+                try:
+                    payload = json.loads(body)
+                except json.JSONDecodeError:
+                    return None
+                return body if payload.get("ok") is True else None
+
+            healthz = self._wait_for(
+                f"{host} agent mTLS healthz readiness", agent_healthy, timeout=30
+            )
+            self.positive[f"agent_{host}_healthz_ok"] = "passed"
+
+            def agent_ready() -> str | None:
+                code, body = self._curl_agent(resolver, "/readyz")
+                return body if code == 0 else None
+
+            # /readyz requires a fresh registry snapshot (written by registry-sync
+            # in sync_resolvers moments ago). A 503 here means the agent cannot
+            # reach fail-closed readiness — exactly what acceptance must catch.
+            readyz = self._wait_for(
+                f"{host} agent mTLS readyz readiness", agent_ready, timeout=30
+            )
+            self.positive[f"agent_{host}_readyz_ok"] = "passed"
+
+            # Minimal functional test request beyond liveness: the /metrics
+            # endpoint, which exercises the same router and answers with real
+            # counters. --fail-with-body makes any non-2xx a nonzero curl exit.
+            code, metrics = self._curl_agent(resolver, "/metrics")
+            if code != 0:
+                raise AcceptanceError(
+                    f"Agent on {host} did not answer /metrics: exit {code}\n{metrics}"
+                )
+            if "resolver_identity_agent_graph_requests_total" not in metrics:
+                raise AcceptanceError(
+                    f"Agent on {host} /metrics did not return agent counters: {metrics}"
+                )
+            self.positive[f"agent_{host}_metrics_served"] = "passed"
+
         self.positive["agents_read_local_sqlite_only"] = "passed"
         self.positive["upstream_wrapper_absent"] = "passed"
         self.positive["agent_wrapper_no_direct_norn_access"] = "passed"
