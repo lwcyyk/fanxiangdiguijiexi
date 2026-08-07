@@ -663,6 +663,7 @@ pub fn valid_response(query: &[u8], response: &[u8]) -> bool {
         && response[2] & 0x80 != 0
         && response[2] & 0x78 == query[2] & 0x78
         && response[4..6] == query[4..6]
+        && message_is_structurally_complete(response)
         && parse_questions(query)
             .zip(parse_questions(response))
             .is_some_and(|(expected, actual)| expected == actual)
@@ -697,6 +698,54 @@ fn parse_questions(message: &[u8]) -> Option<Vec<DnsQuestion>> {
         offset = end;
     }
     Some(questions)
+}
+
+fn question_section_end(message: &[u8]) -> Option<usize> {
+    if message.len() < 12 {
+        return None;
+    }
+    let question_count = u16::from_be_bytes([message[4], message[5]]);
+    if question_count == 0 || question_count > MAX_DNS_QUESTIONS {
+        return None;
+    }
+    let mut offset = 12;
+    for _ in 0..question_count {
+        parse_dns_name(message, &mut offset)?;
+        offset = offset.checked_add(4)?;
+        message.get(..offset)?;
+    }
+    Some(offset)
+}
+
+fn message_is_structurally_complete(message: &[u8]) -> bool {
+    let Some(mut offset) = question_section_end(message) else {
+        return false;
+    };
+    let record_count = [6_usize, 8, 10]
+        .into_iter()
+        .map(|index| u16::from_be_bytes([message[index], message[index + 1]]))
+        .map(usize::from)
+        .sum::<usize>();
+    for _ in 0..record_count {
+        if parse_dns_name(message, &mut offset).is_none() {
+            return false;
+        }
+        let Some(fixed_end) = offset.checked_add(10) else {
+            return false;
+        };
+        let Some(fields) = message.get(offset..fixed_end) else {
+            return false;
+        };
+        let rdata_length = usize::from(u16::from_be_bytes([fields[8], fields[9]]));
+        let Some(record_end) = fixed_end.checked_add(rdata_length) else {
+            return false;
+        };
+        if message.get(..record_end).is_none() {
+            return false;
+        }
+        offset = record_end;
+    }
+    offset == message.len()
 }
 
 fn parse_dns_name(message: &[u8], offset: &mut usize) -> Option<Vec<Vec<u8>>> {
@@ -742,10 +791,10 @@ fn parse_dns_name(message: &[u8], offset: &mut usize) -> Option<Vec<Vec<u8>>> {
 }
 
 pub fn make_servfail(query: &[u8]) -> Vec<u8> {
-    if query.len() < 12 {
+    let Some(question_end) = question_section_end(query) else {
         return Vec::new();
-    }
-    let mut response = query.to_vec();
+    };
+    let mut response = query[..question_end].to_vec();
     response[2] = 0x80 | (query[2] & 0x79);
     response[3] = 0x80 | (query[3] & 0x10) | 0x02;
     response[6..12].fill(0);

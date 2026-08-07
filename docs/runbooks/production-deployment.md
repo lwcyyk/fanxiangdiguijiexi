@@ -72,22 +72,26 @@ install -d -m 700 deploy/link/secrets deploy/link/tls
 ```
 
 为每个链路和 DNS 服务生成独立 Agent Ed25519 私钥、Trace token、Wrapper token、
-链内 peer token 和 mTLS 证书。三个 token 不得相同；peer token 只允许同一实际 DNS
-链中的相邻 Agent 使用，不得跨 L01/L02/L03。
+每个方向的 peer 凭证和 mTLS 证书。Trace、Wrapper 与各方向 peer token 不得相同；
+每个 peer token 只能用于一个精确的源 Agent → 目标 Agent 方向，不得反向或跨
+L01/L02/L03 使用。
 容器使用非 root UID/GID `10002`。运行时私钥和 token 应属于 `10002:10002` 且权限
 为 `0400`，公共证书/CA 可为 `0444`；启动前用 `namei -l` 或等价工具确认目录路径
 允许该 UID 读取。不要把 publisher/revoker/issuer 私钥复制到链路目录。
 Compose 只向各容器挂载其自身证书和信任 CA，不得恢复为整个 `tls/` 目录共享挂载。
 
-试运行环境可在 `umask 077` 下生成 Agent 私钥和三个独立 token；正式环境应由密钥
-管理系统生成并审计：
+试运行环境可在 `umask 077` 下生成 Agent 私钥、两个本地 API token 和每个相邻
+方向的独立 peer token；正式环境应由密钥管理系统生成并审计。以下示例是没有
+相邻 Agent 的单节点配置；多节点必须为每个方向填写精确的 source principal 和
+`target_server_id`，并在目标的 inbound 与源的 outbound 中放置同一个随机 token：
 
 ```bash
 umask 077
 openssl rand -base64 32 | tr -d '\n' > deploy/link/secrets/agent_private_key
 openssl rand -base64 48 | tr -d '\n' > deploy/link/secrets/trace_ingest_token
 openssl rand -base64 48 | tr -d '\n' > deploy/link/secrets/agent_wrapper_token
-openssl rand -base64 48 | tr -d '\n' > deploy/link/secrets/agent_peer_token
+printf '%s\n' '{"inbound":[],"outbound":[],"adjacent_peer_allowlist":[]}' \
+  > deploy/link/secrets/agent_peer_credentials.json
 sudo chown 10002:10002 deploy/link/secrets/*
 sudo chmod 0400 deploy/link/secrets/*
 ```

@@ -27,15 +27,17 @@ correlation/query/response 的本地最终响应。调用方不能提交路径�
 
 ### `POST /v2/downstream-evidence-graph`
 
-只接受相邻 Agent 的 peer token，用于递归子图获取；请求必须携带父级真实 Resolver
+只接受方向性相邻 Agent peer credential，用于递归子图获取；Bearer token 在目标的
+可信配置中绑定到精确源 `(server_id, key_id)`，请求头中的 peer identity 只作一致性
+检查。请求必须携带父级真实 Resolver
 事件生成的 `target_correlation_id`，目标 Agent 只接受精确
 correlation/query/response 绑定，不使用时间、qname 或“最近响应”进行关联。
-`visited_server_ids` 由 Agent 维护以阻断环路。它与 Wrapper 端点分离，peer token
-不能调用本地 Wrapper 端点。
+`visited_server_ids` 由 Agent 维护以阻断环路。它与 Wrapper 端点分离，方向性 peer
+credential 不能调用本地 Wrapper 端点，也不能反向或用于另一个目标。
 
 ### `POST /v2/attest-response`
 
-该端点只接受相邻 Agent peer token。请求同时携带目标查询的 `correlation_id`。
+该端点只接受方向性相邻 Agent credential。请求同时携带目标查询的 `correlation_id`。
 受控目标 Agent 只有在本地找到相同
 correlation、query digest、response digest 和 endpoint 的实际响应事件时才返回
 `TargetResponseAttestationV2`。响应中的观察时间来自本地事件，不采用请求方提交的
@@ -64,8 +66,8 @@ correlation、query digest、response digest 和 endpoint 的实际响应事件�
   Agent 私钥与 identity 中绑定的 key ID/public key 相同。
 - `GET /metrics`：证据图请求/失败和 Trace 摄入计数，位于同一 mTLS 监听器。
 
-Agent 生产服务强制客户端证书认证；Wrapper、peer Agent 和 Trace 摄入还使用三个
-用途隔离的 bearer token。
+Agent 生产服务强制客户端证书认证；Wrapper、peer Agent 和 Trace 摄入还使用用途与
+方向隔离的 bearer credentials。
 `RI_AGENT_MAX_AGE_SECONDS` 必须在 1 至 60 秒之间。
 HTTP 并发数和请求体分别受 `RI_AGENT_MAX_CONCURRENT_REQUESTS` 与
 `RI_AGENT_MAX_REQUEST_BODY_BYTES` 限制；该字节上限也约束 Agent 从相邻 Agent

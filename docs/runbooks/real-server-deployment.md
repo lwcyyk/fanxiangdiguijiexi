@@ -233,7 +233,7 @@ deploy/issuer-keys.json
 deploy/link/secrets/agent_private_key
 deploy/link/secrets/trace_ingest_token
 deploy/link/secrets/agent_wrapper_token
-deploy/link/secrets/agent_peer_token
+deploy/link/secrets/agent_peer_credentials.json
 deploy/link/tls/agent.crt
 deploy/link/tls/agent.key
 deploy/link/tls/client-ca.crt
@@ -246,7 +246,8 @@ deploy/link/tls/agent-client.key
 deploy/link/tls/agent-ca.crt
 ```
 
-每个链路使用独立 Agent Ed25519 私钥、证书和 token。三个 token 必须不同。
+每个链路使用独立 Agent Ed25519 私钥、证书、Trace/Wrapper token 和方向性 peer
+凭证。每个 peer token 只绑定一个源 Agent → 目标 Agent 方向，不得反向或跨链复用。
 `agent.crt` 至少包含 Compose 内部名称 `agent`；跨主机 Agent 调用时还必须包含
 identity `agent.service_url` 所使用的管理网 DNS 名称。
 

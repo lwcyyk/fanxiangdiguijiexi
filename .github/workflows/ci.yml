@@ -96,7 +96,7 @@ jobs:
           printf 'placeholder' > deploy/link/secrets/agent_private_key
           printf 'placeholder' > deploy/link/secrets/trace_ingest_token
           printf 'placeholder' > deploy/link/secrets/agent_wrapper_token
-          printf 'placeholder' > deploy/link/secrets/agent_peer_token
+          printf '{"inbound":[],"outbound":[],"adjacent_peer_allowlist":[]}' > deploy/link/secrets/agent_peer_credentials.json
           compose() {
             docker run --rm \
               --volume "$PWD:/workspace" \

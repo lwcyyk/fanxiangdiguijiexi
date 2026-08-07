@@ -127,9 +127,15 @@ fn registered_query_context_uses_row_boundary_not_time_window_and_claims_once() 
     let query = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
     let response = "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
 
-    store
-        .put_trace_event(&response_event("old", correlation, query, response))
-        .unwrap();
+    put_producer_trace(
+        &store,
+        "old-trace",
+        "old",
+        correlation,
+        query,
+        response,
+        1_800_000_000,
+    );
     store
         .register_query_context(
             "request-1",
@@ -153,9 +159,15 @@ fn registered_query_context_uses_row_boundary_not_time_window_and_claims_once() 
             .is_none()
     );
 
-    let mut delayed = response_event("delayed-old", correlation, query, response);
-    delayed.observed_at = 1_799_999_999;
-    store.put_trace_event(&delayed).unwrap();
+    put_producer_trace(
+        &store,
+        "delayed-old-trace",
+        "delayed-old",
+        correlation,
+        query,
+        response,
+        1_799_999_999,
+    );
     let claimed = store
         .claim_registered_trace_anchor(
             "request-1",
@@ -189,9 +201,15 @@ fn registered_query_context_uses_row_boundary_not_time_window_and_claims_once() 
             1_800_000_100,
         )
         .unwrap();
-    store
-        .put_trace_event(&response_event("new", correlation, query, response))
-        .unwrap();
+    put_producer_trace(
+        &store,
+        "new-trace",
+        "new",
+        correlation,
+        query,
+        response,
+        1_800_000_000,
+    );
     let claimed = store
         .claim_registered_trace_anchor(
             "request-2",
@@ -224,6 +242,87 @@ fn registered_query_context_uses_row_boundary_not_time_window_and_claims_once() 
                 response,
                 1_800_000_000,
             )
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[test]
+fn strict_response_matching_requires_complete_producer_lineage() {
+    let directory = tempfile::tempdir().unwrap();
+    let store = EvidenceStore::open(directory.path().join("evidence.db")).unwrap();
+    let correlation = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    let query = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    let response = "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+    let legacy_request = TraceResponseMatch {
+        request_trace_id: "legacy-request",
+        server_id: "operator/r1",
+        correlation_id: correlation,
+        query_digest: query,
+        response_digest: response,
+        endpoint: None,
+        allow_authority_response: false,
+        require_producer_lineage: true,
+    };
+
+    store
+        .put_trace_event(&response_event("legacy", correlation, query, response))
+        .unwrap();
+    assert!(
+        store
+            .claim_matching_response(&legacy_request)
+            .unwrap()
+            .is_none()
+    );
+
+    put_producer_trace(
+        &store,
+        "complete-trace",
+        "complete-terminal",
+        correlation,
+        query,
+        response,
+        1_800_000_000,
+    );
+    let claimed = store
+        .claim_matching_response(&TraceResponseMatch {
+            request_trace_id: "complete-request",
+            server_id: "operator/r1",
+            correlation_id: correlation,
+            query_digest: query,
+            response_digest: response,
+            endpoint: None,
+            allow_authority_response: false,
+            require_producer_lineage: true,
+        })
+        .unwrap()
+        .unwrap();
+    assert_eq!(claimed.event_id, "complete-terminal");
+}
+
+#[test]
+fn detached_terminal_branch_is_rejected_by_strict_matching() {
+    let directory = tempfile::tempdir().unwrap();
+    let store = EvidenceStore::open(directory.path().join("evidence.db")).unwrap();
+    let correlation = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    let query = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    let response = "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+    let first = production_event(1, TraceEventKind::ClientQuery, None);
+    let second = production_event(2, TraceEventKind::UpstreamRetry, Some("event-1"));
+    let detached = production_event(3, TraceEventKind::ClientResponse, Some("event-1"));
+    store.put_trace_events(&[first, second, detached]).unwrap();
+    assert!(
+        store
+            .claim_matching_response(&TraceResponseMatch {
+                request_trace_id: "detached-request",
+                server_id: "operator/r1",
+                correlation_id: correlation,
+                query_digest: query,
+                response_digest: response,
+                endpoint: None,
+                allow_authority_response: false,
+                require_producer_lineage: true,
+            })
             .unwrap()
             .is_none()
     );
@@ -327,6 +426,7 @@ fn response_claim_requires_all_expected_endpoint_fields() {
                 response_digest: response,
                 endpoint: Some(&expected),
                 allow_authority_response: true,
+                require_producer_lineage: false,
             })
             .unwrap()
             .is_none()
@@ -600,11 +700,69 @@ fn response_event(
     }
 }
 
+fn put_producer_trace(
+    store: &EvidenceStore,
+    trace_id: &str,
+    terminal_event_id: &str,
+    correlation_id: &str,
+    query_digest: &str,
+    response_digest: &str,
+    observed_at: i64,
+) {
+    let query_event_id = format!("{terminal_event_id}-query");
+    let query = TraceEventV2 {
+        schema_version: TRACE_EVENT_V2.into(),
+        event_id: query_event_id.clone(),
+        trace_id: trace_id.into(),
+        sequence: 1,
+        correlation_id: correlation_id.into(),
+        parent_event_id: None,
+        kind: TraceEventKind::ClientQuery,
+        observer_server_id: "operator/r1".into(),
+        target_server_id: None,
+        target_endpoint: None,
+        target_correlation_id: None,
+        attempt: None,
+        query_digest: query_digest.into(),
+        response_digest: None,
+        cache_object_digest: None,
+        observed_at,
+        dnssec_status: DnssecStatus::Secure,
+        ttl_expires_at: None,
+        source_graph_digest: None,
+        failure_reason: None,
+    };
+    let terminal = TraceEventV2 {
+        schema_version: TRACE_EVENT_V2.into(),
+        event_id: terminal_event_id.into(),
+        trace_id: trace_id.into(),
+        sequence: 2,
+        correlation_id: correlation_id.into(),
+        parent_event_id: Some(query_event_id),
+        kind: TraceEventKind::ClientResponse,
+        observer_server_id: "operator/r1".into(),
+        target_server_id: None,
+        target_endpoint: None,
+        target_correlation_id: None,
+        attempt: None,
+        query_digest: query_digest.into(),
+        response_digest: Some(response_digest.into()),
+        cache_object_digest: None,
+        observed_at,
+        dnssec_status: DnssecStatus::Secure,
+        ttl_expires_at: None,
+        source_graph_digest: None,
+        failure_reason: None,
+    };
+    store.put_trace_events(&[query, terminal]).unwrap();
+}
+
 fn production_event(
     sequence: u64,
     kind: TraceEventKind,
     parent_event_id: Option<&str>,
 ) -> TraceEventV2 {
+    let is_terminal = kind == TraceEventKind::ClientResponse;
     TraceEventV2 {
         schema_version: TRACE_EVENT_V2.into(),
         event_id: format!("event-{sequence}"),
@@ -619,7 +777,7 @@ fn production_event(
         target_correlation_id: None,
         attempt: None,
         query_digest: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".into(),
-        response_digest: (kind == TraceEventKind::ClientResponse)
+        response_digest: is_terminal
             .then(|| "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc".into()),
         cache_object_digest: None,
         observed_at: 1_800_000_000,

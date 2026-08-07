@@ -47,9 +47,9 @@ REQUIRED_SECRETS = {
     "management": ("identity-issuer-ed25519-private-key", "snapshot-issuer-ed25519-private-key", "publication-ssh-identity"),
     "norn-a": ("node/config.yml", "tls/server.crt", "tls/server.key", "tls/ca.crt"),
     "norn-b": ("node/config.yml", "tls/server.crt", "tls/server.key", "tls/ca.crt"),
-    "r1": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_wrapper_token", "secrets/agent_peer_token"),
-    "r2": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_wrapper_token", "secrets/agent_peer_token"),
-    "r3": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_wrapper_token", "secrets/agent_peer_token"),
+    "r1": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_wrapper_token", "secrets/agent_peer_credentials.json"),
+    "r2": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_wrapper_token", "secrets/agent_peer_credentials.json"),
+    "r3": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_wrapper_token", "secrets/agent_peer_credentials.json"),
 }
 RESOLVER_TLS_FILES = {
     "agent-tls": (
@@ -1378,8 +1378,12 @@ def prepare_secrets(args: argparse.Namespace) -> None:
             path.mkdir(exist_ok=True, mode=0o700)
             os.chmod(path, 0o700)
         _write_new_secret(root / "secrets" / "agent_private_key", base64.b64encode(secrets.token_bytes(32)).decode())
-        for name in ("trace_ingest_token", "agent_peer_token", "agent_wrapper_token"):
+        for name in ("trace_ingest_token", "agent_wrapper_token"):
             _write_new_secret(root / "secrets" / name, secrets.token_urlsafe(32))
+        _write_new_secret(
+            root / "secrets" / "agent_peer_credentials.json",
+            json.dumps({"inbound": [], "outbound": [], "adjacent_peer_allowlist": []}),
+        )
         agent_key = root / "agent-tls" / "agent.key"
         csr = root / "agent-tls" / "agent.csr"
         if not agent_key.exists() and shutil.which("openssl"):

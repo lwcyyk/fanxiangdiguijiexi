@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -5,7 +6,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use axum_server::tls_rustls::RustlsConfig;
-use ri_agent::{AgentConfig, AgentState, router};
+use ri_agent::{AgentConfig, AgentState, PeerCredentialsFile, router};
 use ri_core::VerificationMode;
 use ri_store::EvidenceStore;
 use rustls::RootCertStore;
@@ -30,22 +31,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ri_core::ed25519_public_key_b64(&private_key)?;
     let trace_ingest_token = read_secret(&settings.trace_ingest_token_file)?;
     let wrapper_api_token = read_secret(&settings.wrapper_api_token_file)?;
-    let peer_api_token = read_secret(&settings.peer_api_token_file)?;
-    if [
-        trace_ingest_token.as_str(),
-        wrapper_api_token.as_str(),
-        peer_api_token.as_str(),
-    ]
-    .iter()
-    .any(|token| token.len() < 32)
-    {
+    let peer_credentials: PeerCredentialsFile =
+        serde_json::from_str(&std::fs::read_to_string(&settings.peer_credentials_file)?)?;
+    let (peer_inbound_credentials, peer_outbound_credentials, adjacent_peer_allowlist) =
+        validate_peer_credentials(peer_credentials, &settings.server_id)?;
+    let mut all_tokens = vec![trace_ingest_token.as_str(), wrapper_api_token.as_str()];
+    all_tokens.extend(
+        peer_inbound_credentials
+            .iter()
+            .map(|credential| credential.token.as_str()),
+    );
+    all_tokens.extend(peer_outbound_credentials.values().map(String::as_str));
+    if all_tokens.iter().any(|token| token.len() < 32) {
         return Err("Agent API tokens must contain at least 32 bytes".into());
     }
-    if trace_ingest_token == wrapper_api_token
-        || trace_ingest_token == peer_api_token
-        || wrapper_api_token == peer_api_token
+    let mut unique_tokens = HashSet::new();
+    if all_tokens
+        .iter()
+        .any(|token| !unique_tokens.insert(token.to_string()))
     {
-        return Err("Agent API tokens must be distinct".into());
+        return Err("Agent API tokens must be distinct across purposes and peer directions".into());
     }
     let maintenance_store = store.clone();
     let trace_retention_seconds = settings.trace_retention_seconds;
@@ -87,7 +92,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             registry_max_staleness_seconds: settings.registry_max_staleness_seconds,
             trace_ingest_token,
             wrapper_api_token,
-            peer_api_token,
+            peer_inbound_credentials,
+            peer_outbound_credentials,
+            adjacent_peer_allowlist,
             max_concurrent_requests: settings.max_concurrent_requests,
             max_request_body_bytes: settings.max_request_body_bytes,
         },
@@ -124,7 +131,7 @@ struct Settings {
     private_key_file: PathBuf,
     trace_ingest_token_file: PathBuf,
     wrapper_api_token_file: PathBuf,
-    peer_api_token_file: PathBuf,
+    peer_credentials_file: PathBuf,
     issuer_keys_file: PathBuf,
     mode: VerificationMode,
     max_age_seconds: i64,
@@ -160,7 +167,7 @@ impl Settings {
             private_key_file: required("RI_AGENT_PRIVATE_KEY_FILE")?.into(),
             trace_ingest_token_file: required("RI_TRACE_INGEST_TOKEN_FILE")?.into(),
             wrapper_api_token_file: required("RI_AGENT_WRAPPER_TOKEN_FILE")?.into(),
-            peer_api_token_file: required("RI_AGENT_PEER_TOKEN_FILE")?.into(),
+            peer_credentials_file: required("RI_AGENT_PEER_CREDENTIALS_FILE")?.into(),
             issuer_keys_file: required("RI_ISSUER_KEYS_FILE")?.into(),
             mode,
             max_age_seconds: parse_i64("RI_AGENT_MAX_AGE_SECONDS", 30)?,
@@ -258,6 +265,62 @@ fn load_certificates(
 
 fn load_private_key(path: &Path) -> Result<PrivateKeyDer<'static>, Box<dyn std::error::Error>> {
     Ok(PrivateKeyDer::from_pem_file(path)?)
+}
+
+fn validate_peer_credentials(
+    file: PeerCredentialsFile,
+    local_server_id: &str,
+) -> Result<
+    (
+        Vec<ri_agent::PeerInboundCredential>,
+        HashMap<String, String>,
+        HashSet<ri_agent::PeerPrincipal>,
+    ),
+    Box<dyn std::error::Error>,
+> {
+    let mut inbound_principals = HashSet::new();
+    let mut inbound_tokens = HashSet::new();
+    for credential in &file.inbound {
+        if credential.principal.server_id.is_empty()
+            || credential.principal.key_id.is_empty()
+            || credential.principal.server_id == local_server_id
+            || credential.token.is_empty()
+            || !inbound_principals.insert(credential.principal.clone())
+            || !inbound_tokens.insert(credential.token.clone())
+        {
+            return Err("peer inbound credentials contain an invalid or duplicate entry".into());
+        }
+    }
+    let mut outbound = HashMap::new();
+    for credential in file.outbound {
+        if credential.target_server_id.is_empty()
+            || credential.target_server_id == local_server_id
+            || credential.token.is_empty()
+            || outbound
+                .insert(credential.target_server_id, credential.token)
+                .is_some()
+        {
+            return Err("peer outbound credentials contain an invalid or duplicate target".into());
+        }
+    }
+    let allowlist = file
+        .adjacent_peer_allowlist
+        .into_iter()
+        .collect::<HashSet<_>>();
+    if allowlist.len() != file.inbound.len()
+        || inbound_principals != allowlist
+        || inbound_tokens.iter().any(|token| {
+            outbound
+                .values()
+                .any(|outbound_token| outbound_token == token)
+        })
+    {
+        return Err(
+            "peer inbound credentials and adjacent allowlist must match exactly and use directional tokens"
+                .into(),
+        );
+    }
+    Ok((file.inbound, outbound, allowlist))
 }
 
 fn read_secret(path: &Path) -> Result<String, Box<dyn std::error::Error>> {

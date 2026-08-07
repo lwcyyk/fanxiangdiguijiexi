@@ -13,9 +13,10 @@ pub use crypto::{
 pub use endpoint::DnsEndpoint;
 pub use evidence::{
     AgentBindingV2, CacheProvenanceV2, DnsServerIdentityV2, DnsServerRole, DnssecStatus,
-    EvidenceLevel, EvidenceNodeV2, QueryEvidenceGraphV2, RegistryAdapterMetadataV2,
-    RegistryFinalityTypeV2, RegistryReferenceV2, ServerHopEvidenceV2, TargetResponseAttestationV2,
-    TraceEventKind, TraceEventV2, VerificationMode,
+    EvidenceLevel, EvidenceNodeV2, LEGACY_UNVERIFIED_CACHE_SOURCE_GRAPH_DIGEST,
+    QueryEvidenceGraphV2, RegistryAdapterMetadataV2, RegistryFinalityTypeV2, RegistryReferenceV2,
+    ServerHopEvidenceV2, TargetResponseAttestationV2, TraceEventKind, TraceEventV2,
+    VerificationMode,
 };
 pub use policy::{EvidencePolicy, EvidenceValidationError, EvidenceValidator, IssuerKeyRegistry};
 pub use tls::install_rustls_crypto_provider;

@@ -230,7 +230,7 @@ secrets/
 ├── agent_private_key
 ├── trace_ingest_token
 ├── agent_wrapper_token
-└── agent_peer_token
+└── agent_peer_credentials.json
 tls/
 ├── agent.crt
 ├── agent.key
@@ -244,9 +244,9 @@ tls/
 └── agent-ca.crt
 ```
 
-私钥和 Token 权限为 `0600` 或更严，运行包生成后为 `0400`。三种 Token 即使在同
-unit 也不能相同。Peer Token 只允许同 link 的相邻 Agent 共用。L01/L02/L03 的
-私钥、Wrapper Token 和 Trace Token不得复用。
+私钥和 Token 权限为 `0600` 或更严，运行包生成后为 `0400`。Trace、Wrapper 与
+所有方向性 peer token 必须彼此不同。每个 peer token 只允许同 link 的一个精确
+源 Agent → 目标 Agent 方向使用；反向调用和 L01/L02/L03 跨链复用都会被校验器拒绝。
 
 Prometheus 访问 Agent `/metrics` 应另外签发每条链路独立的监控客户端证书，不复用
 运行时 `agent-client.key`。
@@ -559,7 +559,7 @@ DNSSEC 状态。公共上游没有本方 Agent 时使用 `public-hybrid`，不�
 
 ```text
 R1 Resolver -> R2 Resolver UDP/TCP 53
-R1 Agent    -> R2 Agent    TCP 8443 mTLS + same-link peer token
+R1 Agent    -> R2 Agent    TCP 8443 mTLS + R1→R2 directional peer credential
 ```
 
 R2 `agent.service_url` 使用 R1 可解析的管理网名称，并与证书 SAN 匹配，不能使用
@@ -792,7 +792,7 @@ identity、Endpoint、Registry Sync 和 SQLite 一致性均完成，但 Trace �
 | R1 Resolver | 同链 R2 | UDP/TCP 53 | 按拓扑允许 |
 | Wrapper | 本机 Agent | TCP 8443 | mTLS + Wrapper Token |
 | Trace Adapter | 本机 Agent | TCP 8443 | mTLS + Trace Token |
-| R1 Agent | 同链 R2 Agent | TCP 8443 | mTLS + Peer Token |
+| R1 Agent | 同链 R2 Agent | TCP 8443 | mTLS + R1→R2 方向性 Peer Credential |
 | Registry Sync | 只读 RPC | TCP 443 | TLS |
 | Prometheus | metrics | TCP 9108-9110 | 仅管理网 |
 | Prometheus | Agent | TCP 8443 | 每链专用 mTLS |

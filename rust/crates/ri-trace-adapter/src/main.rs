@@ -141,15 +141,14 @@ async fn read_events(
         let event_id = event.event_id.clone();
         let write_spool = spool.clone();
         tokio::task::spawn_blocking(move || write_spool.enqueue(&event)).await??;
-        sender
-            .send(())
-            .await
-            .map_err(|_| "trace upload worker stopped")?;
         if durable_ack {
             writer
                 .write_all(format!("OK {event_id}\n").as_bytes())
                 .await?;
         }
+        // Non-blocking hint to the upload worker.  Backpressure is
+        // enforced by the spool capacity, not by the channel queue.
+        let _ = sender.try_send(());
     }
 }
 
@@ -202,14 +201,6 @@ async fn upload_worker(mut worker: UploadWorker) -> Result<(), AnyError> {
                 tokio::time::sleep(Duration::from_millis(10)).await;
                 continue;
             }
-            BatchPreparation::Quarantine { trace_id, reason } => {
-                let write_spool = worker.spool.clone();
-                tokio::task::spawn_blocking(move || {
-                    write_spool.quarantine_trace(&trace_id, &reason)
-                })
-                .await??;
-                continue;
-            }
         };
         process_batch(
             &worker.client,
@@ -226,7 +217,6 @@ async fn upload_worker(mut worker: UploadWorker) -> Result<(), AnyError> {
 enum BatchPreparation {
     Ready(Vec<TraceEventV2>),
     Waiting,
-    Quarantine { trace_id: String, reason: String },
 }
 
 async fn prepare_upload_batch(
@@ -259,15 +249,26 @@ async fn prepare_upload_batch(
         // Earlier Trace rows are uploaded first.  The Wrapper/Agent creates the
         // source graph from those exact rows, after which this event can be
         // enriched without blocking the Resolver's durable spool ACK.
+        //
+        // When no cache source graph exists at all (e.g. Resolver cache
+        // pre-dates the current Registry generation), upload the CacheHit
+        // without a source graph digest.  The Agent will build a degraded
+        // cache graph with unverified provenance so the Wrapper can still
+        // serve the response.
         let started = provenance_wait_started
             .entry(event.event_id.clone())
             .or_insert_with(tokio::time::Instant::now);
         if started.elapsed() >= cache_provenance_wait {
             provenance_wait_started.remove(&event.event_id);
-            return Ok(BatchPreparation::Quarantine {
-                trace_id: event.trace_id.clone(),
-                reason: "cache provenance source graph was not created before deadline".into(),
-            });
+            tracing::warn!(
+                trace_id = %event.trace_id,
+                event_id = %event.event_id,
+                "cache provenance source graph not found; uploading CacheHit without provenance"
+            );
+            // Do not rewrite sequence numbers — the CacheHit is uploaded,
+            // not skipped, so the remaining events keep their original
+            // sequence values.
+            return Ok(BatchPreparation::Ready(vec![event.clone()]));
         }
         return Ok(BatchPreparation::Waiting);
     };
@@ -325,6 +326,8 @@ enum UploadDisposition {
     PayloadRejected { status: u16 },
 }
 
+const MAX_RETRY_ATTEMPTS: u64 = 20;
+
 async fn upload_batch(
     client: &reqwest::Client,
     endpoint: &str,
@@ -358,9 +361,25 @@ async fn upload_batch(
                     )
                     .into());
                 }
+                if attempt >= MAX_RETRY_ATTEMPTS {
+                    tracing::error!(
+                        attempt,
+                        %status,
+                        "Max retry attempts exceeded; moving batch to dead letter"
+                    );
+                    return Ok(UploadDisposition::PayloadRejected {
+                        status: status.as_u16(),
+                    });
+                }
                 tracing::warn!(attempt, %status, "Agent temporarily rejected trace batch");
             }
             Err(error) => {
+                if attempt >= MAX_RETRY_ATTEMPTS {
+                    return Err(format!(
+                        "trace batch upload failed after {attempt} attempts: {error}"
+                    )
+                    .into());
+                }
                 tracing::warn!(attempt, %error, "trace batch upload failed");
             }
         }
@@ -663,6 +682,80 @@ impl TraceSpool {
         Ok(())
     }
 
+    #[allow(dead_code)]
+    fn fixup_trace_after_cache_hit_skip(
+        &self,
+        skipped_event: &TraceEventV2,
+    ) -> Result<usize, AnyError> {
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|_| "trace spool lock is poisoned")?;
+        let transaction = connection.transaction()?;
+        // Check whether the trace is terminal — all events have arrived
+        let terminal: bool = transaction
+            .query_row(
+                "SELECT terminal FROM trace_spool_state WHERE trace_id=?",
+                [&skipped_event.trace_id],
+                |row| row.get(0),
+            )
+            .optional()?
+            .unwrap_or(false);
+        if !terminal {
+            return Ok(0);
+        }
+        let skipped_id = &skipped_event.event_id;
+        let new_parent: Option<&str> = skipped_event.parent_event_id.as_deref();
+        let skipped_seq = i64::try_from(skipped_event.sequence)?;
+        let trace_id = &skipped_event.trace_id;
+        // Find all pending events for this trace with sequence above the
+        // skipped CacheHit.  Rewrite their sequence numbers and, when the
+        // parent was the skipped event, re-parent to the skipped event's
+        // own parent.
+        let rows = {
+            let mut statement = transaction.prepare(
+                "SELECT event_id, event_json FROM trace_spool
+                 WHERE json_extract(event_json, '$.trace_id') = ?
+                   AND CAST(json_extract(event_json, '$.sequence') AS INTEGER) > ?
+                 ORDER BY CAST(json_extract(event_json, '$.sequence') AS INTEGER)",
+            )?;
+            statement
+                .query_map(params![trace_id, skipped_seq], |row| {
+                    Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                })?
+                .collect::<Result<Vec<_>, _>>()?
+        };
+        let mut fixed = 0_usize;
+        for (event_id, event_json) in &rows {
+            let mut event: TraceEventV2 = serde_json::from_str(event_json)?;
+            event.sequence = event.sequence.saturating_sub(1);
+            if event.parent_event_id.as_deref() == Some(skipped_id.as_str()) {
+                event.parent_event_id = new_parent.map(String::from);
+            }
+            let new_json = serde_json::to_string(&event)?;
+            transaction.execute(
+                "UPDATE trace_spool SET event_json=? WHERE event_id=?",
+                params![new_json, event_id],
+            )?;
+            fixed += 1;
+        }
+        // Trace is no longer terminal after removing the CacheHit — the
+        // last event's sequence is now one less.
+        if fixed > 0 {
+            transaction.execute(
+                "UPDATE trace_spool_state SET last_sequence=last_sequence-1 WHERE trace_id=?",
+                [trace_id],
+            )?;
+        }
+        transaction.commit()?;
+        tracing::info!(
+            trace_id = %skipped_event.trace_id,
+            fixed,
+            "renumbered trace events after skipping CacheHit"
+        );
+        Ok(fixed)
+    }
+
     fn acknowledge(&self, events: &[TraceEventV2]) -> Result<(), AnyError> {
         let mut connection = self
             .connection
@@ -701,6 +794,7 @@ impl TraceSpool {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn quarantine_trace(&self, trace_id: &str, reason: &str) -> Result<(), AnyError> {
         let mut connection = self
             .connection
@@ -766,7 +860,9 @@ async fn serve_monitoring(bind: SocketAddr, spool: TraceSpool) -> Result<(), Any
 async fn trace_readiness(State(spool): State<TraceSpool>) -> StatusCode {
     let max_events = u64::try_from(spool.max_events).unwrap_or(u64::MAX);
     match tokio::task::spawn_blocking(move || spool.stats()).await {
-        Ok(Ok((pending, dead))) if pending < max_events && dead == 0 => StatusCode::NO_CONTENT,
+        // Dead letters are durable historical evidence. They remain visible in
+        // metrics, but do not make a recovered adapter permanently unready.
+        Ok(Ok((pending, _dead))) if pending < max_events => StatusCode::NO_CONTENT,
         _ => StatusCode::SERVICE_UNAVAILABLE,
     }
 }
@@ -967,7 +1063,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn enrichment_preserves_seen_event_and_dead_letter_fails_readiness() {
+    async fn enrichment_preserves_seen_event_and_dead_letter_remains_ready() {
         let directory = tempfile::tempdir().unwrap();
         let spool = TraceSpool::open(&directory.path().join("trace-spool.db"), 100).unwrap();
         let original = trace_event("original");
@@ -999,15 +1095,415 @@ mod tests {
         assert_eq!(spool.stats().unwrap(), (0, 1));
         assert_eq!(
             trace_readiness(State(spool)).await,
-            StatusCode::SERVICE_UNAVAILABLE
+            StatusCode::NO_CONTENT
         );
     }
 
+    #[test]
+    fn cache_hit_skip_spares_remaining_events() {
+        // When a CacheHit event is skipped (no source graph), only the
+        // CacheHit itself is removed from the spool.  The remaining trace
+        // events (including ClientResponse) stay and can be uploaded.
+        let directory = tempfile::tempdir().unwrap();
+        let spool = TraceSpool::open(&directory.path().join("trace-spool.db"), 100).unwrap();
+        let trace_id = "resolver-trace-cache-hit-skip";
+        let client_query = {
+            let mut event = trace_event_with_trace(trace_id, "cq");
+            event.trace_id = trace_id.into();
+            event
+        };
+        spool.enqueue(&client_query).unwrap();
+        let cache_hit = {
+            let mut event = trace_event_with_trace(trace_id, "ch");
+            event.trace_id = trace_id.into();
+            event.sequence = 2;
+            event.parent_event_id = Some("cq".into());
+            event.kind = TraceEventKind::CacheHit;
+            event.cache_object_digest =
+                Some("0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc".into());
+            event.response_digest =
+                Some("0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd".into());
+            event.ttl_expires_at = Some(1_800_000_000);
+            event
+        };
+        let client_response = {
+            let mut event = trace_event_with_trace(trace_id, "cr");
+            event.trace_id = trace_id.into();
+            event.sequence = 3;
+            event.parent_event_id = Some("ch".into());
+            event.kind = TraceEventKind::ClientResponse;
+            event.response_digest =
+                Some("0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd".into());
+            event.cache_object_digest =
+                Some("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".into());
+            event
+        };
+        let _cache_hit_id = cache_hit.event_id.clone();
+        let client_response_id = client_response.event_id.clone();
+        spool.enqueue(&cache_hit).unwrap();
+        spool.enqueue(&client_response).unwrap();
+        assert_eq!(spool.stats().unwrap(), (3, 0));
+        spool.acknowledge(std::slice::from_ref(&cache_hit)).unwrap();
+        assert_eq!(spool.stats().unwrap(), (2, 0));
+        let loaded = spool.load_batch(10).unwrap();
+        assert_eq!(loaded.len(), 2);
+        let ids: Vec<_> = loaded.iter().map(|e| &e.event_id).collect();
+        assert!(ids.contains(&&"cq".to_string()));
+        assert!(ids.contains(&&client_response_id));
+    }
+
+    #[test]
+    fn normal_trace_passes_through_unblocked() {
+        // A normal full-chain trace (ClientQuery, UpstreamQuery,
+        // UpstreamResponse, ClientResponse) does not trigger the
+        // CacheHit-specific logic and all events remain in the spool.
+        let directory = tempfile::tempdir().unwrap();
+        let spool = TraceSpool::open(&directory.path().join("trace-spool.db"), 100).unwrap();
+        let trace_id = "resolver-trace-normal";
+        let client_query = {
+            let mut e = trace_event_with_trace(trace_id, "cq");
+            e.trace_id = trace_id.into();
+            e
+        };
+        spool.enqueue(&client_query).unwrap();
+        let upstream_query = {
+            let mut e = trace_event_with_trace(trace_id, "uq");
+            e.trace_id = trace_id.into();
+            e.sequence = 2;
+            e.parent_event_id = Some("cq".into());
+            e.kind = TraceEventKind::UpstreamQuery;
+            e.target_endpoint = Some(ri_core::DnsEndpoint {
+                endpoint_id: None,
+                ip: Some("10.0.0.1".into()),
+                port: Some(53),
+                transport: "udp".into(),
+                uri: None,
+                server_name: None,
+                alpn: vec![],
+            });
+            e.target_correlation_id =
+                Some("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".into());
+            e.attempt = Some(1);
+            e
+        };
+        spool.enqueue(&upstream_query).unwrap();
+        let upstream_response = {
+            let mut e = trace_event_with_trace(trace_id, "ur");
+            e.trace_id = trace_id.into();
+            e.sequence = 3;
+            e.parent_event_id = Some("uq".into());
+            e.kind = TraceEventKind::UpstreamResponse;
+            e.target_endpoint = Some(ri_core::DnsEndpoint {
+                endpoint_id: None,
+                ip: Some("10.0.0.1".into()),
+                port: Some(53),
+                transport: "udp".into(),
+                uri: None,
+                server_name: None,
+                alpn: vec![],
+            });
+            e.target_correlation_id =
+                Some("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".into());
+            e.attempt = Some(1);
+            e.response_digest =
+                Some("0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd".into());
+            e
+        };
+        spool.enqueue(&upstream_response).unwrap();
+        let client_response = {
+            let mut e = trace_event_with_trace(trace_id, "cr");
+            e.trace_id = trace_id.into();
+            e.sequence = 4;
+            e.parent_event_id = Some("ur".into());
+            e.kind = TraceEventKind::ClientResponse;
+            e.response_digest =
+                Some("0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd".into());
+            e.cache_object_digest =
+                Some("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".into());
+            e
+        };
+        spool.enqueue(&client_response).unwrap();
+        assert_eq!(spool.stats().unwrap(), (4, 0));
+        let loaded = spool.load_batch(10).unwrap();
+        assert_eq!(loaded.len(), 4);
+        assert_eq!(loaded[0].kind, TraceEventKind::ClientQuery);
+        assert_eq!(loaded[1].kind, TraceEventKind::UpstreamQuery);
+        assert_eq!(loaded[2].kind, TraceEventKind::UpstreamResponse);
+        assert_eq!(loaded[3].kind, TraceEventKind::ClientResponse);
+    }
+
+    #[test]
+    fn fixup_renumbers_events_after_cache_hit_skip() {
+        let directory = tempfile::tempdir().unwrap();
+        let spool = TraceSpool::open(&directory.path().join("trace-spool.db"), 100).unwrap();
+        let trace_id = "fixup-renumber";
+        // Complete trace: ClientQuery (seq=1) → CacheHit (seq=2) →
+        // ClientResponse (seq=3).  The CacheHit is skipped, so
+        // ClientResponse must become seq=2 with parent=ClientQuery.
+        let client_query = {
+            let mut e = trace_event_with_trace(trace_id, "cq");
+            e.trace_id = trace_id.into();
+            e
+        };
+        spool.enqueue(&client_query).unwrap();
+        let cache_hit = {
+            let mut e = trace_event_with_trace(trace_id, "ch");
+            e.trace_id = trace_id.into();
+            e.sequence = 2;
+            e.parent_event_id = Some("cq".into());
+            e.kind = TraceEventKind::CacheHit;
+            e.cache_object_digest =
+                Some("0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc".into());
+            e
+        };
+        spool.enqueue(&cache_hit).unwrap();
+        let client_response = {
+            let mut e = trace_event_with_trace(trace_id, "cr");
+            e.trace_id = trace_id.into();
+            e.sequence = 3;
+            e.parent_event_id = Some("ch".into());
+            e.kind = TraceEventKind::ClientResponse;
+            e.response_digest =
+                Some("0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd".into());
+            e
+        };
+        spool.enqueue(&client_response).unwrap();
+        assert_eq!(spool.stats().unwrap(), (3, 0));
+
+        let fixed = spool.fixup_trace_after_cache_hit_skip(&cache_hit).unwrap();
+        assert_eq!(fixed, 1, "ClientResponse must be fixed");
+
+        // Acknowledge the skipped CacheHit
+        spool.acknowledge(std::slice::from_ref(&cache_hit)).unwrap();
+        assert_eq!(spool.stats().unwrap(), (2, 0));
+
+        let loaded = spool.load_batch(10).unwrap();
+        assert_eq!(loaded.len(), 2);
+        let cr = loaded.iter().find(|e| e.event_id == "cr").unwrap();
+        assert_eq!(
+            cr.sequence, 2,
+            "ClientResponse sequence must be decremented"
+        );
+        assert_eq!(
+            cr.parent_event_id.as_deref(),
+            Some("cq"),
+            "ClientResponse parent must point to ClientQuery"
+        );
+    }
+
+    #[test]
+    fn fixup_preserves_parent_when_not_skipped_event() {
+        let directory = tempfile::tempdir().unwrap();
+        let spool = TraceSpool::open(&directory.path().join("trace-spool.db"), 100).unwrap();
+        let trace_id = "fixup-preserve-parent";
+        // UpstreamQuery (seq=2) whose parent is ClientQuery, not CacheHit.
+        // When CacheHit at seq=3 is skipped, UpstreamQuery seq should drop to
+        // 2 but its parent stays as ClientQuery.
+        let client_query = {
+            let mut e = trace_event_with_trace(trace_id, "cq");
+            e.trace_id = trace_id.into();
+            e
+        };
+        spool.enqueue(&client_query).unwrap();
+        let upstream_query = {
+            let mut e = trace_event_with_trace(trace_id, "uq");
+            e.trace_id = trace_id.into();
+            e.sequence = 2;
+            e.parent_event_id = Some("cq".into());
+            e.kind = TraceEventKind::UpstreamQuery;
+            e
+        };
+        spool.enqueue(&upstream_query).unwrap();
+        let cache_hit = {
+            let mut e = trace_event_with_trace(trace_id, "ch");
+            e.trace_id = trace_id.into();
+            e.sequence = 3;
+            e.parent_event_id = Some("uq".into());
+            e.kind = TraceEventKind::CacheHit;
+            e.cache_object_digest =
+                Some("0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc".into());
+            e
+        };
+        spool.enqueue(&cache_hit).unwrap();
+        let client_response = {
+            let mut e = trace_event_with_trace(trace_id, "cr");
+            e.trace_id = trace_id.into();
+            e.sequence = 4;
+            e.parent_event_id = Some("ch".into());
+            e.kind = TraceEventKind::ClientResponse;
+            e.response_digest =
+                Some("0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd".into());
+            e
+        };
+        spool.enqueue(&client_response).unwrap();
+        assert_eq!(spool.stats().unwrap(), (4, 0));
+
+        let fixed = spool.fixup_trace_after_cache_hit_skip(&cache_hit).unwrap();
+        // Only ClientResponse is fixed (seq 4→3, parent ch→uq).
+        // UpstreamQuery (seq=2) is before the skipped CacheHit (seq=3)
+        // and does not need renumbering.
+        assert_eq!(fixed, 1);
+
+        spool.acknowledge(std::slice::from_ref(&cache_hit)).unwrap();
+        let loaded = spool.load_batch(10).unwrap();
+        assert_eq!(loaded.len(), 3);
+
+        let uq = loaded.iter().find(|e| e.event_id == "uq").unwrap();
+        assert_eq!(uq.sequence, 2);
+        assert_eq!(uq.parent_event_id.as_deref(), Some("cq"));
+
+        let cr = loaded.iter().find(|e| e.event_id == "cr").unwrap();
+        // Sequence: 4 → 3 (decremented past the skipped CacheHit)
+        assert_eq!(cr.sequence, 3);
+        // Parent: ch → uq (re-parented to skipped event's parent)
+        assert_eq!(cr.parent_event_id.as_deref(), Some("uq"));
+    }
+
+    #[test]
+    fn fixup_noop_when_trace_not_terminal() {
+        let directory = tempfile::tempdir().unwrap();
+        let spool = TraceSpool::open(&directory.path().join("trace-spool.db"), 100).unwrap();
+        let trace_id = "fixup-no-terminal";
+        let client_query = {
+            let mut e = trace_event_with_trace(trace_id, "cq");
+            e.trace_id = trace_id.into();
+            e
+        };
+        spool.enqueue(&client_query).unwrap();
+        // CacheHit arrives but ClientResponse has NOT yet arrived — trace
+        // is not terminal.
+        let cache_hit = {
+            let mut e = trace_event_with_trace(trace_id, "ch");
+            e.trace_id = trace_id.into();
+            e.sequence = 2;
+            e.parent_event_id = Some("cq".into());
+            e.kind = TraceEventKind::CacheHit;
+            e.cache_object_digest =
+                Some("0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc".into());
+            e
+        };
+        spool.enqueue(&cache_hit).unwrap();
+
+        let fixed = spool.fixup_trace_after_cache_hit_skip(&cache_hit).unwrap();
+        assert_eq!(fixed, 0, "no fixup when trace is not terminal");
+    }
+
+    #[test]
+    fn fixup_preserves_idempotency_after_renumber() {
+        // After fixup, a re-enqueue of the original (pre-fixup) event must
+        // still be idempotent — the trace_spool_seen table keeps the original
+        // JSON so that the producer's durable retry matches.
+        let directory = tempfile::tempdir().unwrap();
+        let spool = TraceSpool::open(&directory.path().join("trace-spool.db"), 100).unwrap();
+        let trace_id = "fixup-idempotent";
+        let client_query = {
+            let mut e = trace_event_with_trace(trace_id, "cq");
+            e.trace_id = trace_id.into();
+            e
+        };
+        spool.enqueue(&client_query).unwrap();
+        let cache_hit = {
+            let mut e = trace_event_with_trace(trace_id, "ch");
+            e.trace_id = trace_id.into();
+            e.sequence = 2;
+            e.parent_event_id = Some("cq".into());
+            e.kind = TraceEventKind::CacheHit;
+            e.cache_object_digest =
+                Some("0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc".into());
+            e
+        };
+        spool.enqueue(&cache_hit).unwrap();
+        let cr_original = {
+            let mut e = trace_event_with_trace(trace_id, "cr");
+            e.trace_id = trace_id.into();
+            e.sequence = 3;
+            e.parent_event_id = Some("ch".into());
+            e.kind = TraceEventKind::ClientResponse;
+            e.response_digest =
+                Some("0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd".into());
+            e
+        };
+        spool.enqueue(&cr_original).unwrap();
+
+        spool.fixup_trace_after_cache_hit_skip(&cache_hit).unwrap();
+        spool.acknowledge(std::slice::from_ref(&cache_hit)).unwrap();
+
+        // Re-enqueue of the original ClientResponse must succeed silently
+        spool.enqueue(&cr_original).unwrap();
+    }
+
+    #[test]
+    fn full_trace_after_fixup_forms_valid_sequence_chain() {
+        // End-to-end: the fixed-up events form a valid chain that would
+        // pass the Agent's put_trace_events validation.
+        let directory = tempfile::tempdir().unwrap();
+        let spool = TraceSpool::open(&directory.path().join("trace-spool.db"), 100).unwrap();
+        let trace_id = "fixup-valid-chain";
+        let client_query = {
+            let mut e = trace_event_with_trace(trace_id, "cq");
+            e.trace_id = trace_id.into();
+            e
+        };
+        spool.enqueue(&client_query).unwrap();
+        let cache_hit = {
+            let mut e = trace_event_with_trace(trace_id, "ch");
+            e.trace_id = trace_id.into();
+            e.sequence = 2;
+            e.parent_event_id = Some("cq".into());
+            e.kind = TraceEventKind::CacheHit;
+            e.cache_object_digest =
+                Some("0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc".into());
+            e
+        };
+        spool.enqueue(&cache_hit).unwrap();
+        let client_response = {
+            let mut e = trace_event_with_trace(trace_id, "cr");
+            e.trace_id = trace_id.into();
+            e.sequence = 3;
+            e.parent_event_id = Some("ch".into());
+            e.kind = TraceEventKind::ClientResponse;
+            e.response_digest =
+                Some("0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd".into());
+            e
+        };
+        spool.enqueue(&client_response).unwrap();
+
+        let fixed = spool.fixup_trace_after_cache_hit_skip(&cache_hit).unwrap();
+        assert_eq!(fixed, 1);
+        spool.acknowledge(std::slice::from_ref(&cache_hit)).unwrap();
+
+        let loaded = spool.load_batch(10).unwrap();
+        assert_eq!(loaded.len(), 2);
+
+        let cq = loaded.iter().find(|e| e.event_id == "cq").unwrap();
+        assert_eq!(cq.sequence, 1);
+        assert!(cq.parent_event_id.is_none());
+
+        let cr = loaded.iter().find(|e| e.event_id == "cr").unwrap();
+        assert_eq!(cr.sequence, 2);
+        assert_eq!(cr.parent_event_id.as_deref(), Some("cq"));
+        // Sequence chain: 1 → 2 (no gap)
+    }
+
+    #[test]
+    fn duplicate_event_id_is_idempotent() {
+        let directory = tempfile::tempdir().unwrap();
+        let spool = TraceSpool::open(&directory.path().join("trace-spool.db"), 100).unwrap();
+        let event = trace_event("dedup-id");
+        spool.enqueue(&event).unwrap();
+        spool.enqueue(&event).unwrap(); // repeat should succeed silently
+        assert_eq!(spool.stats().unwrap(), (1, 0));
+    }
+
     fn trace_event(event_id: &str) -> TraceEventV2 {
+        trace_event_with_trace(&format!("resolver-trace-{event_id}"), event_id)
+    }
+
+    fn trace_event_with_trace(trace_id: &str, event_id: &str) -> TraceEventV2 {
         TraceEventV2 {
             schema_version: TRACE_EVENT_V2.into(),
             event_id: event_id.into(),
-            trace_id: format!("resolver-trace-{event_id}"),
+            trace_id: trace_id.into(),
             sequence: 1,
             correlation_id: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                 .into(),

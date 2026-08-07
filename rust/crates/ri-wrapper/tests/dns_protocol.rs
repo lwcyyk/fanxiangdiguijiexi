@@ -13,6 +13,16 @@ fn response() -> Vec<u8> {
     response
 }
 
+fn edns_cookie_query() -> Vec<u8> {
+    let mut query = query();
+    query[10..12].copy_from_slice(&1_u16.to_be_bytes());
+    query.extend_from_slice(&[
+        0x00, 0x00, 0x29, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x0a, 0x00, 0x08,
+        0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+    ]);
+    query
+}
+
 #[test]
 fn servfail_keeps_id_and_question_but_clears_answer_sections() {
     let query = query();
@@ -22,6 +32,18 @@ fn servfail_keeps_id_and_question_but_clears_answer_sections() {
     assert_eq!(response[3] & 0x0f, 2);
     assert_eq!(&response[4..6], &[0, 1]);
     assert_eq!(&response[6..12], &[0; 6]);
+    assert_eq!(response.len(), query.len());
+}
+
+#[test]
+fn servfail_drops_undeclared_edns_cookie_suffix() {
+    let query = edns_cookie_query();
+    assert_eq!(query.len(), 52);
+    let response = make_servfail(&query);
+    assert_eq!(response.len(), 29);
+    assert_eq!(&response[10..12], &[0, 0]);
+    assert_eq!(&response[..2], &query[..2]);
+    assert_eq!(&response[12..], &query[12..29]);
 }
 
 #[test]
@@ -47,6 +69,18 @@ fn rejects_response_with_different_question_or_compression_loop() {
     looped[12] = 0xc0;
     looped[13] = 0x0c;
     assert!(!valid_response(&query, &looped));
+}
+
+#[test]
+fn rejects_undeclared_trailing_data_but_accepts_declared_opt() {
+    let query = query();
+    let mut trailing = response();
+    trailing.extend_from_slice(&[0; 23]);
+    assert!(!valid_response(&query, &trailing));
+
+    let mut declared = edns_cookie_query();
+    declared[2] |= 0x80;
+    assert!(valid_response(&query, &declared));
 }
 
 #[test]

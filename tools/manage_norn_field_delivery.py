@@ -609,7 +609,7 @@ def _secret_requirements(inventory: dict[str, Any]) -> dict[str, Any]:
                 "agent_private_key",
                 "trace_ingest_token",
                 "agent_wrapper_token",
-                "agent_peer_token",
+                "agent_peer_credentials.json",
                 "agent-mTLS-material",
                 "norn-read-client-mTLS-material",
             ],

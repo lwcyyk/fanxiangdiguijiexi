@@ -77,5 +77,6 @@ Trace 和相邻节点约束。issuer 或 Registry 高权限密钥泄漏影响更
 多签、分角色并与链路主机隔离。怀疑泄漏时由独立 Revoker 撤销，不能通过关闭验证
 恢复可用性。
 
-Wrapper、peer Agent 和 Trace token 只用于接口用途隔离，不能替代 mTLS。peer token
-仅在同一实际 DNS 链内共享；任一链路 token 泄漏后必须轮换，且不得扩大到其他链路。
+Wrapper、peer Agent 和 Trace token 只用于接口用途隔离，不能替代 mTLS。每个 peer
+token 绑定一个精确的源 Agent identity → 目标 Agent 方向；不得反向、跨目标或跨实际
+DNS 链使用。任一方向 token 泄漏后只轮换该方向及其源/目标副本。

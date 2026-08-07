@@ -119,7 +119,7 @@ if [[ "${RI_RUN_FULL_DATA_PLANE:-false}" == "true" ]]; then
     deploy/link/tls/trace-client.crt deploy/link/tls/trace-client.key \
     deploy/link/tls/wrapper-client.crt deploy/link/tls/wrapper-client.key \
     deploy/link/secrets/agent_private_key deploy/link/secrets/trace_ingest_token \
-    deploy/link/secrets/agent_wrapper_token deploy/link/secrets/agent_peer_token; do
+    deploy/link/secrets/agent_wrapper_token deploy/link/secrets/agent_peer_credentials.json; do
     [[ -f "${path}" ]] || die "full data-plane file is absent: ${path}"
   done
   [[ -S "${RI_TRACE_SOCKET_HOST_DIR}/events.sock" || -d "${RI_TRACE_SOCKET_HOST_DIR}" ]] ||

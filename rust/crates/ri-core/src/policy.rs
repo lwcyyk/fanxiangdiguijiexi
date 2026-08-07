@@ -171,9 +171,19 @@ impl EvidenceValidator<'_> {
             ));
         }
         if !graph.final_result || !graph.graph_errors.is_empty() {
-            return Err(EvidenceValidationError::PolicyRejected(
-                "graph reports a failed result".into(),
-            ));
+            // Graphs with legacy-unverified cache provenance carry
+            // diagnostic graph_errors.  ControlledStrict rejects them
+            // later in validate_cache_provenance; PublicHybrid may
+            // accept them.
+            let legacy_unverified = graph.cache_provenance.as_ref().is_some_and(|p| {
+                p.source_graph_digest
+                    == crate::evidence::LEGACY_UNVERIFIED_CACHE_SOURCE_GRAPH_DIGEST
+            });
+            if !legacy_unverified || self.policy.mode != VerificationMode::PublicHybrid {
+                return Err(EvidenceValidationError::PolicyRejected(
+                    "graph reports a failed result".into(),
+                ));
+            }
         }
 
         let mut nodes = HashMap::new();
@@ -546,6 +556,18 @@ impl EvidenceValidator<'_> {
             {
                 return Err(EvidenceValidationError::PolicyRejected(
                     "cache provenance is invalid".into(),
+                ));
+            }
+            // Legacy unverified cache (pre-existing resolver cache
+            // without source evidence) is never acceptable in strict
+            // mode.  The sentinel digest is rejected here so that it
+            // cannot pass as a real source-graph reference.
+            if provenance.source_graph_digest
+                == crate::evidence::LEGACY_UNVERIFIED_CACHE_SOURCE_GRAPH_DIGEST
+                && self.policy.mode == VerificationMode::ControlledStrict
+            {
+                return Err(EvidenceValidationError::PolicyRejected(
+                    "controlled-strict mode requires verified cache provenance".into(),
                 ));
             }
             if !graph.edges.is_empty()

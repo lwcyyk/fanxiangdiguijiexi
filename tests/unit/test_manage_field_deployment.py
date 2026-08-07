@@ -21,11 +21,56 @@ def _write_private(path: Path, value: str) -> None:
     path.chmod(0o600)
 
 
+def _set_peer_credentials(path: Path, value: dict) -> None:
+    _write_private(path / "secrets/agent_peer_credentials.json", json.dumps(value))
+
+
+def _directional_peer_credentials(source: dict, target: dict, token: str) -> None:
+    source_material = Path(source["private_material_dir"])
+    target_material = Path(target["private_material_dir"])
+    _set_peer_credentials(
+        source_material,
+        {
+            "inbound": [],
+            "outbound": [
+                {
+                    "target_server_id": target["agent_server_id"],
+                    "token": token,
+                }
+            ],
+            "adjacent_peer_allowlist": [],
+        },
+    )
+    principal = {
+        "server_id": source["agent_server_id"],
+        "key_id": source["agent_key_id"],
+    }
+    _set_peer_credentials(
+        target_material,
+        {
+            "inbound": [{"principal": principal, "token": token}],
+            "outbound": [],
+            "adjacent_peer_allowlist": [principal],
+        },
+    )
+
+
 def _unit(tmp_path: Path, number: int) -> dict:
     link = f"L{number:02d}"
     material = tmp_path / "private" / f"{link}-r1-a"
     for index, name in enumerate(field.SECRET_FILES):
-        value = base64.b64encode(bytes([number]) * 32).decode("ascii") if name == "agent_private_key" else f"{link}-{name}-{index}-" + chr(64 + number) * 48
+        if name == "agent_private_key":
+            value = base64.b64encode(bytes([number]) * 32).decode("ascii")
+        elif name == "agent_peer_credentials.json":
+            value = json.dumps(
+                {
+                    "inbound": [],
+                    "outbound": [],
+                    "adjacent_peer_allowlist": [],
+                }
+            )
+        else:
+            value = f"{link}-{name}-{index}-" + chr(64 + number) * 48
         _write_private(
             material / "secrets" / name,
             value,
@@ -369,20 +414,37 @@ def test_registry_rpc_hosts_must_be_independent(tmp_path):
         field.validate_inventory(inventory)
 
 
-def test_peer_token_can_only_be_shared_inside_one_link(tmp_path):
+def test_directional_peer_credentials_are_matched_and_purpose_separated(tmp_path):
     inventory = _inventory(tmp_path)
-    second_unit = inventory["units"][1]
-    second_unit["link_id"] = inventory["units"][0]["link_id"]
-    first = Path(inventory["units"][0]["private_material_dir"])
-    second = Path(second_unit["private_material_dir"])
-    (second / "secrets/agent_peer_token").write_bytes((first / "secrets/agent_peer_token").read_bytes())
+    source, target = inventory["units"]
+    target["link_id"] = source["link_id"]
+    token = "directional-r1-to-r2-token-" + "T" * 48
+    _directional_peer_credentials(source, target, token)
     field.validate_inventory(inventory)
 
-    wrong_purpose = copy.deepcopy(inventory)
-    second = Path(wrong_purpose["units"][1]["private_material_dir"])
-    (second / "secrets/agent_wrapper_token").write_bytes((first / "secrets/agent_peer_token").read_bytes())
-    with pytest.raises(field.InventoryError, match="different secret purposes|reuses secret"):
-        field.validate_inventory(wrong_purpose)
+    wrong_direction = copy.deepcopy(inventory)
+    target_material = Path(wrong_direction["units"][1]["private_material_dir"])
+    target_document = json.loads(
+        (target_material / "secrets/agent_peer_credentials.json").read_text(encoding="utf-8")
+    )
+    target_document["inbound"][0]["token"] = "mismatched-direction-token-" + "M" * 48
+    _set_peer_credentials(target_material, target_document)
+    with pytest.raises(field.InventoryError, match="directionally matched"):
+        field.validate_inventory(wrong_direction)
+
+    _directional_peer_credentials(source, target, token)
+    source_material = Path(source["private_material_dir"])
+    (source_material / "secrets/agent_wrapper_token").write_text(token, encoding="utf-8")
+    with pytest.raises(field.InventoryError, match="reuses secret|different secret purposes|same bytes"):
+        field.validate_inventory(inventory)
+
+
+def test_peer_credentials_cannot_cross_link_boundary(tmp_path):
+    inventory = _inventory(tmp_path)
+    source, target = inventory["units"]
+    _directional_peer_credentials(source, target, "cross-link-token-" + "X" * 48)
+    with pytest.raises(field.InventoryError, match="crosses link boundary|same link"):
+        field.validate_inventory(inventory)
 
 
 def test_private_material_symlink_is_rejected(tmp_path):

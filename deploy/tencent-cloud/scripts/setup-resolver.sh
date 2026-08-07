@@ -76,7 +76,14 @@ for name in (\"identities-v2.json\", \"issuer-keys.json\"):
     p = \"$RUNTIME_CONFIG/\" + name
     data = json.load(open(\"/tmp/\" + (\"ri-identities.json\" if name == \"identities-v2.json\" else \"ri-issuer-keys.json\")))
     if name == \"identities-v2.json\":
-        assert len(data[\"identities\"]) == 3, \"expected 3 signed identities\"
+        expected = {
+            \"operator/L01/r1\": \"RECURSIVE\",
+            \"operator/L01/r2\": \"FORWARDER\",
+            \"operator/L01/r3\": \"FORWARDER\",
+            \"operator/authdns\": \"AUTHORITATIVE\",
+        }
+        actual = {identity[\"server_id\"]: identity[\"role\"] for identity in data[\"identities\"]}
+        assert actual == expected, f\"unexpected signed identity set: {actual}\"
     else:
         assert len(data[\"keys\"]) == 2, \"expected 2 issuer keys\"
     open(p, \"w\").write(json.dumps(data, indent=2) + \"\n\")

@@ -87,7 +87,7 @@ services:
       RI_AGENT_PRIVATE_KEY_FILE: /run/secrets/agent_private_key
       RI_TRACE_INGEST_TOKEN_FILE: /run/secrets/trace_ingest_token
       RI_AGENT_WRAPPER_TOKEN_FILE: /run/secrets/agent_wrapper_token
-      RI_AGENT_PEER_TOKEN_FILE: /run/secrets/agent_peer_token
+      RI_AGENT_PEER_CREDENTIALS_FILE: /run/secrets/agent_peer_credentials.json
       RI_DATABASE: /var/lib/resolver-identity/evidence-v2.db
       RI_AGENT_MAX_AGE_SECONDS: ${RI_AGENT_MAX_AGE_SECONDS:-30}
       RI_TRACE_WAIT_MILLIS: ${RI_TRACE_WAIT_MILLIS:-250}
@@ -107,7 +107,8 @@ services:
       - agent_private_key
       - trace_ingest_token
       - agent_wrapper_token
-      - agent_peer_token
+      - source: agent_peer_credentials
+        target: agent_peer_credentials.json
     volumes:
       - evidence:/var/lib/resolver-identity
       - ../issuer-keys.json:/run/config/issuer-keys.json:ro
@@ -222,5 +223,5 @@ secrets:
     file: ./secrets/trace_ingest_token
   agent_wrapper_token:
     file: ./secrets/agent_wrapper_token
-  agent_peer_token:
-    file: ./secrets/agent_peer_token
+  agent_peer_credentials:
+    file: ./secrets/agent_peer_credentials.json

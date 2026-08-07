@@ -104,7 +104,7 @@ services:
       RI_AGENT_PRIVATE_KEY_FILE: /run/secrets/agent_private_key
       RI_TRACE_INGEST_TOKEN_FILE: /run/secrets/trace_ingest_token
       RI_AGENT_WRAPPER_TOKEN_FILE: /run/secrets/agent_wrapper_token
-      RI_AGENT_PEER_TOKEN_FILE: /run/secrets/agent_peer_token
+      RI_AGENT_PEER_CREDENTIALS_FILE: /run/secrets/agent_peer_credentials.json
       RI_DATABASE: /var/lib/resolver-identity/evidence-v2.db
       RI_REGISTRY_MAX_STALENESS_SECONDS: ${RI_REGISTRY_MAX_STALENESS_SECONDS:-15}
       RI_TRACE_WAIT_MILLIS: ${RI_TRACE_WAIT_MILLIS:?required}

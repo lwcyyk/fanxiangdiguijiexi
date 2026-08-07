@@ -75,6 +75,15 @@ pub enum TraceEventKind {
     CacheHit,
 }
 
+/// Sentinel source-graph digest used when a cache-hit trace has no
+/// verifiable provenance (e.g. pre-existing resolver cache that predates
+/// the trace evidence pipeline).  The value is a valid 32-byte hex string
+/// that policy validation inspects so that:
+/// - `ControlledStrict` mode **must** reject the graph.
+/// - `PublicHybrid` mode **may** accept it with diagnostic `graph_errors`.
+pub const LEGACY_UNVERIFIED_CACHE_SOURCE_GRAPH_DIGEST: &str =
+    "0xdead000000000000000000000000000000000000000000000000000000000000";
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct TraceEventV2 {

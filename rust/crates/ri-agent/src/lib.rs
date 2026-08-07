@@ -14,9 +14,10 @@ use ri_core::evidence::{
 };
 use ri_core::{
     CacheProvenanceV2, DnsEndpoint, DnsServerIdentityV2, DnssecStatus, EvidenceLevel,
-    EvidenceNodeV2, EvidencePolicy, EvidenceValidator, IssuerKeyRegistry, QueryEvidenceGraphV2,
-    RegistryReferenceV2, ServerHopEvidenceV2, TargetResponseAttestationV2, TraceEventKind,
-    TraceEventV2, VerificationMode, sign_ed25519,
+    EvidenceNodeV2, EvidencePolicy, EvidenceValidator, IssuerKeyRegistry,
+    LEGACY_UNVERIFIED_CACHE_SOURCE_GRAPH_DIGEST, QueryEvidenceGraphV2, RegistryReferenceV2,
+    ServerHopEvidenceV2, TargetResponseAttestationV2, TraceEventKind, TraceEventV2,
+    VerificationMode, sign_ed25519,
 };
 use ri_store::{EvidenceStore, StoreError, TraceResponseMatch, same_registry_state};
 use serde::de::DeserializeOwned;
@@ -52,9 +53,39 @@ pub struct AgentConfig {
     pub registry_max_staleness_seconds: i64,
     pub trace_ingest_token: String,
     pub wrapper_api_token: String,
-    pub peer_api_token: String,
+    pub peer_inbound_credentials: Vec<PeerInboundCredential>,
+    pub peer_outbound_credentials: HashMap<String, String>,
+    pub adjacent_peer_allowlist: HashSet<PeerPrincipal>,
     pub max_concurrent_requests: usize,
     pub max_request_body_bytes: usize,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub struct PeerPrincipal {
+    pub server_id: String,
+    pub key_id: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct PeerInboundCredential {
+    pub principal: PeerPrincipal,
+    pub token: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct PeerOutboundCredential {
+    pub target_server_id: String,
+    pub token: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct PeerCredentialsFile {
+    #[serde(default)]
+    pub inbound: Vec<PeerInboundCredential>,
+    #[serde(default)]
+    pub outbound: Vec<PeerOutboundCredential>,
+    #[serde(default)]
+    pub adjacent_peer_allowlist: Vec<PeerPrincipal>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -97,6 +128,8 @@ pub enum AgentError {
     InvalidRequest(String),
     #[error("unauthorized: {0}")]
     Unauthorized(String),
+    #[error("forbidden: {0}")]
+    Forbidden(String),
     #[error("identity evidence unavailable: {0}")]
     EvidenceUnavailable(String),
     #[error("downstream Agent failed: {0}")]
@@ -118,13 +151,19 @@ impl IntoResponse for AgentError {
         let status = match self {
             Self::InvalidRequest(_) => StatusCode::UNPROCESSABLE_ENTITY,
             Self::Unauthorized(_) => StatusCode::UNAUTHORIZED,
+            Self::Forbidden(_) => StatusCode::FORBIDDEN,
             Self::EvidenceUnavailable(_) => StatusCode::SERVICE_UNAVAILABLE,
             Self::Downstream(_) => StatusCode::BAD_GATEWAY,
-            Self::Store(_)
-            | Self::Validation(_)
-            | Self::Serialization(_)
-            | Self::Http(_)
-            | Self::BlockingTask(_) => StatusCode::SERVICE_UNAVAILABLE,
+            Self::Store(ref store_error) => match store_error {
+                ri_store::StoreError::InvalidData(_) | ri_store::StoreError::Core(_) => {
+                    StatusCode::UNPROCESSABLE_ENTITY
+                }
+                ri_store::StoreError::Database(_) | ri_store::StoreError::Serialization(_) => {
+                    StatusCode::SERVICE_UNAVAILABLE
+                }
+            },
+            Self::Validation(_) | Self::Serialization(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::Http(_) | Self::BlockingTask(_) => StatusCode::SERVICE_UNAVAILABLE,
         };
         (
             status,
@@ -250,8 +289,10 @@ impl AgentState {
         let events = self
             .with_store(move |store| Ok(store.trace_events(&anchor_trace_id)?))
             .await?;
+        let ancestor_event_ids = producer_ancestor_event_ids(&events, &anchor)?;
         let cache_hit = events.iter().rev().find(|event| {
-            event.observer_server_id == self.config.server_id
+            ancestor_event_ids.contains(&event.event_id)
+                && event.observer_server_id == self.config.server_id
                 && event.correlation_id == request.correlation_id
                 && event.kind == TraceEventKind::CacheHit
                 && event.query_digest == request.query_digest
@@ -259,6 +300,7 @@ impl AgentState {
         });
         let mut upstream_responses = events
             .iter()
+            .filter(|event| ancestor_event_ids.contains(&event.event_id))
             .filter(|event| event.kind == TraceEventKind::UpstreamResponse)
             .filter_map(|event| {
                 event
@@ -269,6 +311,7 @@ impl AgentState {
             .collect::<HashMap<_, _>>();
         let mut upstream_timeouts = events
             .iter()
+            .filter(|event| ancestor_event_ids.contains(&event.event_id))
             .filter(|event| event.kind == TraceEventKind::UpstreamTimeout)
             .filter_map(|event| {
                 event
@@ -279,6 +322,7 @@ impl AgentState {
             .collect::<HashMap<_, _>>();
         let outbound = events
             .iter()
+            .filter(|event| ancestor_event_ids.contains(&event.event_id))
             .filter(|event| {
                 event.observer_server_id == self.config.server_id
                     && event.correlation_id == request.correlation_id
@@ -567,11 +611,20 @@ impl AgentState {
                 "cache-hit event has no normalized cache object digest".into(),
             )
         })?;
-        let source_digest = cache_hit.source_graph_digest.as_deref().ok_or_else(|| {
-            AgentError::EvidenceUnavailable(
-                "cache-hit event does not declare its source graph digest".into(),
-            )
-        })?;
+        let source_digest = match cache_hit.source_graph_digest.as_deref() {
+            Some(d) => d,
+            None => {
+                return self
+                    .build_unverified_cache_graph(
+                        request,
+                        self_record,
+                        cache_hit,
+                        ttl_expires_at,
+                        now,
+                    )
+                    .await;
+            }
+        };
         let claimed_source_digest = source_digest.to_owned();
         let source_graph = self
             .with_store(move |store| {
@@ -660,6 +713,90 @@ impl AgentState {
         Ok(graph)
     }
 
+    /// Build a cache-hit evidence graph when the source graph digest is
+    /// unavailable (e.g. pre-existing resolver cache that predates the
+    /// trace evidence pipeline).  The graph is annotated with a warning
+    /// and carries a sentinel source digest so policy validation can
+    /// distinguish it from a missing chain.
+    async fn build_unverified_cache_graph(
+        &self,
+        request: &EvidenceGraphRequest,
+        self_record: (DnsServerIdentityV2, RegistryReferenceV2),
+        cache_hit: &TraceEventV2,
+        ttl_expires_at: i64,
+        now: i64,
+    ) -> Result<QueryEvidenceGraphV2, AgentError> {
+        // ControlledStrict mode requires verifiable cache provenance.
+        // Pre-existing cache entries without a source evidence graph
+        // are never acceptable — return 503 so the Wrapper can
+        // fail-closed.
+        if self.config.mode == VerificationMode::ControlledStrict {
+            return Err(AgentError::EvidenceUnavailable(
+                "controlled-strict mode requires verified cache provenance; \
+                 cache-hit event has no source graph digest"
+                    .into(),
+            ));
+        }
+        // PublicHybrid accepts the cache hit with a diagnostic marker.
+        let entry_server_id = self_record.0.server_id.clone();
+        let snapshot_generation = self_record.1.snapshot_generation;
+        let identity_expires_at = self_record.0.valid_until;
+        let mut graph = QueryEvidenceGraphV2 {
+            schema_version: QUERY_EVIDENCE_GRAPH_V2.into(),
+            trace_id: request.trace_id.clone(),
+            correlation_id: request.correlation_id.clone(),
+            challenge: request.challenge.clone(),
+            query_digest: request.query_digest.clone(),
+            response_digest: request.response_digest.clone(),
+            mode: self.config.mode,
+            entry_server_id: entry_server_id.clone(),
+            issued_at: now,
+            expires_at: now + self.config.max_age_seconds,
+            dnssec_status: DnssecStatus::NotApplicable,
+            cache_provenance: Some(CacheProvenanceV2 {
+                source_graph_digest: LEGACY_UNVERIFIED_CACHE_SOURCE_GRAPH_DIGEST.to_owned(),
+                source_dnssec_required: false,
+                cached_at: cache_hit.observed_at,
+                dns_ttl_expires_at: ttl_expires_at,
+                identity_expires_at,
+                snapshot_generation,
+            }),
+            terminal_cache_graphs: vec![],
+            nodes: vec![evidence_node(
+                self_record.0,
+                self_record.1,
+                vec![EvidenceLevel::RegistryBound, EvidenceLevel::AgentAttested],
+            )],
+            edges: vec![],
+            terminal_node_ids: vec![entry_server_id],
+            final_result: true,
+            graph_errors: vec![
+                "LEGACY_UNVERIFIED: cache provenance is unavailable — \
+                 pre-existing cache entry without source evidence graph"
+                    .into(),
+            ],
+            key_id: self.config.key_id.clone(),
+            signature: None,
+        };
+        graph.signature = Some(sign_ed25519(&graph, &self.config.private_key_b64)?);
+        let policy = match self.config.mode {
+            VerificationMode::ControlledStrict => EvidencePolicy::controlled_strict(),
+            VerificationMode::PublicHybrid => EvidencePolicy::public_hybrid(),
+        };
+        EvidenceValidator {
+            policy: &policy,
+            issuer_keys: &self.issuer_keys,
+        }
+        .validate_graph(&graph, &request.challenge, now)?;
+        let stored_graph = graph.clone();
+        self.with_store(move |store| {
+            store.put_graph(&stored_graph)?;
+            Ok(())
+        })
+        .await?;
+        Ok(graph)
+    }
+
     pub async fn attest_response(
         &self,
         request: &ResponseAttestationRequest,
@@ -725,13 +862,16 @@ impl AgentState {
             }
             return Ok(None);
         };
+        let token = self.peer_token_for_target(&target.server_id)?;
         let response = self
             .client
             .post(format!(
                 "{}/v2/attest-response",
                 service_url.trim_end_matches('/')
             ))
-            .bearer_auth(&self.config.peer_api_token)
+            .bearer_auth(token)
+            .header("x-ri-peer-server-id", &self.config.server_id)
+            .header("x-ri-peer-key-id", &self.config.key_id)
             .json(request)
             .send()
             .await;
@@ -807,6 +947,7 @@ impl AgentState {
                         response_digest: &response_digest,
                         endpoint: Some(&endpoint),
                         allow_authority_response: true,
+                        require_producer_lineage: false,
                     })?)
                 })
                 .await?;
@@ -862,6 +1003,7 @@ impl AgentState {
                         response_digest: &response_digest,
                         endpoint: None,
                         allow_authority_response: false,
+                        require_producer_lineage: true,
                     })?)
                 })
                 .await?
@@ -893,13 +1035,16 @@ impl AgentState {
                 target.server_id
             )));
         };
+        let token = self.peer_token_for_target(&target.server_id)?;
         let response = self
             .client
             .post(format!(
                 "{}/v2/downstream-evidence-graph",
                 service_url.trim_end_matches('/')
             ))
-            .bearer_auth(&self.config.peer_api_token)
+            .bearer_auth(token)
+            .header("x-ri-peer-server-id", &self.config.server_id)
+            .header("x-ri-peer-key-id", &self.config.key_id)
             .json(&request)
             .send()
             .await?;
@@ -937,6 +1082,84 @@ impl AgentState {
             ));
         }
         Ok(Some(graph))
+    }
+    async fn authorize_peer(
+        &self,
+        headers: &HeaderMap,
+        purpose: &str,
+    ) -> Result<PeerPrincipal, AgentError> {
+        let authorization = headers
+            .get(axum::http::header::AUTHORIZATION)
+            .and_then(|value| value.to_str().ok())
+            .ok_or_else(|| AgentError::Unauthorized(format!("{purpose} authorization failed")))?;
+        let principal = self
+            .config
+            .peer_inbound_credentials
+            .iter()
+            .find(|credential| {
+                let expected = format!("Bearer {}", credential.token);
+                constant_time_eq(authorization.as_bytes(), expected.as_bytes())
+            })
+            .map(|credential| credential.principal.clone())
+            .ok_or_else(|| AgentError::Unauthorized(format!("{purpose} authorization failed")))?;
+        let header_server_id = peer_identity_header(headers, "x-ri-peer-server-id", purpose)?;
+        let header_key_id = peer_identity_header(headers, "x-ri-peer-key-id", purpose)?;
+        if header_server_id != principal.server_id || header_key_id != principal.key_id {
+            return Err(AgentError::Forbidden(format!(
+                "{purpose} caller identity does not match its credential"
+            )));
+        }
+        if !self.config.adjacent_peer_allowlist.contains(&principal) {
+            return Err(AgentError::Forbidden(format!(
+                "{purpose} caller is not an allowed adjacent peer"
+            )));
+        }
+        self.require_fresh_registry(unix_time()).await?;
+        let server_id = principal.server_id.clone();
+        let identity_record = self
+            .with_store(move |store| Ok(store.get_identity(&server_id)?))
+            .await?;
+        let (identity, registry) = identity_record.ok_or_else(|| {
+            AgentError::Forbidden(format!("{purpose} caller identity is not registered"))
+        })?;
+        let issuer_key = self
+            .issuer_keys
+            .get(&identity.issuer, &identity.key_id)
+            .ok_or_else(|| {
+                AgentError::Forbidden(format!("{purpose} caller issuer is untrusted"))
+            })?;
+        ri_core::verify_ed25519(&identity, issuer_key).map_err(|_| {
+            AgentError::Forbidden(format!("{purpose} caller identity signature is invalid"))
+        })?;
+        let agent = identity.agent.as_ref().ok_or_else(|| {
+            AgentError::Forbidden(format!("{purpose} caller identity does not bind an Agent"))
+        })?;
+        if identity.server_id != principal.server_id
+            || !identity.active_at(unix_time())
+            || registry.resolver_status != "ACTIVE"
+            || registry.root_status != "ACTIVE"
+            || registry.endpoint_binding_status != "MATCHED"
+            || registry.object_hash != ri_core::object_hash(&identity)?
+            || agent.key_id != principal.key_id
+            || !agent.algorithm.eq_ignore_ascii_case("ed25519")
+        {
+            return Err(AgentError::Forbidden(format!(
+                "{purpose} caller identity is not active and Registry-bound"
+            )));
+        }
+        Ok(principal)
+    }
+
+    fn peer_token_for_target(&self, server_id: &str) -> Result<&str, AgentError> {
+        self.config
+            .peer_outbound_credentials
+            .get(server_id)
+            .map(String::as_str)
+            .ok_or_else(|| {
+                AgentError::EvidenceUnavailable(format!(
+                    "no outbound peer credential is configured for {server_id}"
+                ))
+            })
     }
 }
 
@@ -985,7 +1208,7 @@ async fn downstream_evidence_graph(
     headers: HeaderMap,
     Json(request): Json<EvidenceGraphRequest>,
 ) -> Result<Json<QueryEvidenceGraphV2>, AgentError> {
-    authorize_bearer(&headers, &state.config.peer_api_token, "peer evidence API")?;
+    state.authorize_peer(&headers, "peer evidence API").await?;
     state.metrics.graph_requests.fetch_add(1, Ordering::Relaxed);
     match state.build_graph_with_context(&request, false).await {
         Ok(graph) => Ok(Json(graph)),
@@ -1001,11 +1224,9 @@ async fn attest_response(
     headers: HeaderMap,
     Json(request): Json<ResponseAttestationRequest>,
 ) -> Result<Json<TargetResponseAttestationV2>, AgentError> {
-    authorize_bearer(
-        &headers,
-        &state.config.peer_api_token,
-        "peer attestation API",
-    )?;
+    state
+        .authorize_peer(&headers, "peer attestation API")
+        .await?;
     Ok(Json(state.attest_response(&request).await?))
 }
 
@@ -1128,6 +1349,51 @@ async fn ready(
     Ok(Json(
         serde_json::json!({"ok": true, "cache_generation": generation}),
     ))
+}
+
+fn producer_ancestor_event_ids(
+    events: &[TraceEventV2],
+    terminal: &TraceEventV2,
+) -> Result<HashSet<String>, AgentError> {
+    let by_id = events
+        .iter()
+        .map(|event| (event.event_id.as_str(), event))
+        .collect::<HashMap<_, _>>();
+    let mut ancestors = HashSet::new();
+    let mut current = terminal;
+    loop {
+        if !ancestors.insert(current.event_id.clone()) {
+            return Err(AgentError::EvidenceUnavailable(
+                "trace terminal ancestry contains a cycle".into(),
+            ));
+        }
+        if current.sequence == 1 {
+            if current.kind != TraceEventKind::ClientQuery || current.parent_event_id.is_some() {
+                return Err(AgentError::EvidenceUnavailable(
+                    "trace terminal ancestry does not start at a client query".into(),
+                ));
+            }
+            return Ok(ancestors);
+        }
+        let parent_id = current.parent_event_id.as_deref().ok_or_else(|| {
+            AgentError::EvidenceUnavailable("trace terminal ancestry is incomplete".into())
+        })?;
+        let parent = by_id.get(parent_id).copied().ok_or_else(|| {
+            AgentError::EvidenceUnavailable("trace terminal ancestry is incomplete".into())
+        })?;
+        if parent.trace_id != terminal.trace_id
+            || parent.observer_server_id != terminal.observer_server_id
+            || parent.correlation_id != terminal.correlation_id
+            || parent.sequence >= current.sequence
+            || (current.event_id == terminal.event_id
+                && parent.sequence.checked_add(1) != Some(current.sequence))
+        {
+            return Err(AgentError::EvidenceUnavailable(
+                "trace terminal ancestry violates producer lineage".into(),
+            ));
+        }
+        current = parent;
+    }
 }
 
 fn validate_request(
@@ -1450,10 +1716,10 @@ fn validate_trace_event(event: &TraceEventV2, server_id: &str) -> Result<(), Age
                 || event
                     .source_graph_digest
                     .as_deref()
-                    .is_none_or(|digest| !is_digest(digest))
+                    .is_some_and(|digest| !is_digest(digest))
             {
                 return Err(AgentError::InvalidRequest(
-                    "cache-hit event requires response, cache object, TTL and source graph digest"
+                    "cache-hit event requires response, cache object, TTL and valid source graph digest when present"
                         .into(),
                 ));
             }
@@ -1494,6 +1760,20 @@ fn validate_trace_event(event: &TraceEventV2, server_id: &str) -> Result<(), Age
 
 fn authorize_trace_ingestion(state: &AgentState, headers: &HeaderMap) -> Result<(), AgentError> {
     authorize_bearer(headers, &state.config.trace_ingest_token, "trace ingestion")
+}
+
+fn peer_identity_header<'a>(
+    headers: &'a HeaderMap,
+    name: &'static str,
+    purpose: &str,
+) -> Result<&'a str, AgentError> {
+    headers
+        .get(name)
+        .and_then(|value| value.to_str().ok())
+        .filter(|value| !value.is_empty() && value.len() <= 256)
+        .ok_or_else(|| {
+            AgentError::Forbidden(format!("{purpose} caller identity header is invalid"))
+        })
 }
 
 fn authorize_bearer(headers: &HeaderMap, token: &str, purpose: &str) -> Result<(), AgentError> {

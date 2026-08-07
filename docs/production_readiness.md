@@ -40,7 +40,8 @@
 - 公共 Anycast 被描述为已认证具体物理服务器；
 - example/zero 地址、占位公钥、共享 Agent 私钥或共享 TLS 证书仍存在；
 - Agent URL 使用未认证 HTTP；
-- Wrapper/peer/Trace token 复用，或 peer token 跨独立链路复用；
+- Wrapper/peer/Trace token 复用，peer token 反向/跨目标/跨独立链路复用，或 token
+  未绑定精确源 `(server_id, key_id)`；
 - SQLite 被多主机或多个写入单元共享；
 - Registry code hash、chain ID、对象 hash、Root 或 endpoint 任一不一致；
 - Wrapper `/readyz` 非 2xx；

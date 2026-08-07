@@ -49,10 +49,17 @@ def main() -> int:
 
     now = int(time.time())
 
-    # ---- resolver agent public keys (from each host's agent.key) ----
+    # ---- DNS server agent public keys (resolvers plus authoritative DNS) ----
     identities = []
-    for index, resolver in enumerate(inventory["resolvers"]):
-        host = resolver["host"]
+    servers = [
+        *inventory["resolvers"],
+        {
+            **inventory["authdns"],
+            "resolver_ip": inventory["authdns"]["listen_ip"],
+        },
+    ]
+    for server in servers:
+        host = server["host"]
         alias = f"{host}-cloud"
         agent_pub = ssh_pubkey(
             alias,
@@ -62,22 +69,22 @@ def main() -> int:
         identities.append(
             {
                 "schema_version": "dns-server-identity-v2",
-                "server_id": resolver["server_id"],
-                "operator_id": inventory["site"],
-                "role": "RECURSIVE" if index == 1 else "FORWARDER",
+                "server_id": server["server_id"],
+                "operator_id": "operator",
+                "role": server["registry_role"],
                 "endpoints": [
-                    {"ip": resolver["resolver_ip"], "port": 53, "transport": "udp"},
-                    {"ip": resolver["resolver_ip"], "port": 53, "transport": "tcp"},
+                    {"ip": server["resolver_ip"], "port": 53, "transport": "udp"},
+                    {"ip": server["resolver_ip"], "port": 53, "transport": "tcp"},
                 ],
                 "anycast": False,
                 "agent": {
-                    "key_id": resolver["agent_key_id"],
+                    "key_id": server["agent_key_id"],
                     "algorithm": "ed25519",
                     "public_key": agent_pub,
-                    "service_url": f"https://{host}:8443",
+                    "service_url": f"https://{server['management_ip']}:8443",
                 },
                 "valid_from": now - 60,
-                "valid_until": now + 86400,
+                "valid_until": now + 604800,
                 "object_version": 1,
                 "status": "ACTIVE",
                 "issuer": "field-identity-authority",

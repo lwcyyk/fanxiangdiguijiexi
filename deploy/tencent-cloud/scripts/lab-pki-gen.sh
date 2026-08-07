@@ -87,6 +87,7 @@ norn_client "$PKI/mgmt-norn-tls" management-norn-read
 norn_client "$PKI/ri-r1/norn-tls" ri-r1-norn-read
 norn_client "$PKI/ri-r2/norn-tls" ri-r2-norn-read
 norn_client "$PKI/ri-r3/norn-tls" ri-r3-norn-read
+norn_client "$PKI/ri-authdns/norn-tls" ri-authdns-norn-read
 
 # ---- 5. Resolver agent + client certs ----
 agent_certs() { # agent_certs <host> <ip> <is-r1>
@@ -113,6 +114,14 @@ agent_certs() { # agent_certs <host> <ip> <is-r1>
 agent_certs ri-r1 10.206.16.14 1
 agent_certs ri-r2 10.206.16.17 0
 agent_certs ri-r3 10.206.16.7 0
+
+# Auth DNS uses its Agent as a server and the Authority Proxy as a local mTLS client.
+agent_certs ri-authdns 10.206.16.13 0
+gen_rsa_pair "$PKI/ri-authdns/agent-tls/authority-client.key" \
+  "$PKI/ri-authdns/agent-tls/authority-client.crt" \
+  authority-client-ri-authdns clientAuth
+chmod 600 "$PKI/ri-authdns/agent-tls/authority-client.key"
+chmod 644 "$PKI/ri-authdns/agent-tls/authority-client.crt"
 
 echo "lab-pki generated under $PKI"
 find "$PKI" -type f | sed "s|$PKI/||" | sort

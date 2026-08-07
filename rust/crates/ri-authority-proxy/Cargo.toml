@@ -1,0 +1,26 @@
+[package]
+name = "ri-authority-proxy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+axum.workspace = true
+futures-util.workspace = true
+hex.workspace = true
+rand.workspace = true
+reqwest.workspace = true
+ri-core = { path = "../ri-core" }
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+axum.workspace = true
+rcgen = "0.13"
+tempfile.workspace = true
+
+[lints]
+workspace = true

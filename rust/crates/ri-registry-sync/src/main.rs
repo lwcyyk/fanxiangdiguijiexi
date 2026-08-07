@@ -52,7 +52,7 @@ async fn main() -> Result<(), AnyError> {
     let _monitoring = tokio::spawn(serve_monitoring(
         monitoring_listener,
         Arc::clone(&metrics),
-        settings.poll_interval.saturating_mul(3),
+        registry_readiness_window(settings.poll_interval),
     ));
 
     loop {
@@ -119,6 +119,12 @@ impl SyncMetrics {
 struct MonitoringState {
     metrics: Arc<SyncMetrics>,
     readiness_window: Duration,
+}
+
+fn registry_readiness_window(poll_interval: Duration) -> Duration {
+    poll_interval
+        .saturating_mul(30)
+        .max(Duration::from_secs(60))
 }
 
 async fn serve_monitoring(
@@ -275,7 +281,13 @@ async fn reconcile(
     if confirmed_hash != snapshot.checkpoint.hash {
         return Err("finalized block hash changed during reconciliation".into());
     }
-    store.apply_registry_snapshot(&records, now)?;
+    // Capture the completion timestamp AFTER all async reads and validations
+    // succeed, so the heartbeat reflects when reconciliation actually finished,
+    // not when it started.  The Norn adapter read can take tens of seconds, and
+    // using the start timestamp would cause the Agent to immediately consider
+    // the registry snapshot stale.
+    let reconciled_at = unix_time();
+    store.apply_registry_snapshot(&records, reconciled_at)?;
     Ok(records.len())
 }
 
@@ -687,7 +699,277 @@ fn unix_time() -> i64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_urls, prometheus_label};
+    use std::collections::BTreeMap;
+    use std::time::Duration;
+
+    use async_trait::async_trait;
+    use base64::Engine;
+    use base64::engine::general_purpose::STANDARD;
+    use ri_chain_adapter::{
+        AdapterError, AdapterResult, ChainSnapshot, ChainTarget, FinalizedCheckpoint,
+        RegistryChainAdapter, RegistryRecord,
+    };
+    use ri_core::{
+        AgentBindingV2, DnsEndpoint, DnsServerIdentityV2, DnsServerRole, IssuerKeyRegistry,
+        RegistryAdapterMetadataV2, RegistryFinalityTypeV2, ed25519_public_key_b64, object_hash,
+        sign_ed25519,
+    };
+    use ri_store::EvidenceStore;
+
+    use super::{parse_urls, prometheus_label, reconcile, registry_readiness_window};
+
+    // ---------------------------------------------------------------------------
+    // Test helpers
+    // ---------------------------------------------------------------------------
+
+    /// Deterministic 32-byte Ed25519 seed from a start byte.
+    fn key(start: u8) -> String {
+        STANDARD.encode((start..start + 32).collect::<Vec<_>>())
+    }
+
+    fn unix_now() -> i64 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64
+    }
+
+    fn test_issuer_keys(issuer_private: &str) -> IssuerKeyRegistry {
+        let mut keys = IssuerKeyRegistry::default();
+        keys.insert(
+            "test-issuer",
+            "issuer-key-1",
+            ed25519_public_key_b64(issuer_private).unwrap(),
+        );
+        keys
+    }
+
+    fn test_identity(
+        server_id: &str,
+        role: DnsServerRole,
+        issuer_private: &str,
+        agent_private: &str,
+    ) -> DnsServerIdentityV2 {
+        let now = unix_now();
+        let mut identity = DnsServerIdentityV2 {
+            schema_version: ri_core::evidence::DNS_SERVER_IDENTITY_V2.into(),
+            server_id: server_id.into(),
+            operator_id: "test-operator".into(),
+            role,
+            endpoints: vec![DnsEndpoint {
+                transport: "udp".into(),
+                ip: Some("127.0.0.1".into()),
+                port: Some(5300),
+                uri: None,
+                server_name: None,
+                alpn: vec![],
+                endpoint_id: None,
+            }],
+            anycast: false,
+            anycast_service_id: None,
+            agent: Some(AgentBindingV2 {
+                algorithm: "ed25519".into(),
+                key_id: format!("{server_id}-agent-key"),
+                public_key: ed25519_public_key_b64(agent_private).unwrap(),
+                service_url: Some("https://127.0.0.1:8443".into()),
+            }),
+            valid_from: now - 60,
+            valid_until: now + 3600,
+            object_version: 1,
+            status: "ACTIVE".into(),
+            issuer: "test-issuer".into(),
+            key_id: "issuer-key-1".into(),
+            signature: None,
+        };
+        identity.signature = Some(sign_ed25519(&identity, issuer_private).unwrap());
+        identity
+    }
+
+    /// A mock chain adapter that introduces a configurable delay before returning
+    /// a fixed snapshot.  Used to verify that the heartbeat reflects completion
+    /// time, not start time.
+    struct MockDelayedAdapter {
+        delay: Duration,
+        succeed: bool,
+    }
+
+    #[async_trait]
+    impl RegistryChainAdapter for MockDelayedAdapter {
+        fn target(&self) -> &ChainTarget {
+            // Leaked for test simplicity — tests are short-lived.
+            static TARGET: std::sync::LazyLock<ChainTarget> =
+                std::sync::LazyLock::new(|| ChainTarget {
+                    adapter: "mock".into(),
+                    chain_identity: "mock:1".into(),
+                    registry_locator: "mock:0x1".into(),
+                    registry_schema_hash: "0x00".into(),
+                    adapter_metadata: RegistryAdapterMetadataV2::External {
+                        driver: "mock".into(),
+                        snapshot_signer_issuer: "test-issuer".into(),
+                        snapshot_signer_key_id: "issuer-key-1".into(),
+                    },
+                });
+            &TARGET
+        }
+
+        async fn read_snapshot(
+            &self,
+            identities: &[DnsServerIdentityV2],
+            _issuer_keys: &IssuerKeyRegistry,
+            _now: i64,
+        ) -> AdapterResult<ChainSnapshot> {
+            tokio::time::sleep(self.delay).await;
+            if !self.succeed {
+                return Err(AdapterError::from("mock adapter configured to fail"));
+            }
+            let mut records = BTreeMap::new();
+            for identity in identities {
+                let hash = object_hash(identity).unwrap();
+                records.insert(
+                    identity.server_id.clone(),
+                    RegistryRecord {
+                        resolver_id_key: ri_core::resolver_id_key(&identity.server_id),
+                        object_hash: hash,
+                        state_root:
+                            "0x5555555555555555555555555555555555555555555555555555555555555555"
+                                .into(),
+                        object_version: identity.object_version,
+                        valid_until: identity.valid_until,
+                        resolver_status: "ACTIVE".into(),
+                        root_status: "ACTIVE".into(),
+                        endpoint_owners: identity
+                            .endpoints
+                            .iter()
+                            .map(|ep| {
+                                (
+                                    ep.registry_key().unwrap(),
+                                    ri_core::resolver_id_key(&identity.server_id),
+                                )
+                            })
+                            .collect(),
+                    },
+                );
+            }
+            Ok(ChainSnapshot {
+                checkpoint: FinalizedCheckpoint {
+                    number: 100,
+                    hash: "0x1111111111111111111111111111111111111111111111111111111111111111"
+                        .into(),
+                    finality_type: RegistryFinalityTypeV2::EvmFinalized,
+                },
+                state_root: "0x5555555555555555555555555555555555555555555555555555555555555555"
+                    .into(),
+                generation: 1,
+                records,
+            })
+        }
+
+        async fn block_hash(&self, _number: u64) -> AdapterResult<String> {
+            Ok("0x1111111111111111111111111111111111111111111111111111111111111111".into())
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Heartbeat timing tests
+    // ---------------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn heartbeat_reflects_completion_time_not_start_time() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db_path = tmp.path().join("evidence.db");
+        let store = EvidenceStore::open(&db_path).unwrap();
+        // Seed an initial heartbeat well in the past so we can detect the update.
+        store.mark_registry_sync_success(1).unwrap();
+
+        let issuer_private = key(1);
+        let issuer_keys = test_issuer_keys(&issuer_private);
+        let agent_private = key(33);
+        let identity = test_identity(
+            "operator/L01/test",
+            DnsServerRole::Recursive,
+            &issuer_private,
+            &agent_private,
+        );
+
+        // Adapter with a 3-second delay.
+        let adapter = MockDelayedAdapter {
+            delay: Duration::from_secs(3),
+            succeed: true,
+        };
+
+        let before = unix_now();
+        let result = reconcile(&adapter, &store, &issuer_keys, &[identity]).await;
+        let after = unix_now();
+
+        assert!(
+            result.is_ok(),
+            "reconcile should succeed: {:?}",
+            result.err()
+        );
+        let heartbeat = store.registry_last_success_epoch().unwrap();
+
+        // The heartbeat must be close to the completion time (within 1 second),
+        // NOT close to the start time which is at least 3 seconds earlier.
+        let diff_from_after = (after - heartbeat).abs();
+        let diff_from_before = (heartbeat - before).abs();
+
+        assert!(
+            diff_from_after <= 1,
+            "heartbeat {heartbeat} is {diff_from_after}s from completion time {after} (should be ≤1s)"
+        );
+        assert!(
+            diff_from_before >= 3,
+            "heartbeat {heartbeat} is only {diff_from_before}s from start time {before} (should be ≥3s with 3s delay)"
+        );
+    }
+
+    #[tokio::test]
+    async fn failed_sync_does_not_refresh_heartbeat() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db_path = tmp.path().join("evidence.db");
+        let store = EvidenceStore::open(&db_path).unwrap();
+
+        // Set a known initial heartbeat.
+        let initial_epoch = 100_000;
+        store.mark_registry_sync_success(initial_epoch).unwrap();
+
+        let issuer_private = key(1);
+        let issuer_keys = test_issuer_keys(&issuer_private);
+        let agent_private = key(33);
+        let identity = test_identity(
+            "operator/L01/test",
+            DnsServerRole::Recursive,
+            &issuer_private,
+            &agent_private,
+        );
+
+        // Adapter that will fail on read_snapshot.
+        let adapter = MockDelayedAdapter {
+            delay: Duration::from_millis(10),
+            succeed: false,
+        };
+
+        let result = reconcile(&adapter, &store, &issuer_keys, &[identity]).await;
+        assert!(result.is_err(), "reconcile should have failed");
+
+        let heartbeat = store.registry_last_success_epoch().unwrap();
+        assert_eq!(
+            heartbeat, initial_epoch,
+            "heartbeat must not change on failed sync: was {initial_epoch}, now {heartbeat}"
+        );
+    }
+
+    #[test]
+    fn readiness_window_covers_long_reconciliation_cycles() {
+        assert_eq!(
+            registry_readiness_window(Duration::from_secs(2)),
+            Duration::from_secs(60)
+        );
+        assert_eq!(
+            registry_readiness_window(Duration::from_secs(5)),
+            Duration::from_secs(150)
+        );
+    }
 
     #[test]
     fn rpc_url_lists_are_trimmed_and_empty_items_are_removed() {

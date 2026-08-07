@@ -1,5 +1,8 @@
 // Test authoritative zone for the resolver-identity lab.
 zone "ri-test.invalid" {
-    type master;
-    file "/etc/bind/db.ri-test.invalid";
+    type primary;
+    file "/var/lib/bind/zones/db.ri-test.invalid";
+    key-directory "/var/lib/bind/keys/ri-test.invalid";
+    dnssec-policy default;
+    inline-signing yes;
 };

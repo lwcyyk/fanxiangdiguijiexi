@@ -67,6 +67,7 @@
     {
       "host": "ri-r1",
       "role": "first-hop",
+      "registry_role": "RECURSIVE",
       "link_id": "L01",
       "server_id": "operator/L01/r1",
       "agent_key_id": "agent-key-L01-r1",
@@ -88,6 +89,7 @@
     {
       "host": "ri-r2",
       "role": "upstream",
+      "registry_role": "FORWARDER",
       "link_id": "L02",
       "server_id": "operator/L01/r2",
       "agent_key_id": "agent-key-L01-r2",
@@ -107,6 +109,7 @@
     {
       "host": "ri-r3",
       "role": "upstream",
+      "registry_role": "FORWARDER",
       "link_id": "L03",
       "server_id": "operator/L01/r3",
       "agent_key_id": "agent-key-L01-r3",
@@ -126,12 +129,18 @@
   ],
   "authdns": {
     "host": "ri-authdns",
+    "registry_role": "AUTHORITATIVE",
+    "server_id": "operator/authdns",
+    "agent_key_id": "agent-key-authdns",
     "management_ip": "10.206.16.13",
     "zone": "ri-test.invalid",
     "listen_ip": "10.206.16.13",
     "package": "bind9",
-    "forwarders": [
-      "127.0.0.1"
-    ]
+    "data_dir": "/var/lib/resolver-identity/ri-authdns",
+    "config_dir": "/opt/domain-center-install/cloud-928ed0e/config/authdns",
+    "secret_dir": "/opt/domain-center-install/cloud-928ed0e/secret/secrets",
+    "agent_tls_dir": "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls",
+    "norn_tls_dir": "/opt/domain-center-install/cloud-928ed0e/secret/norn-tls",
+    "dnssec_trust_anchors": []
   }
 }

@@ -36,7 +36,7 @@ SECRET_FILES = (
     "agent_private_key",
     "trace_ingest_token",
     "agent_wrapper_token",
-    "agent_peer_token",
+    "agent_peer_credentials.json",
 )
 TLS_FILES = (
     "agent.crt",
@@ -257,6 +257,79 @@ def _validate_material_file(path: Path, label: str) -> bytes:
     if len(content) < 32:
         raise InventoryError(f"{label} must contain at least 32 bytes")
     return content
+
+
+def _validate_peer_credentials_file(
+    content: bytes,
+    *,
+    server_id: str,
+    label: str,
+) -> tuple[dict[tuple[str, str], str], dict[str, str]]:
+    try:
+        value = json.loads(content, object_pairs_hook=_reject_duplicate_keys)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise InventoryError(f"{label} must be valid duplicate-free JSON: {error}") from error
+    document = _mapping(value, label)
+    if set(document) != {"inbound", "outbound", "adjacent_peer_allowlist"}:
+        raise InventoryError(
+            f"{label} must contain exactly inbound, outbound, and adjacent_peer_allowlist"
+        )
+    inbound = _list(document["inbound"], f"{label}.inbound")
+    outbound = _list(document["outbound"], f"{label}.outbound")
+    allowlist = _list(
+        document["adjacent_peer_allowlist"],
+        f"{label}.adjacent_peer_allowlist",
+    )
+    inbound_credentials: dict[tuple[str, str], str] = {}
+    inbound_tokens: set[str] = set()
+    for index, raw in enumerate(inbound):
+        credential = _mapping(raw, f"{label}.inbound[{index}]")
+        if set(credential) != {"principal", "token"}:
+            raise InventoryError(f"{label}.inbound[{index}] has unexpected fields")
+        principal = _mapping(credential["principal"], f"{label}.inbound[{index}].principal")
+        if set(principal) != {"server_id", "key_id"}:
+            raise InventoryError(f"{label}.inbound[{index}].principal has unexpected fields")
+        principal_value = (
+            _strict_string(principal["server_id"], f"{label}.inbound[{index}].principal.server_id"),
+            _strict_string(principal["key_id"], f"{label}.inbound[{index}].principal.key_id"),
+        )
+        token = _strict_string(credential["token"], f"{label}.inbound[{index}].token")
+        if principal_value[0] == server_id or len(token.encode()) < 32:
+            raise InventoryError(f"{label}.inbound[{index}] has an invalid principal or token")
+        if principal_value in inbound_credentials or token in inbound_tokens:
+            raise InventoryError(f"{label}.inbound contains a duplicate principal or token")
+        inbound_credentials[principal_value] = token
+        inbound_tokens.add(token)
+    outbound_tokens: dict[str, str] = {}
+    for index, raw in enumerate(outbound):
+        credential = _mapping(raw, f"{label}.outbound[{index}]")
+        if set(credential) != {"target_server_id", "token"}:
+            raise InventoryError(f"{label}.outbound[{index}] has unexpected fields")
+        target = _strict_string(
+            credential["target_server_id"],
+            f"{label}.outbound[{index}].target_server_id",
+        )
+        token = _strict_string(credential["token"], f"{label}.outbound[{index}].token")
+        if target == server_id or len(token.encode()) < 32:
+            raise InventoryError(f"{label}.outbound[{index}] has an invalid target or token")
+        if target in outbound_tokens or token in outbound_tokens.values() or token in inbound_tokens:
+            raise InventoryError(f"{label}.outbound contains a duplicate or reused token")
+        outbound_tokens[target] = token
+    allowed_principals: set[tuple[str, str]] = set()
+    for index, raw in enumerate(allowlist):
+        principal = _mapping(raw, f"{label}.adjacent_peer_allowlist[{index}]")
+        if set(principal) != {"server_id", "key_id"}:
+            raise InventoryError(f"{label}.adjacent_peer_allowlist[{index}] has unexpected fields")
+        principal_value = (
+            _strict_string(principal["server_id"], f"{label}.adjacent_peer_allowlist[{index}].server_id"),
+            _strict_string(principal["key_id"], f"{label}.adjacent_peer_allowlist[{index}].key_id"),
+        )
+        if principal_value in allowed_principals:
+            raise InventoryError(f"{label}.adjacent_peer_allowlist contains a duplicate")
+        allowed_principals.add(principal_value)
+    if allowed_principals != set(inbound_credentials):
+        raise InventoryError(f"{label} inbound principals must exactly match the adjacent allowlist")
+    return inbound_credentials, outbound_tokens
 
 
 def _agent_public_key_from_private(content: bytes, label: str) -> str:
@@ -596,6 +669,10 @@ def validate_inventory(data: Any, *, template: bool = False, check_materials: bo
     host_sockets: set[tuple[str, str]] = set()
     host_ports: set[tuple[str, str, int, str]] = set()
     secret_digests: dict[str, tuple[str, str, str]] = {}
+    api_tokens: dict[str, str] = {}
+    peer_credentials_by_server: dict[
+        str, tuple[str, str, dict[tuple[str, str], str], dict[str, str]]
+    ] = {}
     tls_key_digests: dict[str, str] = {}
 
     for index, raw_unit in enumerate(_list(inventory["units"], "units")):
@@ -717,14 +794,30 @@ def validate_inventory(data: Any, *, template: bool = False, check_materials: bo
                     actual_public_key = _agent_public_key_from_private(content, f"{prefix} agent_private_key")
                     if actual_public_key != agent.get("public_key"):
                         raise InventoryError(f"{prefix} agent_private_key does not match its signed identity")
+                if secret_name in {"trace_ingest_token", "agent_wrapper_token"}:
+                    try:
+                        api_tokens[f"{unit_id}/{secret_name}"] = content.strip().decode("utf-8")
+                    except UnicodeDecodeError as error:
+                        raise InventoryError(f"{prefix} {secret_name} must be UTF-8 token material") from error
+                if secret_name == "agent_peer_credentials.json":
+                    inbound, outbound = _validate_peer_credentials_file(
+                        content,
+                        server_id=server_id,
+                        label=f"{prefix} agent_peer_credentials.json",
+                    )
+                    peer_credentials_by_server[server_id] = (
+                        link_id,
+                        key_id,
+                        inbound,
+                        outbound,
+                    )
                 digest = hashlib.sha256(content).hexdigest()
                 unit_secret_digests[secret_name] = digest
-                previous = secret_digests.get(digest)
-                if previous:
-                    previous_link, previous_name, previous_label = previous
-                    if secret_name != "agent_peer_token" or previous_name != "agent_peer_token" or previous_link != link_id:
+                if secret_name != "agent_peer_credentials.json":
+                    previous = secret_digests.get(digest)
+                    if previous:
+                        _previous_link, _previous_name, previous_label = previous
                         raise InventoryError(f"{prefix} reuses secret material from {previous_label}")
-                else:
                     secret_digests[digest] = (
                         link_id,
                         secret_name,
@@ -752,6 +845,57 @@ def validate_inventory(data: Any, *, template: bool = False, check_materials: bo
             raise InventoryError(f"{prefix}.metrics_bind_address must be loopback or management_ip")
         if agent_bind not in {"127.0.0.1", "::1", management_ip}:
             raise InventoryError(f"{prefix}.agent_bind_address must be loopback or management_ip")
+
+    if check_materials:
+        peer_token_owners: dict[str, list[str]] = {}
+        for server_id, (_link_id, _key_id, inbound, outbound) in peer_credentials_by_server.items():
+            for (source_id, _source_key), token in inbound.items():
+                peer_token_owners.setdefault(token, []).append(
+                    f"{source_id} outbound to {server_id} (inbound copy)"
+                )
+            for target_id, token in outbound.items():
+                peer_token_owners.setdefault(token, []).append(
+                    f"{server_id} outbound to {target_id}"
+                )
+        for token_owners in peer_token_owners.values():
+            if len(token_owners) > 2:
+                raise InventoryError("peer credential token is reused by unrelated directions")
+        api_token_values = set(api_tokens.values())
+        if api_token_values & set(peer_token_owners):
+            raise InventoryError("peer and API credentials must use different secret purposes")
+
+        for source_server_id, (link_id, source_key_id, _inbound, outbound) in peer_credentials_by_server.items():
+            for target_server_id, token in outbound.items():
+                target = peer_credentials_by_server.get(target_server_id)
+                if target is None:
+                    raise InventoryError(
+                        f"{source_server_id} outbound peer target {target_server_id} is not in the inventory"
+                    )
+                target_link_id, _target_key_id, target_inbound, _target_outbound = target
+                if target_link_id != link_id:
+                    raise InventoryError(
+                        f"peer credential from {source_server_id} crosses link boundary {link_id}"
+                    )
+                if target_inbound.get((source_server_id, source_key_id)) != token:
+                    raise InventoryError(
+                        f"peer credential from {source_server_id} to {target_server_id} is not directionally matched"
+                    )
+        for target_server_id, (link_id, _target_key_id, inbound, _outbound) in peer_credentials_by_server.items():
+            for (source_server_id, source_key_id), token in inbound.items():
+                source = peer_credentials_by_server.get(source_server_id)
+                if source is None:
+                    raise InventoryError(
+                        f"{target_server_id} inbound peer principal {source_server_id} is not in the inventory"
+                    )
+                source_link_id, actual_source_key_id, _source_inbound, source_outbound = source
+                if source_link_id != link_id or actual_source_key_id != source_key_id:
+                    raise InventoryError(
+                        f"{target_server_id} inbound peer principal is not in the same link or key does not match"
+                    )
+                if source_outbound.get(target_server_id) != token:
+                    raise InventoryError(
+                        f"peer credential into {target_server_id} is not directionally matched"
+                    )
 
     inventory["_validated_site_id"] = site_id
     return inventory

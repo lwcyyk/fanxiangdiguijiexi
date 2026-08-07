@@ -106,7 +106,10 @@ fn write_secret_material() -> Vec<(&'static str, String)> {
             "wrapper_token",
             "test-wrapper-api-token-00000000000000000000",
         ),
-        ("peer_token", "test-peer-api-token-00000000000000000000"),
+        (
+            "peer_credentials.json",
+            r#"{"inbound":[],"outbound":[],"adjacent_peer_allowlist":[]}"#,
+        ),
     ] {
         files.push((name, token.to_string()));
     }
@@ -131,7 +134,10 @@ fn spawn_agent(dir: &Path, pki: &TestPki) -> Child {
         .env("RI_AGENT_PRIVATE_KEY_FILE", dir.join("agent_private_key"))
         .env("RI_TRACE_INGEST_TOKEN_FILE", dir.join("trace_token"))
         .env("RI_AGENT_WRAPPER_TOKEN_FILE", dir.join("wrapper_token"))
-        .env("RI_AGENT_PEER_TOKEN_FILE", dir.join("peer_token"))
+        .env(
+            "RI_AGENT_PEER_CREDENTIALS_FILE",
+            dir.join("peer_credentials.json"),
+        )
         .env("RI_ISSUER_KEYS_FILE", dir.join("issuer-keys.json"))
         .env("RI_AGENT_TLS_CERT_FILE", &pki.server_cert)
         .env("RI_AGENT_TLS_KEY_FILE", &pki.server_key)

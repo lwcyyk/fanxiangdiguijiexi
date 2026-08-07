@@ -904,7 +904,14 @@ class Lab:
         (secrets / "snapshot-issuer.key").write_text(snapshot_private + "\n", encoding="ascii")
         now = int(time.time())
         identities: list[dict[str, Any]] = []
-        for index, resolver in enumerate(self.inventory["resolvers"], start=1):
+        resolvers = self.inventory["resolvers"]
+        if len(resolvers) < 2:
+            raise AcceptanceError("directional peer credentials require at least two resolvers")
+        peer_tokens = [
+            base64.urlsafe_b64encode(os.urandom(32)).decode("ascii")
+            for _ in range(2)
+        ]
+        for index, resolver in enumerate(resolvers, start=1):
             secret_dir = Path(resolver["secret_dir"])
             agent_tls = Path(resolver["agent_tls_dir"])
             secret_dir.mkdir(parents=True)
@@ -917,10 +924,35 @@ class Lab:
             for token_name in (
                 "trace_ingest_token",
                 "agent_wrapper_token",
-                "agent_peer_token",
             ):
                 token = base64.urlsafe_b64encode(os.urandom(32)).decode("ascii")
                 (secret_dir / token_name).write_text(token + "\n", encoding="ascii")
+            inbound = []
+            allowlist = []
+            if index > 1:
+                source = resolvers[index - 2]
+                principal = {
+                    "server_id": source["server_id"],
+                    "key_id": source["agent_key_id"],
+                }
+                inbound.append({"principal": principal, "token": peer_tokens[index - 2]})
+                allowlist.append(principal)
+            outbound = []
+            if index < len(resolvers):
+                outbound.append(
+                    {
+                        "target_server_id": resolvers[index]["server_id"],
+                        "token": peer_tokens[index - 1],
+                    }
+                )
+            _write_json(
+                secret_dir / "agent_peer_credentials.json",
+                {
+                    "inbound": inbound,
+                    "outbound": outbound,
+                    "adjacent_peer_allowlist": allowlist,
+                },
+            )
             server_key, server_cert = self._certificate(
                 ca_key,
                 ca_cert,

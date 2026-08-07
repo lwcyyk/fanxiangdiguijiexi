@@ -469,7 +469,7 @@ def service_environments(root: Path, seed: Path) -> dict[str, dict[str, str]]:
             "RI_AGENT_PRIVATE_KEY_FILE": str(seed / "agent_private_key"),
             "RI_TRACE_INGEST_TOKEN_FILE": str(seed / "trace_ingest_token"),
             "RI_AGENT_WRAPPER_TOKEN_FILE": str(seed / "agent_wrapper_token"),
-            "RI_AGENT_PEER_TOKEN_FILE": str(seed / "agent_peer_token"),
+            "RI_AGENT_PEER_CREDENTIALS_FILE": str(seed / "agent_peer_credentials.json"),
             "RI_ISSUER_KEYS_FILE": str(seed / "issuer-keys.json"),
             "RI_AGENT_MAX_AGE_SECONDS": "60",
             "RI_TRACE_WAIT_MILLIS": "5000",

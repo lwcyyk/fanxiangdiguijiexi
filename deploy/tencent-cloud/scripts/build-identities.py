@@ -21,10 +21,11 @@ WORK = ROOT / "work"
 SECRET = ROOT / "secret"
 MGMT_SECRET = SECRET
 
-RESOLVERS = [
+SERVERS = [
     {"host": "ri-r1", "server_id": "operator/L01/r1", "agent_key_id": "agent-key-L01-r1", "ip": "10.206.16.14", "role": "RECURSIVE"},
     {"host": "ri-r2", "server_id": "operator/L01/r2", "agent_key_id": "agent-key-L01-r2", "ip": "10.206.16.17", "role": "FORWARDER"},
     {"host": "ri-r3", "server_id": "operator/L01/r3", "agent_key_id": "agent-key-L01-r3", "ip": "10.206.16.7", "role": "FORWARDER"},
+    {"host": "ri-authdns", "server_id": "operator/authdns", "agent_key_id": "agent-key-authdns", "ip": "10.206.16.13", "role": "AUTHORITATIVE"},
 ]
 
 
@@ -49,7 +50,7 @@ def main() -> int:
 
     now = int(time.time())
     identities: list[dict] = []
-    for r in RESOLVERS:
+    for r in SERVERS:
         seed = load_seed(WORK / "agents" / r["host"] / "agent_private_key")
         agent_public = public_from_seed_b64(seed)
         identities.append(
@@ -70,7 +71,7 @@ def main() -> int:
                     "service_url": f"https://{r['host']}:8443",
                 },
                 "valid_from": now - 60,
-                "valid_until": now + 86400,
+                "valid_until": now + 604800,
                 "object_version": 1,
                 "status": "ACTIVE",
                 "issuer": "field-identity-authority",
@@ -89,7 +90,7 @@ def main() -> int:
     (WORK / "issuer-keys.json").write_text(
         json.dumps(issuer_keys, indent=2) + "\n", encoding="utf-8"
     )
-    print(f"built identities for {len(identities)} resolvers; issuer-keys for {len(issuer_keys['keys'])} issuers")
+    print(f"built identities for {len(identities)} DNS servers; issuer-keys for {len(issuer_keys['keys'])} issuers")
     return 0
 
 

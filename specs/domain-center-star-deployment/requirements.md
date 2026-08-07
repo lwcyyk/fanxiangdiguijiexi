@@ -75,7 +75,7 @@ Sepolia Registry 部署、双 RPC finalized 核验和五类角色拆分已经真
 - 唯一的 link ID、unit ID、Compose project、server ID 和 Agent key ID；
 - 目标主机、管理网 IP、Wrapper IP/VIP、Resolver upstream 和端口；
 - Resolver 进程 UID/GID、Trace Socket 目录和真实 Trace 插件版本；
-- 独立 Agent 私钥、Wrapper/Trace/Peer Token 和 mTLS 文件；
+- 独立 Agent 私钥、Wrapper/Trace Token、方向性 peer credentials JSON 和 mTLS 文件；
 - DNS、Agent、metrics、SSH、RPC、日志和监控防火墙关系；
 - identity 和 issuer 公钥制品路径；
 - Shadow 测试域名、容量目标和回滚入口。
@@ -86,7 +86,7 @@ Sepolia Registry 部署、双 RPC finalized 核验和五类角色拆分已经真
 - 运行包不得包含 Governance、Publisher、Endpoint Manager、Revoker 或 issuer
   私钥；
 - L01、L02、L03 不得复用 Agent 私钥、服务私钥、Wrapper Token 或 Trace Token；
-- Peer Token 只允许同一 link ID 的相邻 Agent 共用；
+- 每个 Peer Token 只绑定同一 link ID 内一个精确的源 Agent → 目标 Agent 方向；
 - 跨链路 Resolver、Agent、SQLite、metrics 和管理端口默认拒绝；
 - 镜像必须固定 digest，禁止 `latest` 和可移动标签；
 - 链路配置必须拒绝 Mainnet chain ID、零地址、零哈希、文档保留 IP、

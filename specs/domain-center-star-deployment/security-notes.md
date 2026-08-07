@@ -22,7 +22,7 @@ Hub 治理隔离区持有：
 
 - 本 unit 的 Agent 私钥；
 - Agent 服务端和三个客户端用途的 TLS 私钥；
-- Trace ingest、Wrapper 和同链 peer Token；
+- Trace ingest、Wrapper 和每个相邻方向独立的 peer Token；
 - issuer 公钥和签名 identity；
 - 只读 RPC 配置。
 

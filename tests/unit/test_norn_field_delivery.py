@@ -253,6 +253,10 @@ def test_release_trace_readiness_requires_script_generated_acceptance(tmp_path):
         requirement["generated_by_renderer"] is False
         for requirement in secret_requirements["hosts"].values()
     )
+    for resolver in inventory["resolvers"]:
+        required = secret_requirements["hosts"][resolver["host"]]["required"]
+        assert "agent_peer_credentials.json" in required
+        assert "agent_peer_token" not in required
 
     resolver_env = (
         release / "hosts" / "resolver-L01-r1" / "config" / ".env"

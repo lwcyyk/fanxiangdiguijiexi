@@ -1,0 +1,34 @@
+{
+  "schema_version": "resolver-identity-oci-layout-v1",
+  "version": "0.3.0-norn-knot-rc11",
+  "platform": {
+    "os": "linux",
+    "architecture": "amd64"
+  },
+  "derived_from": {
+    "archive": "rust-data-plane-oci-rc2.tar",
+    "archive_sha256": "3fdcfd7330ad87dd2c2e6d8dc04f667831abd72fdd6643c4cf90cc5bb575f8ff",
+    "manifest_digest": "sha256:02034f740200fb522ae99d939b026f5a7ba6e67dfefede1dc6f1edd9fa2de022"
+  },
+  "binaries": [
+    "ri-agent",
+    "ri-wrapper",
+    "ri-trace-adapter",
+    "ri-registry-sync",
+    "ri-knot-trace-producer"
+  ],
+  "binaries_sha256": {
+    "ri-agent": "6b17c438272ba764704814573f83a68e315193ed12dc3e5e22cdb1e632053d2f",
+    "ri-wrapper": "223923a6a915855ce23368c71025d9ce7662258629c2b0f42ac1557914983e92",
+    "ri-trace-adapter": "d9f08e0c0921ec2ed1b679acbc1801cd64c1c281ee294c925a29776ce54a562d",
+    "ri-registry-sync": "5c9e298595709ddb26fcc9a5ee7c62309d4681fdae36b2b003c6dd37d7b37b2a",
+    "ri-knot-trace-producer": "e1f2c036a02ba2c1cb19ce0d0e575ba0488d8de6716bf948d7272e3084b31a94"
+  },
+  "created": "2026-08-07T00:00:00Z",
+  "archive": "rust-data-plane-oci-rc11.tar",
+  "archive_sha256": "0e501267f1f752599263df809c2222b700e36f1f33bbee3ce3e67b751c7fb574",
+  "manifest_digest": "sha256:373ac52a774f8ffd9f92bf26d4aff2132e54287b2d21bb2d6e30d924365b13b6",
+  "config_digest": "sha256:72eaeae03ee42a6b7375989f29ae285d64fb510415dfe0b6f2a77b0c57725ca5",
+  "config_size": 4039,
+  "layer_count": 11
+}

@@ -175,7 +175,38 @@ def render(inventory: dict, state: dict) -> list[Path]:
             "RI_REGISTRY_SYNC_ONCE": "false",
         }
         written.append(_write_host(HOSTS_OUT / resolver["host"] / "config", ".env", _env_lines(resolver_env)))
-        written.append(_write_host(HOSTS_OUT / resolver["host"] / "config", "kresd.conf", _kresd_conf(resolver)))
+        written.append(_write_host(HOSTS_OUT / resolver["host"] / "config", "kresd.conf", _kresd_conf(resolver, inventory["authdns"])))
+
+    # ---- authoritative DNS data plane ----
+    authdns = inventory["authdns"]
+    authdns_env = {
+        "RI_FIELD_HOST_ID": authdns["host"],
+        "RI_FIELD_COMPOSE_PROJECT": authdns["host"],
+        "RI_FIELD_DATA_DIR": authdns["data_dir"],
+        "RI_AUTHDNS_CONFIG_DIR": authdns["config_dir"],
+        "RI_IMAGE": images["rust"],
+        "RI_AUTHDNS_MANAGEMENT_IP": authdns["management_ip"],
+        "RI_AGENT_SERVER_ID": authdns["server_id"],
+        "RI_AGENT_KEY_ID": authdns["agent_key_id"],
+        "RI_CHAIN_RPC_URLS": read_urls,
+        "RI_CHAIN_ID": str(chain["chain_id"]),
+        "RI_NORN_GENESIS_BLOCK_HASH": genesis_hash,
+        "RI_CHAIN_REGISTRY_ADDRESS": chain["registry_address"],
+        "RI_NORN_REGISTRY_KEY": chain["registry_key"],
+        "RI_NORN_SIGNER_ISSUER": chain["snapshot_issuer"],
+        "RI_NORN_SIGNER_KEY_ID": chain["snapshot_key_id"],
+        "RI_CHAIN_REGISTRY_SCHEMA_HASH": chain["schema_hash"],
+        "RI_CHAIN_CONFIRMATIONS": str(chain["confirmations"]),
+        "RI_NORN_REGISTRY_START_HEIGHT": str(chain["registry_start_height"]),
+        "RI_NORN_MAX_SCAN_BLOCKS": str(chain["max_scan_blocks"]),
+        "RI_NORN_CLIENT_TLS_DIR": authdns["norn_tls_dir"],
+        "RI_RESOLVER_SECRET_DIR": authdns["secret_dir"],
+        "RI_AGENT_TLS_DIR": authdns["agent_tls_dir"],
+        "RI_REGISTRY_MAX_STALENESS_SECONDS": "45",
+        "RI_AUTHORITY_PUBLIC_BIND": f"{authdns['listen_ip']}:53",
+        "RI_AUTHORITY_AGENT_URL": f"https://{authdns['management_ip']}:8443",
+    }
+    written.append(_write_host(HOSTS_OUT / authdns["host"] / "config", ".env", _env_lines(authdns_env)))
     return written
 
 
@@ -187,20 +218,31 @@ def _write_host(host_config_dir: Path, filename: str, content: str) -> Path:
     return path
 
 
-def _kresd_conf(resolver: dict) -> str:
+def _kresd_conf(resolver: dict, authdns: dict) -> str:
     host = resolver["host"]
     forward_target = {
-        "ri-r1": "10.206.16.17",  # R1 knot -> R2 (not on the wrapper path; kept consistent)
+        "ri-r1": "10.206.16.17",  # R1 knot -> R2
         "ri-r2": "10.206.16.7",   # R2 knot -> R3
-        "ri-r3": "10.206.16.13",  # R3 knot -> test Authoritative DNS
+        "ri-r3": authdns["listen_ip"],  # R3 knot -> authoritative DNS
     }[host]
+    anchors = "".join(
+        f"trust_anchors.add({record!r})\n"
+        for record in authdns.get("dnssec_trust_anchors", [])
+    )
     return (
         "-- Managed by Resolver Identity Tencent Cloud lab. Validate before activation.\n"
         "net.listen('0.0.0.0', 1053, { kind = 'dns' })\n"
         "cache.size = 256 * MB\n"
-        "modules = { 'hints > iterate', 'stats' }\n"
-        "-- route the lab test zone through the identity chain (R1-wrapper -> R2 -> R3 -> auth DNS)\n"
-        f"policy.forward('ri-test.invalid', {{ '{forward_target}@53' }})\n"
+        "modules = { 'hints > iterate', 'stats', 'policy' }\n"
+        + anchors
+        + "-- PASSTHRU_LEGACY bypasses only .invalid synthesis; FORWARD still validates DNSSEC.\n"
+        + f"local forward = policy.FORWARD('{forward_target}@53')\n"
+        + "local passthru = policy.FLAGS('PASSTHRU_LEGACY')\n"
+        + "policy.add(policy.suffix(function(state, req)\n"
+        + "    forward(state, req)\n"
+        + "    passthru(state, req)\n"
+        + "    return state\n"
+        + "  end, { todname('ri-test.invalid.') }))\n"
     )
 
 

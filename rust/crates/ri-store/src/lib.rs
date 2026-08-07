@@ -133,6 +133,7 @@ pub struct TraceResponseMatch<'a> {
     pub response_digest: &'a str,
     pub endpoint: Option<&'a DnsEndpoint>,
     pub allow_authority_response: bool,
+    pub require_producer_lineage: bool,
 }
 
 impl EvidenceStore {
@@ -1281,27 +1282,42 @@ fn registered_trace_candidate(
             "registered query context has already been consumed".into(),
         ));
     }
-    let candidate = connection
-        .query_row(
-            r#"SELECT event_id,event_json FROM ri_v2_trace_events
-               WHERE rowid>=?
-                 AND json_extract(event_json,'$.observer_server_id')=?
-                 AND json_extract(event_json,'$.correlation_id')=?
-                 AND json_extract(event_json,'$.query_digest')=?
-                 AND json_extract(event_json,'$.response_digest')=?
-                 AND json_extract(event_json,'$.kind') IN
-                     ('CLIENT_RESPONSE','RESOLVER_RESPONSE')
-               ORDER BY rowid DESC LIMIT 1"#,
-            params![
-                context.2,
-                server_id,
-                correlation_id,
-                query_digest,
-                response_digest
-            ],
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-        )
-        .optional()?;
+    let mut statement = connection.prepare(
+        r#"SELECT event_id,event_json FROM ri_v2_trace_events
+           WHERE rowid>=?
+             AND json_extract(event_json,'$.observer_server_id')=?
+             AND json_extract(event_json,'$.correlation_id')=?
+             AND json_extract(event_json,'$.query_digest')=?
+             AND json_extract(event_json,'$.response_digest')=?
+             AND json_extract(event_json,'$.kind')='CLIENT_RESPONSE'
+           ORDER BY rowid DESC"#,
+    )?;
+    let rows = statement.query_map(
+        params![
+            context.2,
+            server_id,
+            correlation_id,
+            query_digest,
+            response_digest
+        ],
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+    )?;
+    let mut candidate = None;
+    for row in rows {
+        let (event_id, event_json) = row?;
+        let event: TraceEventV2 = serde_json::from_str(&event_json)?;
+        if has_complete_producer_lineage(
+            connection,
+            &event,
+            server_id,
+            correlation_id,
+            query_digest,
+            response_digest,
+        )? {
+            candidate = Some((event_id, event_json));
+            break;
+        }
+    }
     Ok((context, candidate))
 }
 
@@ -1349,11 +1365,80 @@ fn matching_response_candidates(
                     .as_ref()
                     .is_some_and(|candidate| expected.matches(candidate).unwrap_or(false))
             });
-        if kind_matches && endpoint_matches {
+        if kind_matches
+            && endpoint_matches
+            && (!request.require_producer_lineage
+                || has_complete_producer_lineage(
+                    connection,
+                    &event,
+                    request.server_id,
+                    request.correlation_id,
+                    request.query_digest,
+                    request.response_digest,
+                )?)
+        {
             candidates.push((event_id, event));
         }
     }
     Ok(candidates)
+}
+
+fn has_complete_producer_lineage(
+    connection: &Connection,
+    terminal: &TraceEventV2,
+    server_id: &str,
+    correlation_id: &str,
+    query_digest: &str,
+    response_digest: &str,
+) -> Result<bool, StoreError> {
+    if terminal.sequence == 0
+        || terminal.kind != ri_core::TraceEventKind::ClientResponse
+        || terminal.observer_server_id != server_id
+        || terminal.correlation_id != correlation_id
+        || terminal.query_digest != query_digest
+        || terminal.response_digest.as_deref() != Some(response_digest)
+    {
+        return Ok(false);
+    }
+
+    let mut current = terminal.clone();
+    let mut visited = HashSet::new();
+    loop {
+        if !visited.insert(current.event_id.clone())
+            || current.trace_id != terminal.trace_id
+            || current.observer_server_id != server_id
+            || current.correlation_id != correlation_id
+        {
+            return Ok(false);
+        }
+        if current.sequence == 1 {
+            return Ok(current.kind == ri_core::TraceEventKind::ClientQuery
+                && current.parent_event_id.is_none()
+                && current.query_digest == query_digest);
+        }
+        let Some(parent_event_id) = current.parent_event_id.as_deref() else {
+            return Ok(false);
+        };
+        let parent_json = connection
+            .query_row(
+                r#"SELECT event_json FROM ri_v2_trace_events
+                   WHERE event_id=? AND trace_id=?"#,
+                params![parent_event_id, terminal.trace_id],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()?;
+        let Some(parent_json) = parent_json else {
+            return Ok(false);
+        };
+        let parent: TraceEventV2 = serde_json::from_str(&parent_json)?;
+        if parent.sequence >= current.sequence
+            || (current.event_id == terminal.event_id
+                && parent.sequence.checked_add(1) != Some(current.sequence))
+        {
+            return Ok(false);
+        }
+        current = parent;
+    }
 }
 
 fn claim_event(

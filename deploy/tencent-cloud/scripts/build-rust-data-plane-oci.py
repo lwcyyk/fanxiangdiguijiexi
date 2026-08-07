@@ -1,17 +1,12 @@
 #!/usr/bin/env python3
-"""Deterministically assemble the 0.3.0-norn-knot-rc2 rust data-plane OCI image.
+"""Deterministically assemble a versioned Rust data-plane OCI image.
 
-The frozen 0.3.0-norn-knot-rc1 data-plane image (offline
-rust-data-plane.oci.tar) contained the rustls CryptoProvider startup panic in
-ri-agent. The fix pins a process-level CryptoProvider, but the RC1 image itself
-must stay byte-for-byte frozen. This script derives a NEW RC2 OCI layout by
-reading the RC1 layout and appending a single layer that replaces the five
-data-plane binaries with the locally built RC2 release binaries. The RC1
-archive is only read; it is never modified.
+The frozen base data-plane image is read-only. This script derives a new OCI
+layout by appending one layer that replaces the data-plane binaries with the
+specified release binaries. The base archive is never modified.
 
-Output: a valid single-platform (linux/amd64) OCI layout archive
-``rust-data-plane-oci-rc2.tar`` plus an ``oci-digest-record.json`` digest record,
-written under ``--dest``.
+Output: a valid single-platform (linux/amd64) OCI layout archive named from
+``--tag`` plus an ``oci-digest-record.json`` digest record under ``--dest``.
 
 Everything is deterministic for fixed inputs: layer tar entries are sorted with a
 fixed mtime, the gzip layer uses a fixed header mtime, and the index/created
@@ -37,6 +32,7 @@ BINARIES = [
     "ri-trace-adapter",
     "ri-registry-sync",
     "ri-knot-trace-producer",
+    "ri-authority-proxy",
 ]
 
 # Fixed timestamps keep a rebuild byte-identical for the same inputs.
@@ -122,6 +118,17 @@ def deterministic_layout_tar(layout: Path) -> bytes:
     return raw.getvalue()
 
 
+def archive_name(tag: str) -> str:
+    label = tag.rsplit("-", 1)[-1]
+    safe_label = "".join(
+        character if character.isalnum() or character in ".-_" else "-"
+        for character in label
+    )
+    if not safe_label or safe_label in {".", ".."}:
+        raise SystemExit("tag does not produce a safe archive name")
+    return f"rust-data-plane-oci-{safe_label}.tar"
+
+
 def assemble(
     rc1_archive: Path,
     release_bin: Path,
@@ -129,7 +136,7 @@ def assemble(
     dest: Path,
     created: str,
 ) -> dict[str, object]:
-    work = Path(tempfile.mkdtemp(prefix="rc2-oci-assemble-"))
+    work = Path(tempfile.mkdtemp(prefix="oci-assemble-"))
     try:
         layout = work / "rc1"
         layout.mkdir()
@@ -228,7 +235,7 @@ def assemble(
 
         archive_bytes = deterministic_layout_tar(out)
         dest.mkdir(parents=True, exist_ok=True)
-        archive = dest / "rust-data-plane-oci-rc2.tar"
+        archive = dest / archive_name(tag)
         archive.write_bytes(archive_bytes)
 
         # Self-check: the produced archive must reference exactly its own blobs.
@@ -294,13 +301,13 @@ def assemble(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--rc1-archive", type=Path, required=True)
+    parser.add_argument("--base-archive", "--rc1-archive", dest="base_archive", type=Path, required=True)
     parser.add_argument("--release-bin", type=Path, required=True)
-    parser.add_argument("--tag", default="0.3.0-norn-knot-rc2")
+    parser.add_argument("--tag", required=True)
     parser.add_argument("--dest", type=Path, required=True)
     parser.add_argument("--created", default=FIXED_CREATED)
     args = parser.parse_args()
-    assemble(args.rc1_archive, args.release_bin, args.tag, args.dest, args.created)
+    assemble(args.base_archive, args.release_bin, args.tag, args.dest, args.created)
     return 0
 
 

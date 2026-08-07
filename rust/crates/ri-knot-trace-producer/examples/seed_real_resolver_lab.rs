@@ -83,9 +83,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &output.join("agent_wrapper_token"),
         &random_token("agent-wrapper"),
     )?;
-    write_secret(
-        &output.join("agent_peer_token"),
-        &random_token("agent-peer"),
+    std::fs::write(
+        output.join("agent_peer_credentials.json"),
+        serde_json::to_vec_pretty(&json!({
+            "inbound": [],
+            "outbound": [],
+            "adjacent_peer_allowlist": []
+        }))?,
+    )?;
+    std::fs::set_permissions(
+        output.join("agent_peer_credentials.json"),
+        Permissions::from_mode(0o600),
     )?;
     std::fs::write(
         output.join("issuer-keys.json"),

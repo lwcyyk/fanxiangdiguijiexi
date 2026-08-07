@@ -4,7 +4,10 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode, header};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
-use ri_agent::{AgentConfig, AgentState, EvidenceGraphRequest, ResponseAttestationRequest, router};
+use ri_agent::{
+    AgentConfig, AgentState, EvidenceGraphRequest, PeerInboundCredential, PeerPrincipal,
+    ResponseAttestationRequest, router,
+};
 use ri_core::evidence::{DNS_SERVER_IDENTITY_V2, TRACE_EVENT_V2};
 use ri_core::{
     AgentBindingV2, DnsEndpoint, DnsServerIdentityV2, DnsServerRole, DnssecStatus,
@@ -25,32 +28,27 @@ const CHALLENGE: &str = "challenge-with-at-least-32-characters";
 async fn hybrid_graph_uses_entire_resolver_trace_not_only_final_digest() {
     let fixture = fixture(VerificationMode::PublicHybrid);
     let now = now();
-    fixture
-        .store
-        .put_trace_event(&event(
-            "final",
-            "resolver-trace",
-            TraceEventKind::ResolverResponse,
-            "operator/r1",
-            Some(endpoint("192.0.2.53")),
-            QUERY_DIGEST,
-            Some(FINAL_RESPONSE),
-            now,
-        ))
-        .unwrap();
-    fixture
-        .store
-        .put_trace_event(&event(
-            "to-root",
-            "resolver-trace",
-            TraceEventKind::AuthorityQuery,
-            "operator/r1",
-            Some(endpoint("198.41.0.4")),
-            AUTH_QUERY,
-            Some(AUTH_RESPONSE),
-            now,
-        ))
-        .unwrap();
+    let final_event = event(
+        "final",
+        "resolver-trace",
+        TraceEventKind::ClientResponse,
+        "operator/r1",
+        None,
+        QUERY_DIGEST,
+        Some(FINAL_RESPONSE),
+        now,
+    );
+    let to_root = event(
+        "to-root",
+        "resolver-trace",
+        TraceEventKind::AuthorityQuery,
+        "operator/r1",
+        Some(endpoint("198.41.0.4")),
+        AUTH_QUERY,
+        Some(AUTH_RESPONSE),
+        now,
+    );
+    put_complete_trace(&fixture.store, final_event, vec![to_root]);
 
     let graph = fixture
         .state
@@ -75,32 +73,27 @@ async fn hybrid_graph_uses_entire_resolver_trace_not_only_final_digest() {
 async fn strict_graph_fails_closed_without_target_agent() {
     let fixture = fixture(VerificationMode::ControlledStrict);
     let now = now();
-    fixture
-        .store
-        .put_trace_event(&event(
-            "final",
-            "resolver-trace",
-            TraceEventKind::ResolverResponse,
-            "operator/r1",
-            Some(endpoint("192.0.2.53")),
-            QUERY_DIGEST,
-            Some(FINAL_RESPONSE),
-            now,
-        ))
-        .unwrap();
-    fixture
-        .store
-        .put_trace_event(&event(
-            "to-root",
-            "resolver-trace",
-            TraceEventKind::AuthorityQuery,
-            "operator/r1",
-            Some(endpoint("198.41.0.4")),
-            AUTH_QUERY,
-            Some(AUTH_RESPONSE),
-            now,
-        ))
-        .unwrap();
+    let final_event = event(
+        "final",
+        "resolver-trace",
+        TraceEventKind::ClientResponse,
+        "operator/r1",
+        None,
+        QUERY_DIGEST,
+        Some(FINAL_RESPONSE),
+        now,
+    );
+    let to_root = event(
+        "to-root",
+        "resolver-trace",
+        TraceEventKind::AuthorityQuery,
+        "operator/r1",
+        Some(endpoint("198.41.0.4")),
+        AUTH_QUERY,
+        Some(AUTH_RESPONSE),
+        now,
+    );
+    put_complete_trace(&fixture.store, final_event, vec![to_root]);
 
     let error = fixture
         .state
@@ -252,20 +245,17 @@ async fn cache_hit_requires_source_graph_in_current_registry_generation() {
         timestamp,
     );
     source_final.cache_object_digest = Some(FINAL_RESPONSE.into());
-    fixture.store.put_trace_event(&source_final).unwrap();
-    fixture
-        .store
-        .put_trace_event(&event(
-            "source-root",
-            "source-trace",
-            TraceEventKind::AuthorityQuery,
-            "operator/r1",
-            Some(endpoint("198.41.0.4")),
-            AUTH_QUERY,
-            Some(AUTH_RESPONSE),
-            timestamp,
-        ))
-        .unwrap();
+    let source_root = event(
+        "source-root",
+        "source-trace",
+        TraceEventKind::AuthorityQuery,
+        "operator/r1",
+        Some(endpoint("198.41.0.4")),
+        AUTH_QUERY,
+        Some(AUTH_RESPONSE),
+        timestamp,
+    );
+    put_complete_trace(&fixture.store, source_final, vec![source_root]);
     let source_graph = fixture
         .state
         .build_graph(&EvidenceGraphRequest {
@@ -292,7 +282,6 @@ async fn cache_hit_requires_source_graph_in_current_registry_generation() {
         timestamp,
     );
     cached_final.cache_object_digest = Some(FINAL_RESPONSE.into());
-    fixture.store.put_trace_event(&cached_final).unwrap();
     let mut cache_hit = event(
         "cached-hit",
         "cached-trace",
@@ -304,7 +293,11 @@ async fn cache_hit_requires_source_graph_in_current_registry_generation() {
         timestamp,
     );
     cache_hit.cache_object_digest = Some(FINAL_RESPONSE.into());
-    fixture.store.put_trace_event(&cache_hit).unwrap();
+    put_complete_trace(
+        &fixture.store,
+        cached_final.clone(),
+        vec![cache_hit.clone()],
+    );
     let request = EvidenceGraphRequest {
         trace_id: "cached-wrapper-trace".into(),
         correlation_id: trace_correlation("cached-trace"),
@@ -313,17 +306,139 @@ async fn cache_hit_requires_source_graph_in_current_registry_generation() {
         response_digest: FINAL_RESPONSE.into(),
         visited_server_ids: vec![],
     };
-    let error = fixture.state.build_graph(&request).await.unwrap_err();
-    assert!(error.to_string().contains("source graph digest"));
+    // CacheHit with no source_graph_digest is accepted with unverified
+    // provenance in PublicHybrid mode — pre-existing resolver cache that
+    // predates the trace evidence pipeline should not block resolution.
+    // The graph carries the LEGACY_UNVERIFIED sentinel digest and a
+    // diagnostic graph_errors entry so consumers can detect it.
+    let unverified = fixture.state.build_graph(&request).await.unwrap();
+    assert!(
+        unverified.cache_provenance.is_some(),
+        "unverified cache graph must carry provenance metadata"
+    );
+    let provenance = unverified.cache_provenance.as_ref().unwrap();
+    assert_eq!(
+        provenance.source_graph_digest,
+        ri_core::LEGACY_UNVERIFIED_CACHE_SOURCE_GRAPH_DIGEST,
+        "unverified cache must use the LEGACY_UNVERIFIED sentinel source graph digest"
+    );
+    assert!(
+        !provenance.source_dnssec_required,
+        "unverified cache must not claim DNSSEC was required"
+    );
+    assert!(
+        !unverified.graph_errors.is_empty(),
+        "unverified cache graph must carry diagnostic graph_errors in PublicHybrid"
+    );
+    assert!(
+        unverified
+            .graph_errors
+            .iter()
+            .any(|e| e.contains("LEGACY_UNVERIFIED")),
+        "graph_errors must identify the graph as LEGACY_UNVERIFIED"
+    );
+    assert_eq!(
+        unverified.dnssec_status,
+        ri_core::DnssecStatus::NotApplicable,
+        "unverified cache cannot attest DNSSEC status"
+    );
 
-    cache_hit.event_id = "cached-hit-valid".into();
-    cache_hit.source_graph_digest = Some(source_digest);
-    fixture.store.put_trace_event(&cache_hit).unwrap();
-    let graph = fixture.state.build_graph(&request).await.unwrap();
+    // CacheHit referencing a source graph that does not exist in the
+    // current Registry generation must still be rejected.
+    let mut missing_source_hit = cache_hit.clone();
+    missing_source_hit.event_id = "cached-hit-missing-source".into();
+    missing_source_hit.trace_id = "cached-missing-trace".into();
+    missing_source_hit.correlation_id = trace_correlation("cached-missing-trace");
+    missing_source_hit.source_graph_digest =
+        Some("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into());
+    let mut missing_terminal = cached_final.clone();
+    missing_terminal.event_id = "cached-missing-final".into();
+    missing_terminal.trace_id = "cached-missing-trace".into();
+    missing_terminal.correlation_id = trace_correlation("cached-missing-trace");
+    put_complete_trace(&fixture.store, missing_terminal, vec![missing_source_hit]);
+    let missing_request = EvidenceGraphRequest {
+        correlation_id: trace_correlation("cached-missing-trace"),
+        trace_id: "cached-missing-wrapper-trace".into(),
+        ..request.clone()
+    };
+    let error = fixture
+        .state
+        .build_graph(&missing_request)
+        .await
+        .unwrap_err();
+    assert!(
+        error.to_string().contains("source graph"),
+        "missing source graph must produce a source-graph error, got: {error}"
+    );
+
+    // CacheHit with a source_graph_digest that exists in the Registry
+    // produces a fully-verified cache graph.
+    let mut valid_source_hit = cache_hit;
+    valid_source_hit.event_id = "cached-hit-valid".into();
+    valid_source_hit.trace_id = "cached-valid-trace".into();
+    valid_source_hit.correlation_id = trace_correlation("cached-valid-trace");
+    valid_source_hit.source_graph_digest = Some(source_digest);
+    let mut valid_terminal = cached_final;
+    valid_terminal.event_id = "cached-valid-final".into();
+    valid_terminal.trace_id = "cached-valid-trace".into();
+    valid_terminal.correlation_id = trace_correlation("cached-valid-trace");
+    put_complete_trace(&fixture.store, valid_terminal, vec![valid_source_hit]);
+    let valid_request = EvidenceGraphRequest {
+        correlation_id: trace_correlation("cached-valid-trace"),
+        trace_id: "cached-valid-wrapper-trace".into(),
+        ..request
+    };
+    let graph = fixture.state.build_graph(&valid_request).await.unwrap();
 
     assert!(graph.edges.is_empty());
     assert_eq!(graph.terminal_node_ids, ["operator/r1"]);
     assert!(graph.cache_provenance.is_some());
+}
+
+#[tokio::test]
+async fn controlled_strict_rejects_legacy_unverified_cache() {
+    // RC8: ControlledStrict mode MUST reject cache hits that lack a
+    // verifiable source evidence graph.  The pre-existing resolver cache
+    // sentinel (LEGACY_UNVERIFIED) is never acceptable in strict mode.
+    let fixture = fixture(VerificationMode::ControlledStrict);
+    let timestamp = now();
+    let mut cached_final = event(
+        "cs-final",
+        "cs-trace",
+        TraceEventKind::ClientResponse,
+        "operator/r1",
+        None,
+        QUERY_DIGEST,
+        Some(FINAL_RESPONSE),
+        timestamp,
+    );
+    cached_final.cache_object_digest = Some(FINAL_RESPONSE.into());
+    let mut cache_hit = event(
+        "cs-hit",
+        "cs-trace",
+        TraceEventKind::CacheHit,
+        "operator/r1",
+        Some(endpoint("192.0.2.53")),
+        QUERY_DIGEST,
+        Some(FINAL_RESPONSE),
+        timestamp,
+    );
+    cache_hit.cache_object_digest = Some(FINAL_RESPONSE.into());
+    put_complete_trace(&fixture.store, cached_final, vec![cache_hit]);
+    let request = EvidenceGraphRequest {
+        trace_id: "cs-wrapper-trace".into(),
+        correlation_id: trace_correlation("cs-trace"),
+        challenge: "cs-challenge-with-at-least-32-characters".into(),
+        query_digest: QUERY_DIGEST.into(),
+        response_digest: FINAL_RESPONSE.into(),
+        visited_server_ids: vec![],
+    };
+    let error = fixture.state.build_graph(&request).await.unwrap_err();
+    let msg = error.to_string();
+    assert!(
+        msg.contains("controlled-strict") || msg.contains("verified cache provenance"),
+        "ControlledStrict must reject unverified cache, got: {msg}"
+    );
 }
 
 #[tokio::test]
@@ -374,33 +489,31 @@ async fn recursive_agent_graph_merges_r1_r2_and_root() {
     let r2_directory = tempfile::tempdir().unwrap();
     let r2_store = EvidenceStore::open(r2_directory.path().join("r2.db")).unwrap();
     r2_store.put_identity(&r2, &registry(&r2)).unwrap();
+    r2_store.put_identity(&r1, &registry(&r1)).unwrap();
     r2_store.put_identity(&root, &registry(&root)).unwrap();
     r2_store.mark_registry_sync_success(now()).unwrap();
     let timestamp = now();
-    r2_store
-        .put_trace_event(&event(
-            "r2-final",
-            "r2-resolver-trace",
-            TraceEventKind::ResolverResponse,
-            "operator/r2",
-            Some(endpoint("192.0.2.54")),
-            AUTH_QUERY,
-            Some(AUTH_RESPONSE),
-            timestamp,
-        ))
-        .unwrap();
-    r2_store
-        .put_trace_event(&event(
-            "r2-root",
-            "r2-resolver-trace",
-            TraceEventKind::AuthorityQuery,
-            "operator/r2",
-            Some(endpoint("198.41.0.4")),
-            "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-            Some("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
-            timestamp,
-        ))
-        .unwrap();
+    let r2_final = event(
+        "r2-final",
+        "r2-resolver-trace",
+        TraceEventKind::ClientResponse,
+        "operator/r2",
+        None,
+        AUTH_QUERY,
+        Some(AUTH_RESPONSE),
+        timestamp,
+    );
+    let r2_root = event(
+        "r2-root",
+        "r2-resolver-trace",
+        TraceEventKind::AuthorityQuery,
+        "operator/r2",
+        Some(endpoint("198.41.0.4")),
+        "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        Some("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+        timestamp,
+    );
+    put_complete_trace(&r2_store, r2_final, vec![r2_root]);
     let r2_state = AgentState::new(
         AgentConfig {
             server_id: "operator/r2".into(),
@@ -413,7 +526,19 @@ async fn recursive_agent_graph_merges_r1_r2_and_root() {
             registry_max_staleness_seconds: 15,
             trace_ingest_token: "trace-token-for-r2-with-32-bytes".into(),
             wrapper_api_token: "wrapper-token-for-r2".into(),
-            peer_api_token: "shared-peer-token".into(),
+            peer_inbound_credentials: vec![PeerInboundCredential {
+                principal: PeerPrincipal {
+                    server_id: "operator/r1".into(),
+                    key_id: "r1-agent-key".into(),
+                },
+                token: "r1-to-r2-peer-token-with-at-least-32-bytes".into(),
+            }],
+            peer_outbound_credentials: Default::default(),
+            adjacent_peer_allowlist: [PeerPrincipal {
+                server_id: "operator/r1".into(),
+                key_id: "r1-agent-key".into(),
+            }]
+            .into(),
             max_concurrent_requests: 32,
             max_request_body_bytes: 1_048_576,
         },
@@ -430,18 +555,16 @@ async fn recursive_agent_graph_merges_r1_r2_and_root() {
     r1_store.put_identity(&r1, &registry(&r1)).unwrap();
     r1_store.put_identity(&r2, &registry(&r2)).unwrap();
     r1_store.mark_registry_sync_success(now()).unwrap();
-    r1_store
-        .put_trace_event(&event(
-            "r1-final",
-            "r1-resolver-trace",
-            TraceEventKind::ResolverResponse,
-            "operator/r1",
-            Some(endpoint("192.0.2.53")),
-            QUERY_DIGEST,
-            Some(FINAL_RESPONSE),
-            timestamp,
-        ))
-        .unwrap();
+    let r1_final = event(
+        "r1-final",
+        "r1-resolver-trace",
+        TraceEventKind::ClientResponse,
+        "operator/r1",
+        None,
+        QUERY_DIGEST,
+        Some(FINAL_RESPONSE),
+        timestamp,
+    );
     let mut r1_to_r2 = event(
         "r1-r2",
         "r1-resolver-trace",
@@ -453,7 +576,7 @@ async fn recursive_agent_graph_merges_r1_r2_and_root() {
         timestamp,
     );
     r1_to_r2.target_correlation_id = Some(trace_correlation("r2-resolver-trace"));
-    r1_store.put_trace_event(&r1_to_r2).unwrap();
+    put_complete_trace(&r1_store, r1_final, vec![r1_to_r2]);
     let r1_state = AgentState::new(
         AgentConfig {
             server_id: "operator/r1".into(),
@@ -466,7 +589,13 @@ async fn recursive_agent_graph_merges_r1_r2_and_root() {
             registry_max_staleness_seconds: 15,
             trace_ingest_token: "trace-token-for-r1-with-32-bytes".into(),
             wrapper_api_token: "wrapper-token-for-r1".into(),
-            peer_api_token: "shared-peer-token".into(),
+            peer_inbound_credentials: vec![],
+            peer_outbound_credentials: [(
+                "operator/r2".into(),
+                "r1-to-r2-peer-token-with-at-least-32-bytes".into(),
+            )]
+            .into(),
+            adjacent_peer_allowlist: Default::default(),
             max_concurrent_requests: 32,
             max_request_body_bytes: 1_048_576,
         },
@@ -682,14 +811,40 @@ async fn evidence_endpoints_enforce_caller_role_token() {
     assert_eq!(wrapper_on_peer_endpoint.status(), StatusCode::UNAUTHORIZED);
 
     let authorized_peer = app
-        .oneshot(json_request(
+        .clone()
+        .oneshot(peer_json_request(
             "/v2/downstream-evidence-graph",
             &request,
-            Some("Bearer peer-token"),
+            "Bearer peer-token-for-r2-to-r1-with-at-least-32-bytes",
+            "operator/r2",
+            "r2-agent-key",
         ))
         .await
         .unwrap();
     assert_eq!(authorized_peer.status(), StatusCode::SERVICE_UNAVAILABLE);
+
+    let mismatched_headers = app
+        .clone()
+        .oneshot(peer_json_request(
+            "/v2/downstream-evidence-graph",
+            &request,
+            "Bearer peer-token-for-r2-to-r1-with-at-least-32-bytes",
+            "operator/r3",
+            "r3-agent-key",
+        ))
+        .await
+        .unwrap();
+    assert_eq!(mismatched_headers.status(), StatusCode::FORBIDDEN);
+
+    let missing_headers = app
+        .oneshot(json_request(
+            "/v2/downstream-evidence-graph",
+            &request,
+            Some("Bearer peer-token-for-r2-to-r1-with-at-least-32-bytes"),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(missing_headers.status(), StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]
@@ -753,7 +908,21 @@ fn fixture(mode: VerificationMode) -> Fixture {
         None,
         &issuer_private,
     );
+    let r2_private = key(65);
+    let r2 = identity(
+        "operator/r2",
+        DnsServerRole::Forwarder,
+        endpoint("192.0.2.54"),
+        Some(AgentBindingV2 {
+            key_id: "r2-agent-key".into(),
+            algorithm: "ed25519".into(),
+            public_key: ed25519_public_key_b64(&r2_private).unwrap(),
+            service_url: Some("http://127.0.0.1:9".into()),
+        }),
+        &issuer_private,
+    );
     store.put_identity(&r1, &registry(&r1)).unwrap();
+    store.put_identity(&r2, &registry(&r2)).unwrap();
     store.put_identity(&root, &registry(&root)).unwrap();
     store.mark_registry_sync_success(now()).unwrap();
     let mut issuer_keys = IssuerKeyRegistry::default();
@@ -774,7 +943,19 @@ fn fixture(mode: VerificationMode) -> Fixture {
             registry_max_staleness_seconds: 15,
             trace_ingest_token: "trace-token".into(),
             wrapper_api_token: "wrapper-token".into(),
-            peer_api_token: "peer-token".into(),
+            peer_inbound_credentials: vec![PeerInboundCredential {
+                principal: PeerPrincipal {
+                    server_id: "operator/r2".into(),
+                    key_id: "r2-agent-key".into(),
+                },
+                token: "peer-token-for-r2-to-r1-with-at-least-32-bytes".into(),
+            }],
+            peer_outbound_credentials: Default::default(),
+            adjacent_peer_allowlist: [PeerPrincipal {
+                server_id: "operator/r2".into(),
+                key_id: "r2-agent-key".into(),
+            }]
+            .into(),
             max_concurrent_requests: 32,
             max_request_body_bytes: 1_048_576,
         },
@@ -842,6 +1023,61 @@ fn registry(identity: &DnsServerIdentityV2) -> RegistryReferenceV2 {
     }
 }
 
+fn put_complete_trace(
+    store: &EvidenceStore,
+    mut terminal: TraceEventV2,
+    mut middle: Vec<TraceEventV2>,
+) {
+    let trace_id = terminal.trace_id.clone();
+    let correlation_id = terminal.correlation_id.clone();
+    let observer_server_id = terminal.observer_server_id.clone();
+    let query_digest = terminal.query_digest.clone();
+    let observed_at = terminal.observed_at;
+    let client_event_id = format!("{trace_id}-client-query");
+    let client = TraceEventV2 {
+        schema_version: TRACE_EVENT_V2.into(),
+        event_id: client_event_id.clone(),
+        trace_id: trace_id.clone(),
+        sequence: 1,
+        correlation_id: correlation_id.clone(),
+        parent_event_id: None,
+        kind: TraceEventKind::ClientQuery,
+        observer_server_id: observer_server_id.clone(),
+        target_server_id: None,
+        target_endpoint: None,
+        target_correlation_id: None,
+        attempt: None,
+        query_digest,
+        response_digest: None,
+        cache_object_digest: None,
+        observed_at,
+        dnssec_status: terminal.dnssec_status,
+        ttl_expires_at: None,
+        source_graph_digest: None,
+        failure_reason: None,
+    };
+    let mut parent_event_id = client_event_id;
+    for (index, event) in middle.iter_mut().enumerate() {
+        event.trace_id.clone_from(&trace_id);
+        event.correlation_id.clone_from(&correlation_id);
+        event.observer_server_id.clone_from(&observer_server_id);
+        event.sequence = u64::try_from(index).unwrap() + 2;
+        event.parent_event_id = Some(parent_event_id);
+        parent_event_id = event.event_id.clone();
+    }
+    terminal.kind = TraceEventKind::ClientResponse;
+    terminal.sequence = u64::try_from(middle.len()).unwrap() + 2;
+    terminal.parent_event_id = Some(parent_event_id);
+    terminal.target_endpoint = None;
+    terminal.target_correlation_id = None;
+    terminal.attempt = None;
+    let mut events = Vec::with_capacity(middle.len() + 2);
+    events.push(client);
+    events.extend(middle);
+    events.push(terminal);
+    store.put_trace_events(&events).unwrap();
+}
+
 #[allow(clippy::too_many_arguments)]
 fn event(
     event_id: &str,
@@ -891,6 +1127,22 @@ fn endpoint(ip: &str) -> DnsEndpoint {
         server_name: None,
         alpn: vec![],
     }
+}
+
+fn peer_json_request<T: serde::Serialize>(
+    path: &str,
+    value: &T,
+    authorization: &str,
+    server_id: &str,
+    key_id: &str,
+) -> Request<Body> {
+    Request::post(path)
+        .header(header::CONTENT_TYPE, "application/json")
+        .header(header::AUTHORIZATION, authorization)
+        .header("x-ri-peer-server-id", server_id)
+        .header("x-ri-peer-key-id", key_id)
+        .body(Body::from(serde_json::to_vec(value).unwrap()))
+        .unwrap()
 }
 
 fn json_request<T: serde::Serialize>(
