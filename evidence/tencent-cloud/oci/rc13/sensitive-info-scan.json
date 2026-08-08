@@ -1,0 +1,27 @@
+{
+  "schema_version": "oci-sensitive-info-scan-v1",
+  "archive": "rust-data-plane-oci-rc13.tar",
+  "archive_sha256": "760d7860c4747ddb3dbe7af8703dfff8013a1074554c5a5e0b435641206b5785",
+  "scanned_at_utc": "2026-08-08T09:14:49Z",
+  "method": "Verify the six files in the appended RC13 layer against the digest record; scan all six release binaries and every OCI blob for PEM private-key blocks and Tencent SecretId/SecretKey assignments.",
+  "result": "clean",
+  "rc13_binaries_layer": {
+    "digest": "sha256:6e12bcf9c53ac598157f8a1be6987d91411e50680d6ab4e8b33774406384d48b",
+    "members": [
+      "usr/local/bin/ri-agent",
+      "usr/local/bin/ri-authority-proxy",
+      "usr/local/bin/ri-knot-trace-producer",
+      "usr/local/bin/ri-registry-sync",
+      "usr/local/bin/ri-trace-adapter",
+      "usr/local/bin/ri-wrapper"
+    ],
+    "embedded_binary_hashes_match_digest_record": true,
+    "embedded_private_key_blocks": "none",
+    "embedded_tencent_credentials": "none"
+  },
+  "false_positives_noted": {
+    "generic_PRIVATE_KEY_strings": "Rust TLS and crypto dependencies contain error strings such as failed to parse private key. These are code constants, not PEM blocks or key material.",
+    "base_layers": "The RC12 base layers were retained byte-for-byte. The scan did not find PEM private-key blocks or Tencent credential assignments in any retained OCI blob."
+  },
+  "conclusion": "No private keys, seeds, tokens, Tencent cloud credentials, or PEM private-key blocks were found in the RC13 additions or the assembled OCI archive."
+}

@@ -8,6 +8,7 @@ use ri_core::{
     resolver_id_key, sha256_hex, verify_ed25519,
 };
 use serde::{Deserialize, Serialize};
+use tokio::sync::Mutex;
 use tonic::codec::ProstCodec;
 use tonic::codegen::http::uri::PathAndQuery;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint, Identity};
@@ -143,6 +144,83 @@ pub struct NornRegistryAdapter {
     registry_start_height: u64,
     max_scan_blocks: u64,
     clients: Vec<NornRpcClient>,
+    verified_publication: Mutex<Option<VerifiedRegistryPublication>>,
+}
+
+#[derive(Clone)]
+struct VerifiedRegistryPublication {
+    value: String,
+    publication: FinalizedCheckpoint,
+    verified_through: FinalizedCheckpoint,
+}
+
+struct PublicationScan {
+    publication: FinalizedCheckpoint,
+}
+
+#[derive(Clone)]
+struct InclusionScanState {
+    registry_address: String,
+    registry_key: String,
+    expected_value: String,
+    lower_bound: u64,
+    upper_bound: u64,
+    next_height: Option<u64>,
+}
+
+impl InclusionScanState {
+    fn new(
+        registry_address: &str,
+        registry_key: &str,
+        expected_value: &str,
+        lower_bound: u64,
+        upper_bound: u64,
+    ) -> Self {
+        Self {
+            registry_address: registry_address.to_owned(),
+            registry_key: registry_key.to_owned(),
+            expected_value: expected_value.to_owned(),
+            lower_bound,
+            upper_bound,
+            next_height: (lower_bound <= upper_bound).then_some(upper_bound),
+        }
+    }
+
+    fn next_height(&self) -> Option<u64> {
+        self.next_height
+    }
+
+    fn inspect(&mut self, block: &Block) -> AdapterResult<Option<PublicationScan>> {
+        let height = self.next_height.ok_or("Norn inclusion scan is complete")?;
+        let checkpoint = block_checkpoint(block)?;
+        if checkpoint.number != height {
+            return Err(format!(
+                "Norn full block height mismatch: requested {height}, got {}",
+                checkpoint.number
+            )
+            .into());
+        }
+        if let Some(command) = registry_command(
+            &block.transactions,
+            &self.registry_address,
+            &self.registry_key,
+        ) {
+            validate_registry_command(&command, &self.expected_value)?;
+            self.next_height = None;
+            return Ok(Some(PublicationScan {
+                publication: checkpoint,
+            }));
+        }
+        self.next_height = (height > self.lower_bound).then_some(height - 1);
+        Ok(None)
+    }
+
+    fn missing_publication_error(&self) -> String {
+        format!(
+            "Norn Registry publication was not found in finalized blocks {}..={}",
+            self.lower_bound, self.upper_bound
+        )
+    }
 }
 
 impl NornRegistryAdapter {
@@ -237,6 +315,7 @@ impl NornRegistryAdapter {
             registry_start_height: config.registry_start_height,
             max_scan_blocks: config.max_scan_blocks,
             clients,
+            verified_publication: Mutex::new(None),
         })
     }
 
@@ -277,33 +356,119 @@ impl NornRegistryAdapter {
     async fn verify_finalized_inclusion(
         &self,
         expected_value: &str,
-        finalized_height: u64,
-    ) -> AdapterResult<()> {
-        let lower_bound = finalized_height
+        checkpoint: &FinalizedCheckpoint,
+    ) -> AdapterResult<VerifiedRegistryPublication> {
+        let verified_publication = self.verified_publication.lock().await;
+        match verified_publication.as_ref() {
+            Some(cached) if cached.value == expected_value => {
+                self.verify_incremental_inclusion(expected_value, checkpoint, cached)
+                    .await
+            }
+            _ => self.verify_full_inclusion(expected_value, checkpoint).await,
+        }
+    }
+
+    async fn verify_incremental_inclusion(
+        &self,
+        expected_value: &str,
+        checkpoint: &FinalizedCheckpoint,
+        cached: &VerifiedRegistryPublication,
+    ) -> AdapterResult<VerifiedRegistryPublication> {
+        if checkpoint.number < cached.verified_through.number {
+            return self.verify_full_inclusion(expected_value, checkpoint).await;
+        }
+        if self.agreed_block(cached.publication.number).await?.hash != cached.publication.hash
+            || (checkpoint.number != cached.verified_through.number
+                && self
+                    .agreed_block(cached.verified_through.number)
+                    .await?
+                    .hash
+                    != cached.verified_through.hash)
+        {
+            return self.verify_full_inclusion(expected_value, checkpoint).await;
+        }
+        let first_new = cached
+            .verified_through
+            .number
+            .checked_add(1)
+            .ok_or("Norn finalized height overflow")?;
+        if first_new > checkpoint.number {
+            return Ok(VerifiedRegistryPublication {
+                value: expected_value.to_owned(),
+                publication: cached.publication.clone(),
+                verified_through: checkpoint.clone(),
+            });
+        }
+        let gap = checkpoint.number - cached.verified_through.number;
+        if gap > self.max_scan_blocks {
+            return self.verify_full_inclusion(expected_value, checkpoint).await;
+        }
+        match self
+            .scan_latest_publication(expected_value, first_new, checkpoint.number)
+            .await?
+        {
+            Some(scan) => Ok(VerifiedRegistryPublication {
+                value: expected_value.to_owned(),
+                publication: scan.publication,
+                verified_through: checkpoint.clone(),
+            }),
+            None => Ok(VerifiedRegistryPublication {
+                value: expected_value.to_owned(),
+                publication: cached.publication.clone(),
+                verified_through: checkpoint.clone(),
+            }),
+        }
+    }
+
+    async fn verify_full_inclusion(
+        &self,
+        expected_value: &str,
+        checkpoint: &FinalizedCheckpoint,
+    ) -> AdapterResult<VerifiedRegistryPublication> {
+        let lower_bound = checkpoint
+            .number
             .saturating_sub(self.max_scan_blocks.saturating_sub(1))
             .max(self.registry_start_height);
-        for height in (lower_bound..=finalized_height).rev() {
+        let scan = self
+            .scan_latest_publication(expected_value, lower_bound, checkpoint.number)
+            .await?
+            .ok_or_else(|| {
+                InclusionScanState::new(
+                    &self.registry_address,
+                    &self.registry_key,
+                    expected_value,
+                    lower_bound,
+                    checkpoint.number,
+                )
+                .missing_publication_error()
+            })?;
+        Ok(VerifiedRegistryPublication {
+            value: expected_value.to_owned(),
+            publication: scan.publication,
+            verified_through: checkpoint.clone(),
+        })
+    }
+
+    async fn scan_latest_publication(
+        &self,
+        expected_value: &str,
+        lower_bound: u64,
+        upper_bound: u64,
+    ) -> AdapterResult<Option<PublicationScan>> {
+        let mut scan = InclusionScanState::new(
+            &self.registry_address,
+            &self.registry_key,
+            expected_value,
+            lower_bound,
+            upper_bound,
+        );
+        while let Some(height) = scan.next_height() {
             let block = self.agreed_full_block(height).await?;
-            if let Some(command) = registry_command(
-                &block.transactions,
-                &self.registry_address,
-                &self.registry_key,
-            ) {
-                if command.operation != "set" {
-                    return Err("latest finalized Norn Registry command is not set".into());
-                }
-                if command.value != expected_value {
-                    return Err(
-                        "current Norn Registry value is not the latest finalized value".into(),
-                    );
-                }
-                return Ok(());
+            if let Some(publication) = scan.inspect(&block)? {
+                return Ok(Some(publication));
             }
         }
-        Err(format!(
-            "Norn Registry publication was not found in finalized blocks {lower_bound}..={finalized_height}"
-        )
-        .into())
+        Ok(None)
     }
 
     async fn agreed_full_block(&self, number: u64) -> AdapterResult<Block> {
@@ -345,6 +510,31 @@ impl NornRegistryAdapter {
         }
         snapshot_records(snapshot)
     }
+}
+
+fn validate_registry_command(command: &DataCommand, expected_value: &str) -> AdapterResult<()> {
+    if command.operation != "set" {
+        return Err("latest finalized Norn Registry command is not set".into());
+    }
+    if command.value != expected_value {
+        return Err("current Norn Registry value is not the latest finalized value".into());
+    }
+    Ok(())
+}
+
+fn block_checkpoint(block: &Block) -> AdapterResult<FinalizedCheckpoint> {
+    let header = block.header.as_ref().ok_or("Norn block header missing")?;
+    Ok(FinalizedCheckpoint {
+        number: header.height.ok_or("Norn block height missing")?,
+        hash: normalize_hash(
+            header
+                .block_hash
+                .as_deref()
+                .ok_or("Norn block hash missing")?,
+            32,
+        )?,
+        finality_type: RegistryFinalityTypeV2::NornDualNodeConfirmations,
+    })
 }
 
 fn require_agreement<T: PartialEq>(values: Vec<T>, disagreement: &str) -> AdapterResult<T> {
@@ -398,8 +588,7 @@ impl RegistryChainAdapter for NornRegistryAdapter {
         if value.len() > self.clients[0].max_response_bytes {
             return Err("Norn Registry snapshot exceeds configured response limit".into());
         }
-        self.verify_finalized_inclusion(&value, checkpoint.number)
-            .await?;
+        let verified_publication = self.verify_finalized_inclusion(&value, &checkpoint).await?;
         let snapshot: NornRegistrySnapshotV1 = serde_json::from_str(&value)?;
         let records = self
             .validate_snapshot(&snapshot, issuer_keys, &checkpoint, now)
@@ -408,12 +597,14 @@ impl RegistryChainAdapter for NornRegistryAdapter {
         if confirmed_hash != checkpoint.hash {
             return Err("Norn checkpoint hash changed during reconciliation".into());
         }
-        Ok(ChainSnapshot {
+        let result = ChainSnapshot {
             checkpoint,
             state_root: normalize_hash(&snapshot.state_root, 32)?,
             generation: snapshot.snapshot_version,
             records,
-        })
+        };
+        *self.verified_publication.lock().await = Some(verified_publication);
+        Ok(result)
     }
 
     async fn block_hash(&self, number: u64) -> AdapterResult<String> {
@@ -856,13 +1047,13 @@ mod tests {
     use ri_core::{IssuerKeyRegistry, RegistryFinalityTypeV2, resolver_id_key, sign_ed25519};
 
     use super::{
-        MAX_TEXT_FIELD_BYTES, NORN_REGISTRY_SNAPSHOT_V1, NornAdapterConfig, NornRegistryAdapter,
-        NornRegistrySnapshotEntryV1, NornRegistrySnapshotV1, SnapshotPins,
-        confirmation_derived_height, decode_data_command, norn_registry_schema_hash,
-        norn_state_root, registry_command, require_agreement, snapshot_records,
-        validate_snapshot_shape,
+        InclusionScanState, MAX_TEXT_FIELD_BYTES, NORN_REGISTRY_SNAPSHOT_V1, NornAdapterConfig,
+        NornRegistryAdapter, NornRegistrySnapshotEntryV1, NornRegistrySnapshotV1, SnapshotPins,
+        VerifiedRegistryPublication, block_checkpoint, confirmation_derived_height,
+        decode_data_command, norn_registry_schema_hash, norn_state_root, registry_command,
+        require_agreement, snapshot_records, validate_registry_command, validate_snapshot_shape,
     };
-    use crate::{FinalizedCheckpoint, norn::Transaction};
+    use crate::{FinalizedCheckpoint, norn::Block, norn::BlockHeader, norn::Transaction};
 
     const GENESIS: &str = "0x1111111111111111111111111111111111111111111111111111111111111111";
     const ADDRESS: &str = "0x2222222222222222222222222222222222222222";
@@ -1184,6 +1375,107 @@ mod tests {
         let command = registry_command(&transactions, ADDRESS, "registry-key").unwrap();
         assert_eq!(command.operation, "set");
         assert_eq!(command.value, r#"{"version":1}"#);
+    }
+
+    fn block(height: u64, hash_byte: u8, transactions: Vec<Transaction>) -> Block {
+        Block {
+            header: Some(BlockHeader {
+                block_hash: Some(format!("0x{}", hex::encode([hash_byte; 32]))),
+                height: Some(height),
+            }),
+            transactions,
+        }
+    }
+
+    fn data_command(operation: &str, key: &str, value: &str) -> String {
+        let fields = [operation.as_bytes(), key.as_bytes(), value.as_bytes()];
+        let mut encoded = vec![0_u8; 48];
+        encoded[..4].copy_from_slice(&40_u32.to_le_bytes());
+        for (header, field) in [4_usize, 16, 28].into_iter().zip(fields) {
+            let offset = u32::try_from(encoded.len()).unwrap();
+            encoded[header..header + 4].copy_from_slice(&offset.to_le_bytes());
+            encoded[header + 4..header + 8]
+                .copy_from_slice(&u32::try_from(field.len()).unwrap().to_le_bytes());
+            encoded[header + 8..header + 12].copy_from_slice(&1_u32.to_le_bytes());
+            encoded.extend_from_slice(field);
+        }
+        format!("0x{}", hex::encode(encoded))
+    }
+
+    fn publication(operation: &str, value: &str) -> Transaction {
+        Transaction {
+            hash: None,
+            receiver: Some(ADDRESS.into()),
+            data: Some(data_command(operation, "registry-key", value)),
+        }
+    }
+
+    #[test]
+    fn inclusion_scan_is_newest_first_and_fail_closed() {
+        let mut scan = InclusionScanState::new(ADDRESS, "registry-key", "v2", 100, 103);
+        assert_eq!(scan.next_height(), Some(103));
+        assert!(scan.inspect(&block(103, 3, Vec::new())).unwrap().is_none());
+        assert_eq!(scan.next_height(), Some(102));
+        assert!(
+            scan.inspect(&block(102, 2, vec![publication("set", "v2")]))
+                .unwrap()
+                .is_some()
+        );
+        assert_eq!(scan.next_height(), None);
+
+        let mut wrong_value = InclusionScanState::new(ADDRESS, "registry-key", "v2", 100, 103);
+        assert!(
+            wrong_value
+                .inspect(&block(103, 3, vec![publication("set", "v1")]))
+                .is_err()
+        );
+        let mut non_set = InclusionScanState::new(ADDRESS, "registry-key", "v2", 100, 103);
+        assert!(
+            non_set
+                .inspect(&block(103, 3, vec![publication("delete", "v2")]))
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn inclusion_scan_rejects_wrong_height_and_reports_range() {
+        let mut scan = InclusionScanState::new(ADDRESS, "registry-key", "v2", 100, 101);
+        assert!(scan.inspect(&block(100, 1, Vec::new())).is_err());
+        assert_eq!(
+            scan.missing_publication_error(),
+            "Norn Registry publication was not found in finalized blocks 100..=101"
+        );
+    }
+
+    #[test]
+    fn publication_checkpoint_and_command_validation_are_strict() {
+        let checkpoint = block_checkpoint(&block(105, 5, Vec::new())).unwrap();
+        assert_eq!(checkpoint.number, 105);
+        assert_eq!(checkpoint.hash, format!("0x{}", hex::encode([5_u8; 32])));
+        let valid = super::decode_data_command(&data_command("set", "registry-key", "v2")).unwrap();
+        validate_registry_command(&valid, "v2").unwrap();
+        assert!(validate_registry_command(&valid, "v1").is_err());
+    }
+
+    #[test]
+    fn verified_publication_state_is_process_local_and_exact_value_bound() {
+        let publication = FinalizedCheckpoint {
+            number: 100,
+            hash: format!("0x{}", hex::encode([1_u8; 32])),
+            finality_type: RegistryFinalityTypeV2::NornDualNodeConfirmations,
+        };
+        let verified = VerifiedRegistryPublication {
+            value: "v2".into(),
+            publication: publication.clone(),
+            verified_through: FinalizedCheckpoint {
+                number: 110,
+                hash: format!("0x{}", hex::encode([2_u8; 32])),
+                finality_type: RegistryFinalityTypeV2::NornDualNodeConfirmations,
+            },
+        };
+        assert_eq!(verified.value, "v2");
+        assert_eq!(verified.publication, publication);
+        assert_eq!(verified.verified_through.number, 110);
     }
 
     #[tokio::test]

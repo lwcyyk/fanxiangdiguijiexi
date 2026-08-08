@@ -1,0 +1,88 @@
+{
+  "schema_version": "tencent-cloud-oci-rc13-verification-v1",
+  "release": "0.3.0-norn-knot-rc13",
+  "platform": {
+    "os": "linux",
+    "architecture": "amd64"
+  },
+  "verified_at_utc": "2026-08-08T09:14:49Z",
+  "source": {
+    "git_commit": "b61be65dccd9d1b905116fb73e12f6ee529e18f3",
+    "working_tree_clean": false,
+    "release_source_note": "The release was built from the recorded commit plus the uncommitted RC13 Cargo.toml/Cargo.lock version update and the cache-provenance regression in ri-agent tests. rust/target and the two untracked musl .deb files were excluded from the staged build source.",
+    "cargo_toml_sha256": "1c8ad8211ad84fb615affffd6d22de63a7d91a664feb75afba67e421fe45d3c6",
+    "cargo_lock_sha256": "ec515ac8632df8a96eacf5e4b2e3ec516add0e01ace54b766a5e65997f1f9958",
+    "tracked_release_diff_sha256": "a7b2e40e9ea468da916bb1612b721689280ad1bbee8400b9264261a913356c35",
+    "canonical_rust_source_manifest_sha256": "e9f8d216b7feff7ab7b9508bd923db90251d10bea49c3369f9e8565066622ef4",
+    "canonical_rust_source_manifest_entries": 74
+  },
+  "builder": {
+    "image": "rust:1.97.0-bookworm",
+    "pinned_multiarch_digest": "sha256:8fa55b2f3ddf97471ab6a767bfa3f37e6bad0986ba823e75fea57e2a2a5c3073",
+    "amd64_manifest_digest": "sha256:b5a086f64ffecaa4e283063184770107915756739598173e1f5712d6b34b84d0",
+    "config_digest": "sha256:7ea53b11a01d2d52b4af8fa073cd76ecbaf7dc385b88cc9d0ce8205a7c941ff1",
+    "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+    "cargo": "cargo 1.97.0 (c980f4866 2026-06-30)",
+    "glibc": "Debian GLIBC 2.36-9+deb12u14",
+    "network_during_build": "disabled",
+    "cargo_mode": "--locked --offline --release --workspace",
+    "lock_registry_packages": 262,
+    "lock_registry_missing_archives": 0,
+    "lock_registry_checksum_mismatches": 0,
+    "lock_registry_input_manifest_sha256": "c764089a06706970003acb487ad5f80393151d1bd0611dbd325d217bb43d430a"
+  },
+  "reproducible_build": {
+    "build_a_location": "ri-r3 cloud host",
+    "build_b_location": "server50 alternate isolated builder rootfs",
+    "independent_clean_target_directories": true,
+    "binary_sha256_identical": true,
+    "build_ids_identical": true,
+    "max_required_glibc": "GLIBC_2.34",
+    "binaries_sha256": {
+      "ri-agent": "9b881ea2b4d0817457afb1aec9b6d1a0c6ef372f2a024e184c6a372e3dc28fd2",
+      "ri-wrapper": "12e74915a2231f39b3a906f33221dbb39125626ddbc58bfdd89ecb1f4b22c8d3",
+      "ri-trace-adapter": "f889a2c9d3c4ab728b398d85c7a2ea94e65d0d8baece879195c64a52f05d685b",
+      "ri-registry-sync": "1ce943fda2974ef8e2b878cf03cba633deff411cf2126d5994bd493e814cc685",
+      "ri-knot-trace-producer": "f7b3af88f9c817cf81a9fd363362495ad903f17486261d3af30826439efa9b4c",
+      "ri-authority-proxy": "656315e01ad020daa7d302b0cc4ea77df01e8e448523a043fb794508e06d5eaf"
+    },
+    "build_ids": {
+      "ri-agent": "01205b93a1c8785adedf34d5dbbce60244a0d56a",
+      "ri-wrapper": "214e65524e6af79e65c6aeb75acca1927957edf4",
+      "ri-trace-adapter": "3dbec7e3d686eb7b910c5759c6dc3d33617d222a",
+      "ri-registry-sync": "85e5d77e99189140c74db6e665c6560ce683bf9f",
+      "ri-knot-trace-producer": "bf49852d9382d1b166e3a4de4a422a9dacc4167d",
+      "ri-authority-proxy": "6cf71939a86196696bc74ad2f9c435c225ca00b6"
+    }
+  },
+  "oci_reproducibility": {
+    "assembly_runs": 2,
+    "created": "2026-08-08T00:00:00Z",
+    "archive_byte_identical": true,
+    "digest_record_identical": true,
+    "archive_sha256": "760d7860c4747ddb3dbe7af8703dfff8013a1074554c5a5e0b435641206b5785",
+    "manifest_digest": "sha256:e268b76c159f002c4198e3bf3743e2cea41a3a22297190488b249dfdf1ae5fed",
+    "config_digest": "sha256:992e3374ea3e3e5d95e2836bcbe307c27f697b388eb7fbe38b56023ad29a9691",
+    "binary_layer_digest": "sha256:6e12bcf9c53ac598157f8a1be6987d91411e50680d6ab4e8b33774406384d48b",
+    "binary_layer_diff_id": "sha256:cd212d95b017e286ce9e55239be8ecdbcd3e68c50429f2732cfea09c0fc3485b",
+    "embedded_binary_hashes_match_record": true,
+    "derived_from_archive": "rust-data-plane-oci-rc12.tar",
+    "derived_from_archive_sha256": "222e5c921f8ff1ab271c16aca024c646060790faba1369e0db4dc0e339664a9b"
+  },
+  "cloud_validation": {
+    "status": "blocked",
+    "reason": "server50 public NAT egress changed to 211.83.106.86 while the seven Tencent hosts retain SSH allowlisting for the historical controller address 218.194.32.34 and the VPC subnet. TCP 22 currently times out on all seven public endpoints.",
+    "required_recovery": "Add exact source 211.83.106.86/32 TCP 22 to the Tencent security group and host UFW for Management, then use Management as a private ProxyJump where possible. Do not open 0.0.0.0/0.",
+    "docker_load": "not_run",
+    "container_smoke": "not_run",
+    "deployment": "not_run"
+  },
+  "release_flags": {
+    "cache_hit_path_passed": false,
+    "trace_binding_passed": false,
+    "trace_binding_known_p0": true,
+    "release_ready": false,
+    "production_capacity_validated": false,
+    "production_deployed": false
+  }
+}

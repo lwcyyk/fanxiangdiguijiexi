@@ -398,6 +398,27 @@ async fn cache_hit_requires_source_graph_in_current_registry_generation() {
 }
 
 #[tokio::test]
+async fn controlled_strict_accepts_verified_cache_source_across_query_digests() {
+    let (fixture, source_graph) = controlled_strict_cache_source_fixture().await;
+    let source_digest = object_hash(&source_graph).unwrap();
+    let request = put_cache_hit_trace(&fixture.store, &source_digest, "strict-cross-query");
+
+    assert_ne!(source_graph.query_digest, request.query_digest);
+    let graph = fixture.state.build_graph(&request).await.unwrap();
+    let provenance = graph
+        .cache_provenance
+        .as_ref()
+        .expect("verified cache graph must carry provenance");
+
+    assert_eq!(graph.mode, VerificationMode::ControlledStrict);
+    assert!(graph.final_result);
+    assert!(graph.graph_errors.is_empty());
+    assert_eq!(provenance.source_graph_digest, source_digest);
+    assert!(provenance.source_dnssec_required);
+    assert_eq!(graph.dnssec_status, DnssecStatus::Secure);
+}
+
+#[tokio::test]
 async fn cache_hit_rejects_tampered_source_signature_with_unchanged_object_hash() {
     let (fixture, mut source_graph) = cache_source_fixture().await;
     let source_digest = object_hash(&source_graph).unwrap();
@@ -940,6 +961,168 @@ async fn readiness_fails_when_registry_sync_is_stale() {
 struct Fixture {
     state: AgentState,
     store: EvidenceStore,
+}
+
+async fn controlled_strict_cache_source_fixture() -> (Fixture, QueryEvidenceGraphV2) {
+    let issuer_private = key(1);
+    let r1_private = key(33);
+    let root_private = key(65);
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let service_url = format!("http://{}", listener.local_addr().unwrap());
+    let r1 = identity(
+        "operator/r1",
+        DnsServerRole::Recursive,
+        endpoint("192.0.2.53"),
+        Some(AgentBindingV2 {
+            key_id: "r1-agent-key".into(),
+            algorithm: "ed25519".into(),
+            public_key: ed25519_public_key_b64(&r1_private).unwrap(),
+            service_url: Some("http://127.0.0.1:9".into()),
+        }),
+        &issuer_private,
+    );
+    let root = identity(
+        "root/a",
+        DnsServerRole::RootAuthority,
+        endpoint("198.41.0.4"),
+        Some(AgentBindingV2 {
+            key_id: "root-agent-key".into(),
+            algorithm: "ed25519".into(),
+            public_key: ed25519_public_key_b64(&root_private).unwrap(),
+            service_url: Some(service_url),
+        }),
+        &issuer_private,
+    );
+    let mut issuer_keys = IssuerKeyRegistry::default();
+    issuer_keys.insert(
+        "test-issuer",
+        "issuer-key",
+        ed25519_public_key_b64(&issuer_private).unwrap(),
+    );
+
+    let root_directory = tempfile::tempdir().unwrap();
+    let root_store = EvidenceStore::open(root_directory.path().join("root.db")).unwrap();
+    root_store.put_identity(&root, &registry(&root)).unwrap();
+    root_store.put_identity(&r1, &registry(&r1)).unwrap();
+    root_store.mark_registry_sync_success(now()).unwrap();
+    root_store
+        .put_trace_event(&event(
+            "strict-source-authority-response",
+            "strict-source-authority-trace",
+            TraceEventKind::AuthorityResponse,
+            "root/a",
+            Some(endpoint("198.41.0.4")),
+            AUTH_QUERY,
+            Some(AUTH_RESPONSE),
+            now(),
+        ))
+        .unwrap();
+    let root_state = AgentState::new(
+        AgentConfig {
+            server_id: "root/a".into(),
+            private_key_b64: root_private,
+            key_id: "root-agent-key".into(),
+            mode: VerificationMode::ControlledStrict,
+            max_age_seconds: 30,
+            trace_wait_millis: 10,
+            max_cache_ttl_seconds: 3_600,
+            registry_max_staleness_seconds: 15,
+            trace_ingest_token: "trace-token-for-root-with-32-bytes".into(),
+            wrapper_api_token: "wrapper-token-for-root".into(),
+            peer_inbound_credentials: vec![PeerInboundCredential {
+                principal: PeerPrincipal {
+                    server_id: "operator/r1".into(),
+                    key_id: "r1-agent-key".into(),
+                },
+                token: "r1-to-root-peer-token-with-at-least-32-bytes".into(),
+            }],
+            peer_outbound_credentials: Default::default(),
+            adjacent_peer_allowlist: [PeerPrincipal {
+                server_id: "operator/r1".into(),
+                key_id: "r1-agent-key".into(),
+            }]
+            .into(),
+            max_concurrent_requests: 32,
+            max_request_body_bytes: 1_048_576,
+        },
+        root_store,
+        issuer_keys.clone(),
+        reqwest::Client::builder().no_proxy().build().unwrap(),
+    );
+    let server = tokio::spawn(async move {
+        axum::serve(listener, router(root_state)).await.unwrap();
+    });
+
+    let directory = tempfile::tempdir().unwrap().keep();
+    let store = EvidenceStore::open(directory.join("agent.db")).unwrap();
+    store.put_identity(&r1, &registry(&r1)).unwrap();
+    store.put_identity(&root, &registry(&root)).unwrap();
+    store.mark_registry_sync_success(now()).unwrap();
+    let state = AgentState::new(
+        AgentConfig {
+            server_id: "operator/r1".into(),
+            private_key_b64: r1_private,
+            key_id: "r1-agent-key".into(),
+            mode: VerificationMode::ControlledStrict,
+            max_age_seconds: 30,
+            trace_wait_millis: 10,
+            max_cache_ttl_seconds: 3_600,
+            registry_max_staleness_seconds: 15,
+            trace_ingest_token: "trace-token-for-r1-with-32-bytes".into(),
+            wrapper_api_token: "wrapper-token-for-r1".into(),
+            peer_inbound_credentials: vec![],
+            peer_outbound_credentials: [(
+                "root/a".into(),
+                "r1-to-root-peer-token-with-at-least-32-bytes".into(),
+            )]
+            .into(),
+            adjacent_peer_allowlist: Default::default(),
+            max_concurrent_requests: 32,
+            max_request_body_bytes: 1_048_576,
+        },
+        store.clone(),
+        issuer_keys,
+        reqwest::Client::builder().no_proxy().build().unwrap(),
+    );
+    let fixture = Fixture { state, store };
+    let timestamp = now() - 2;
+    let mut source_final = event(
+        "strict-source-final",
+        "strict-source-trace",
+        TraceEventKind::ClientResponse,
+        "operator/r1",
+        None,
+        QUERY_DIGEST,
+        Some(FINAL_RESPONSE),
+        timestamp,
+    );
+    source_final.cache_object_digest = Some(FINAL_RESPONSE.into());
+    let mut source_root = event(
+        "strict-source-root",
+        "strict-source-trace",
+        TraceEventKind::AuthorityQuery,
+        "operator/r1",
+        Some(endpoint("198.41.0.4")),
+        AUTH_QUERY,
+        Some(AUTH_RESPONSE),
+        timestamp,
+    );
+    source_root.target_correlation_id = Some(trace_correlation("strict-source-authority-trace"));
+    put_complete_trace(&fixture.store, source_final, vec![source_root]);
+    let source_graph = fixture
+        .state
+        .build_graph(&EvidenceGraphRequest {
+            trace_id: "strict-source-wrapper".into(),
+            correlation_id: trace_correlation("strict-source-trace"),
+            challenge: CHALLENGE.into(),
+            query_digest: QUERY_DIGEST.into(),
+            response_digest: FINAL_RESPONSE.into(),
+            visited_server_ids: vec![],
+        })
+        .await
+        .unwrap();
+    server.abort();
+    (fixture, source_graph)
 }
 
 async fn cache_source_fixture() -> (Fixture, QueryEvidenceGraphV2) {
