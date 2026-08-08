@@ -33,15 +33,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let wrapper_api_token = read_secret(&settings.wrapper_api_token_file)?;
     let peer_credentials: PeerCredentialsFile =
         serde_json::from_str(&std::fs::read_to_string(&settings.peer_credentials_file)?)?;
-    let (peer_inbound_credentials, peer_outbound_credentials, adjacent_peer_allowlist) =
+    let validated_peer_credentials =
         validate_peer_credentials(peer_credentials, &settings.server_id)?;
     let mut all_tokens = vec![trace_ingest_token.as_str(), wrapper_api_token.as_str()];
     all_tokens.extend(
-        peer_inbound_credentials
+        validated_peer_credentials
+            .inbound
             .iter()
             .map(|credential| credential.token.as_str()),
     );
-    all_tokens.extend(peer_outbound_credentials.values().map(String::as_str));
+    all_tokens.extend(
+        validated_peer_credentials
+            .outbound
+            .values()
+            .map(String::as_str),
+    );
     if all_tokens.iter().any(|token| token.len() < 32) {
         return Err("Agent API tokens must contain at least 32 bytes".into());
     }
@@ -92,9 +98,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             registry_max_staleness_seconds: settings.registry_max_staleness_seconds,
             trace_ingest_token,
             wrapper_api_token,
-            peer_inbound_credentials,
-            peer_outbound_credentials,
-            adjacent_peer_allowlist,
+            peer_inbound_credentials: validated_peer_credentials.inbound,
+            peer_outbound_credentials: validated_peer_credentials.outbound,
+            adjacent_peer_allowlist: validated_peer_credentials.allowlist,
             max_concurrent_requests: settings.max_concurrent_requests,
             max_request_body_bytes: settings.max_request_body_bytes,
         },
@@ -267,17 +273,16 @@ fn load_private_key(path: &Path) -> Result<PrivateKeyDer<'static>, Box<dyn std::
     Ok(PrivateKeyDer::from_pem_file(path)?)
 }
 
+struct ValidatedPeerCredentials {
+    inbound: Vec<ri_agent::PeerInboundCredential>,
+    outbound: HashMap<String, String>,
+    allowlist: HashSet<ri_agent::PeerPrincipal>,
+}
+
 fn validate_peer_credentials(
     file: PeerCredentialsFile,
     local_server_id: &str,
-) -> Result<
-    (
-        Vec<ri_agent::PeerInboundCredential>,
-        HashMap<String, String>,
-        HashSet<ri_agent::PeerPrincipal>,
-    ),
-    Box<dyn std::error::Error>,
-> {
+) -> Result<ValidatedPeerCredentials, Box<dyn std::error::Error>> {
     let mut inbound_principals = HashSet::new();
     let mut inbound_tokens = HashSet::new();
     for credential in &file.inbound {
@@ -320,7 +325,11 @@ fn validate_peer_credentials(
                 .into(),
         );
     }
-    Ok((file.inbound, outbound, allowlist))
+    Ok(ValidatedPeerCredentials {
+        inbound: file.inbound,
+        outbound,
+        allowlist,
+    })
 }
 
 fn read_secret(path: &Path) -> Result<String, Box<dyn std::error::Error>> {

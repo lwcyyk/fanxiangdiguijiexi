@@ -136,6 +136,18 @@ pub struct TraceResponseMatch<'a> {
     pub require_producer_lineage: bool,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CacheSourceGraphSelector<'a> {
+    pub cache_object_digest: &'a str,
+    pub graph_digest: Option<&'a str>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CacheSourceGraphResult {
+    pub graph: QueryEvidenceGraphV2,
+    pub graph_digest: String,
+}
+
 impl EvidenceStore {
     pub fn open(path: impl AsRef<Path>) -> Result<Self, StoreError> {
         let store = Self {
@@ -697,11 +709,10 @@ impl EvidenceStore {
             .transpose()
     }
 
-    pub fn find_latest_cache_source_graph(
+    pub fn find_cache_source_graph(
         &self,
-        query_digest: &str,
-        cache_object_digest: &str,
-    ) -> Result<Option<(QueryEvidenceGraphV2, String)>, StoreError> {
+        selector: &CacheSourceGraphSelector<'_>,
+    ) -> Result<Option<CacheSourceGraphResult>, StoreError> {
         let generation = self.cache_generation()?;
         let generation_sql = sql_i64(generation, "cache_generation")?;
         let connection = self.connect()?;
@@ -711,53 +722,28 @@ impl EvidenceStore {
                    FROM ri_v2_evidence_graphs g
                    JOIN ri_v2_trace_event_claims c ON c.request_trace_id=g.trace_id
                    JOIN ri_v2_trace_events e ON e.event_id=c.event_id
-                   WHERE g.query_digest=? AND g.snapshot_generation=?
+                   WHERE g.snapshot_generation=?
                      AND json_extract(e.event_json,'$.kind')='CLIENT_RESPONSE'
                      AND json_extract(e.event_json,'$.cache_object_digest')=?
+                     AND g.query_digest=json_extract(e.event_json,'$.query_digest')
+                     AND g.response_digest=json_extract(e.event_json,'$.response_digest')
+                     AND (? IS NULL OR g.graph_digest=?)
                    ORDER BY g.rowid DESC LIMIT 1"#,
-                params![query_digest, generation_sql, cache_object_digest],
+                params![
+                    generation_sql,
+                    selector.cache_object_digest,
+                    selector.graph_digest,
+                    selector.graph_digest,
+                ],
                 |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
             )
             .optional()?
-            .map(|(value, digest)| {
-                Ok((
-                    serde_json::from_str(&value).map_err(StoreError::from)?,
-                    digest,
-                ))
-            })
-            .transpose()
-    }
-
-    pub fn find_cache_source_graph_by_digest(
-        &self,
-        query_digest: &str,
-        cache_object_digest: &str,
-        graph_digest: &str,
-    ) -> Result<Option<QueryEvidenceGraphV2>, StoreError> {
-        let generation = self.cache_generation()?;
-        let generation_sql = sql_i64(generation, "cache_generation")?;
-        let connection = self.connect()?;
-        connection
-            .query_row(
-                r#"SELECT g.graph_json
-                   FROM ri_v2_evidence_graphs g
-                   JOIN ri_v2_trace_event_claims c ON c.request_trace_id=g.trace_id
-                   JOIN ri_v2_trace_events e ON e.event_id=c.event_id
-                   WHERE g.query_digest=? AND g.graph_digest=?
-                     AND g.snapshot_generation=?
-                     AND json_extract(e.event_json,'$.kind')='CLIENT_RESPONSE'
-                     AND json_extract(e.event_json,'$.cache_object_digest')=?
-                   LIMIT 1"#,
-                params![
-                    query_digest,
+            .map(|(value, graph_digest)| {
+                Ok(CacheSourceGraphResult {
+                    graph: serde_json::from_str(&value).map_err(StoreError::from)?,
                     graph_digest,
-                    generation_sql,
-                    cache_object_digest
-                ],
-                |row| row.get::<_, String>(0),
-            )
-            .optional()?
-            .map(|value| serde_json::from_str(&value).map_err(StoreError::from))
+                })
+            })
             .transpose()
     }
 

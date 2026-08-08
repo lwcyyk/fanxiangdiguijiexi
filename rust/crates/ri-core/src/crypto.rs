@@ -39,24 +39,30 @@ pub fn dns_cache_object_digest(message: &[u8]) -> Result<String, EvidenceValidat
             "DNS message is too short for cache normalization".into(),
         ));
     }
+    if message[2] & 0x80 == 0 {
+        return Err(EvidenceValidationError::InvalidGraph(
+            "DNS cache object is not a response".into(),
+        ));
+    }
+    if u16::from_be_bytes([message[4], message[5]]) != 1 {
+        return Err(EvidenceValidationError::InvalidGraph(
+            "DNS cache object must contain exactly one question".into(),
+        ));
+    }
     let mut normalized = message.to_vec();
     normalized[0] = 0;
     normalized[1] = 0;
-    let question_count = u16::from_be_bytes([message[4], message[5]]) as usize;
     let record_count = usize::from(u16::from_be_bytes([message[6], message[7]]))
         + usize::from(u16::from_be_bytes([message[8], message[9]]))
         + usize::from(u16::from_be_bytes([message[10], message[11]]));
-    let mut offset = 12;
-    for _ in 0..question_count {
-        offset = skip_dns_name(message, offset)?;
-        offset = offset.checked_add(4).ok_or_else(|| {
-            EvidenceValidationError::InvalidGraph("DNS question offset overflow".into())
-        })?;
-        if offset > message.len() {
-            return Err(EvidenceValidationError::InvalidGraph(
-                "DNS question exceeds message boundary".into(),
-            ));
-        }
+    let mut offset = skip_dns_name(message, 12)?;
+    offset = offset.checked_add(4).ok_or_else(|| {
+        EvidenceValidationError::InvalidGraph("DNS question offset overflow".into())
+    })?;
+    if offset > message.len() {
+        return Err(EvidenceValidationError::InvalidGraph(
+            "DNS question exceeds message boundary".into(),
+        ));
     }
     for _ in 0..record_count {
         offset = skip_dns_name(message, offset)?;
@@ -85,15 +91,39 @@ pub fn dns_cache_object_digest(message: &[u8]) -> Result<String, EvidenceValidat
             ));
         }
     }
+    if offset != message.len() {
+        return Err(EvidenceValidationError::InvalidGraph(
+            "DNS message contains trailing data".into(),
+        ));
+    }
     Ok(sha256_hex(normalized))
 }
 
-fn skip_dns_name(message: &[u8], mut offset: usize) -> Result<usize, EvidenceValidationError> {
+fn skip_dns_name(message: &[u8], offset: usize) -> Result<usize, EvidenceValidationError> {
+    validate_dns_name(message, offset, 0, 0)
+}
+
+fn validate_dns_name(
+    message: &[u8],
+    mut offset: usize,
+    pointer_depth: usize,
+    mut expanded_length: usize,
+) -> Result<usize, EvidenceValidationError> {
+    if pointer_depth >= 128 {
+        return Err(EvidenceValidationError::InvalidGraph(
+            "DNS compression pointer chain is too deep".into(),
+        ));
+    }
     for _ in 0..128 {
         let length = *message.get(offset).ok_or_else(|| {
             EvidenceValidationError::InvalidGraph("DNS name exceeds message boundary".into())
         })?;
         if length == 0 {
+            if expanded_length >= 255 {
+                return Err(EvidenceValidationError::InvalidGraph(
+                    "DNS name exceeds the maximum length".into(),
+                ));
+            }
             return Ok(offset + 1);
         }
         if length & 0xc0 == 0xc0 {
@@ -108,11 +138,22 @@ fn skip_dns_name(message: &[u8], mut offset: usize) -> Result<usize, EvidenceVal
                     "DNS compression pointer exceeds message boundary".into(),
                 ));
             }
+            validate_dns_name(message, pointer, pointer_depth + 1, expanded_length)?;
             return Ok(offset + 2);
         }
         if length & 0xc0 != 0 || length > 63 {
             return Err(EvidenceValidationError::InvalidGraph(
                 "DNS name contains an invalid label".into(),
+            ));
+        }
+        expanded_length = expanded_length
+            .checked_add(1 + usize::from(length))
+            .ok_or_else(|| {
+                EvidenceValidationError::InvalidGraph("DNS name length overflow".into())
+            })?;
+        if expanded_length >= 255 {
+            return Err(EvidenceValidationError::InvalidGraph(
+                "DNS name exceeds the maximum length".into(),
             ));
         }
         offset = offset.checked_add(1 + usize::from(length)).ok_or_else(|| {
@@ -220,36 +261,122 @@ mod tests {
     fn response(ttl: u32, address: [u8; 4]) -> Vec<u8> {
         let mut wire = vec![
             0x12, 0x34, 0x81, 0x80, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, b'a',
-            0x00, 0x00, 0x01, 0x00, 0x01, 0xc0, 0x0c, 0x00, 0x01, 0x00, 0x01,
+            0x00, 0x00, 0x01, 0x00, 0x01,
         ];
-        wire.extend_from_slice(&ttl.to_be_bytes());
-        wire.extend_from_slice(&[0x00, 0x04]);
-        wire.extend_from_slice(&address);
+        append_a_record(&mut wire, ttl, address);
         wire
     }
 
-    #[test]
-    fn cache_digest_ignores_transaction_id_and_ttl_only() {
-        let first = response(300, [192, 0, 2, 1]);
-        let mut aged = response(12, [192, 0, 2, 1]);
-        aged[..2].copy_from_slice(&[0xab, 0xcd]);
-        assert_eq!(
-            dns_cache_object_digest(&first).unwrap(),
-            dns_cache_object_digest(&aged).unwrap()
-        );
+    fn append_a_record(wire: &mut Vec<u8>, ttl: u32, address: [u8; 4]) {
+        wire.extend_from_slice(&[0xc0, 0x0c, 0x00, 0x01, 0x00, 0x01]);
+        wire.extend_from_slice(&ttl.to_be_bytes());
+        wire.extend_from_slice(&[0x00, 0x04]);
+        wire.extend_from_slice(&address);
+    }
 
-        let changed = response(12, [192, 0, 2, 2]);
-        assert_ne!(
-            dns_cache_object_digest(&first).unwrap(),
-            dns_cache_object_digest(&changed).unwrap()
-        );
+    fn response_with_opt(opt_ttl: u32) -> Vec<u8> {
+        let mut wire = response(300, [192, 0, 2, 1]);
+        wire[10..12].copy_from_slice(&1_u16.to_be_bytes());
+        wire.extend_from_slice(&[0x00, 0x00, 0x29, 0x04, 0xd0]);
+        wire.extend_from_slice(&opt_ttl.to_be_bytes());
+        wire.extend_from_slice(&[0x00, 0x00]);
+        wire
+    }
+
+    fn digest(wire: &[u8]) -> String {
+        dns_cache_object_digest(wire).unwrap()
     }
 
     #[test]
-    fn cache_digest_rejects_truncated_or_invalid_compression() {
+    fn cache_digest_ignores_transaction_id_and_ordinary_ttl() {
+        let first = response(300, [192, 0, 2, 1]);
+        let mut aged = response(12, [192, 0, 2, 1]);
+        aged[..2].copy_from_slice(&[0xab, 0xcd]);
+        assert_eq!(digest(&first), digest(&aged));
+    }
+
+    #[test]
+    fn cache_digest_binds_question_name_type_and_class() {
+        let original = response(300, [192, 0, 2, 1]);
+        for changed in [
+            {
+                let mut wire = original.clone();
+                wire[13] = b'b';
+                wire
+            },
+            {
+                let mut wire = original.clone();
+                wire[15..17].copy_from_slice(&28_u16.to_be_bytes());
+                wire
+            },
+            {
+                let mut wire = original.clone();
+                wire[17..19].copy_from_slice(&3_u16.to_be_bytes());
+                wire
+            },
+        ] {
+            assert_ne!(digest(&original), digest(&changed));
+        }
+    }
+
+    #[test]
+    fn cache_digest_binds_header_and_extended_rcode() {
+        let original = response(300, [192, 0, 2, 1]);
+        let mut changed_header = original.clone();
+        changed_header[3] ^= 0x01;
+        assert_ne!(digest(&original), digest(&changed_header));
+
+        let original_opt = response_with_opt(0x0100_8000);
+        let changed_opt = response_with_opt(0x0200_8000);
+        assert_ne!(digest(&original_opt), digest(&changed_opt));
+    }
+
+    #[test]
+    fn cache_digest_binds_record_content_order_and_opt() {
+        let original = response(300, [192, 0, 2, 1]);
+        let changed_content = response(300, [192, 0, 2, 2]);
+        assert_ne!(digest(&original), digest(&changed_content));
+
+        let mut first_order = response(300, [192, 0, 2, 1]);
+        first_order[6..8].copy_from_slice(&2_u16.to_be_bytes());
+        append_a_record(&mut first_order, 300, [192, 0, 2, 2]);
+        let mut second_order = response(300, [192, 0, 2, 2]);
+        second_order[6..8].copy_from_slice(&2_u16.to_be_bytes());
+        append_a_record(&mut second_order, 300, [192, 0, 2, 1]);
+        assert_ne!(digest(&first_order), digest(&second_order));
+
+        assert_ne!(digest(&original), digest(&response_with_opt(0)));
+    }
+
+    #[test]
+    fn cache_digest_requires_response_with_exactly_one_question() {
+        let original = response(300, [192, 0, 2, 1]);
+
+        let mut query = original.clone();
+        query[2] &= 0x7f;
+        assert!(dns_cache_object_digest(&query).is_err());
+
+        for question_count in [0_u16, 2] {
+            let mut changed = original.clone();
+            changed[4..6].copy_from_slice(&question_count.to_be_bytes());
+            assert!(dns_cache_object_digest(&changed).is_err());
+        }
+    }
+
+    #[test]
+    fn cache_digest_rejects_malformed_and_trailing_wire() {
         assert!(dns_cache_object_digest(&[0; 11]).is_err());
-        let mut invalid = response(30, [192, 0, 2, 1]);
-        invalid[19..21].copy_from_slice(&[0xff, 0xff]);
-        assert!(dns_cache_object_digest(&invalid).is_err());
+
+        let mut truncated = response(300, [192, 0, 2, 1]);
+        truncated.pop();
+        assert!(dns_cache_object_digest(&truncated).is_err());
+
+        let mut pointer_loop = response(300, [192, 0, 2, 1]);
+        pointer_loop[19..21].copy_from_slice(&[0xc0, 0x13]);
+        assert!(dns_cache_object_digest(&pointer_loop).is_err());
+
+        let mut trailing = response(300, [192, 0, 2, 1]);
+        trailing.push(0);
+        assert!(dns_cache_object_digest(&trailing).is_err());
     }
 }

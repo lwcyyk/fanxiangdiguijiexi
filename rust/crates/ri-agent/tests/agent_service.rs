@@ -11,14 +11,16 @@ use ri_agent::{
 use ri_core::evidence::{DNS_SERVER_IDENTITY_V2, TRACE_EVENT_V2};
 use ri_core::{
     AgentBindingV2, DnsEndpoint, DnsServerIdentityV2, DnsServerRole, DnssecStatus,
-    IssuerKeyRegistry, RegistryAdapterMetadataV2, RegistryFinalityTypeV2, RegistryReferenceV2,
-    TraceEventKind, TraceEventV2, VerificationMode, ed25519_public_key_b64, object_hash,
-    sign_ed25519,
+    IssuerKeyRegistry, QueryEvidenceGraphV2, RegistryAdapterMetadataV2, RegistryFinalityTypeV2,
+    RegistryReferenceV2, TraceEventKind, TraceEventV2, VerificationMode, ed25519_public_key_b64,
+    object_hash, sign_ed25519,
 };
 use ri_store::EvidenceStore;
 use tower::ServiceExt;
 
 const QUERY_DIGEST: &str = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const CACHED_QUERY_DIGEST: &str =
+    "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 const FINAL_RESPONSE: &str = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const AUTH_QUERY: &str = "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
 const AUTH_RESPONSE: &str = "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
@@ -277,7 +279,7 @@ async fn cache_hit_requires_source_graph_in_current_registry_generation() {
         TraceEventKind::ClientResponse,
         "operator/r1",
         None,
-        QUERY_DIGEST,
+        CACHED_QUERY_DIGEST,
         Some(FINAL_RESPONSE),
         timestamp,
     );
@@ -288,7 +290,7 @@ async fn cache_hit_requires_source_graph_in_current_registry_generation() {
         TraceEventKind::CacheHit,
         "operator/r1",
         Some(endpoint("192.0.2.53")),
-        QUERY_DIGEST,
+        CACHED_QUERY_DIGEST,
         Some(FINAL_RESPONSE),
         timestamp,
     );
@@ -302,7 +304,7 @@ async fn cache_hit_requires_source_graph_in_current_registry_generation() {
         trace_id: "cached-wrapper-trace".into(),
         correlation_id: trace_correlation("cached-trace"),
         challenge: "another-challenge-with-at-least-32-characters".into(),
-        query_digest: QUERY_DIGEST.into(),
+        query_digest: CACHED_QUERY_DIGEST.into(),
         response_digest: FINAL_RESPONSE.into(),
         visited_server_ids: vec![],
     };
@@ -393,6 +395,62 @@ async fn cache_hit_requires_source_graph_in_current_registry_generation() {
     assert!(graph.edges.is_empty());
     assert_eq!(graph.terminal_node_ids, ["operator/r1"]);
     assert!(graph.cache_provenance.is_some());
+}
+
+#[tokio::test]
+async fn cache_hit_rejects_tampered_source_signature_with_unchanged_object_hash() {
+    let (fixture, mut source_graph) = cache_source_fixture().await;
+    let source_digest = object_hash(&source_graph).unwrap();
+
+    source_graph.nodes[0].identity.signature =
+        Some(sign_ed25519(&source_graph.nodes[0].identity, &key(65)).unwrap());
+    assert_eq!(object_hash(&source_graph).unwrap(), source_digest);
+    assert_eq!(
+        fixture.store.put_graph(&source_graph).unwrap(),
+        source_digest
+    );
+
+    let request = put_cache_hit_trace(&fixture.store, &source_digest, "tampered-signature");
+    let error = fixture.state.build_graph(&request).await.unwrap_err();
+    assert!(
+        error.to_string().contains("signature"),
+        "tampered source signature must fail validation, got: {error}"
+    );
+}
+
+#[tokio::test]
+async fn cache_hit_rejects_source_from_stale_registry_generation() {
+    let (fixture, mut source_graph) = cache_source_fixture().await;
+    source_graph.nodes[0].registry.snapshot_generation -= 1;
+    source_graph.signature = Some(sign_ed25519(&source_graph, &key(33)).unwrap());
+    let source_digest = fixture.store.put_graph(&source_graph).unwrap();
+
+    let request = put_cache_hit_trace(&fixture.store, &source_digest, "stale-generation");
+    let error = fixture.state.build_graph(&request).await.unwrap_err();
+    assert!(
+        error.to_string().contains("stale Registry generation"),
+        "stale source generation must fail current-state validation, got: {error}"
+    );
+}
+
+#[tokio::test]
+async fn cache_hit_rejects_source_identity_expired_after_issue() {
+    let (fixture, mut source_graph) = cache_source_fixture().await;
+    let identity = &mut source_graph.nodes[0].identity;
+    identity.valid_until = source_graph.issued_at;
+    identity.signature = Some(sign_ed25519(identity, &key(1)).unwrap());
+    source_graph.nodes[0].registry.object_hash = object_hash(identity).unwrap();
+    source_graph.signature = Some(sign_ed25519(&source_graph, &key(33)).unwrap());
+    let source_digest = fixture.store.put_graph(&source_graph).unwrap();
+
+    tokio::time::sleep(std::time::Duration::from_millis(1_100)).await;
+
+    let request = put_cache_hit_trace(&fixture.store, &source_digest, "expired-identity");
+    let error = fixture.state.build_graph(&request).await.unwrap_err();
+    assert!(
+        error.to_string().contains("inactive identity"),
+        "identity valid at issue time but expired now must fail, got: {error}"
+    );
 }
 
 #[tokio::test]
@@ -882,6 +940,87 @@ async fn readiness_fails_when_registry_sync_is_stale() {
 struct Fixture {
     state: AgentState,
     store: EvidenceStore,
+}
+
+async fn cache_source_fixture() -> (Fixture, QueryEvidenceGraphV2) {
+    let fixture = fixture(VerificationMode::PublicHybrid);
+    let timestamp = now() - 2;
+    let mut source_final = event(
+        "hardening-source-final",
+        "hardening-source-trace",
+        TraceEventKind::ClientResponse,
+        "operator/r1",
+        None,
+        QUERY_DIGEST,
+        Some(FINAL_RESPONSE),
+        timestamp,
+    );
+    source_final.cache_object_digest = Some(FINAL_RESPONSE.into());
+    let source_root = event(
+        "hardening-source-root",
+        "hardening-source-trace",
+        TraceEventKind::AuthorityQuery,
+        "operator/r1",
+        Some(endpoint("198.41.0.4")),
+        AUTH_QUERY,
+        Some(AUTH_RESPONSE),
+        timestamp,
+    );
+    put_complete_trace(&fixture.store, source_final, vec![source_root]);
+    let source_graph = fixture
+        .state
+        .build_graph(&EvidenceGraphRequest {
+            trace_id: "hardening-source-wrapper".into(),
+            correlation_id: trace_correlation("hardening-source-trace"),
+            challenge: CHALLENGE.into(),
+            query_digest: QUERY_DIGEST.into(),
+            response_digest: FINAL_RESPONSE.into(),
+            visited_server_ids: vec![],
+        })
+        .await
+        .unwrap();
+    (fixture, source_graph)
+}
+
+fn put_cache_hit_trace(
+    store: &EvidenceStore,
+    source_graph_digest: &str,
+    case: &str,
+) -> EvidenceGraphRequest {
+    let trace_id = format!("hardening-cache-{case}");
+    let timestamp = now();
+    let mut terminal = event(
+        &format!("{trace_id}-final"),
+        &trace_id,
+        TraceEventKind::ClientResponse,
+        "operator/r1",
+        None,
+        CACHED_QUERY_DIGEST,
+        Some(FINAL_RESPONSE),
+        timestamp,
+    );
+    terminal.cache_object_digest = Some(FINAL_RESPONSE.into());
+    let mut cache_hit = event(
+        &format!("{trace_id}-hit"),
+        &trace_id,
+        TraceEventKind::CacheHit,
+        "operator/r1",
+        Some(endpoint("192.0.2.53")),
+        CACHED_QUERY_DIGEST,
+        Some(FINAL_RESPONSE),
+        timestamp,
+    );
+    cache_hit.cache_object_digest = Some(FINAL_RESPONSE.into());
+    cache_hit.source_graph_digest = Some(source_graph_digest.into());
+    put_complete_trace(store, terminal, vec![cache_hit]);
+    EvidenceGraphRequest {
+        trace_id: format!("{trace_id}-wrapper"),
+        correlation_id: trace_correlation(&trace_id),
+        challenge: "cache-hardening-challenge-at-least-32-characters".into(),
+        query_digest: CACHED_QUERY_DIGEST.into(),
+        response_digest: FINAL_RESPONSE.into(),
+        visited_server_ids: vec![],
+    }
 }
 
 fn fixture(mode: VerificationMode) -> Fixture {

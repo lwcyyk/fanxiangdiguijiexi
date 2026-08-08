@@ -1,10 +1,11 @@
-use ri_core::evidence::{DNS_SERVER_IDENTITY_V2, TRACE_EVENT_V2};
+use ri_core::evidence::{DNS_SERVER_IDENTITY_V2, QUERY_EVIDENCE_GRAPH_V2, TRACE_EVENT_V2};
 use ri_core::{
     AgentBindingV2, DnsEndpoint, DnsServerIdentityV2, DnsServerRole, DnssecStatus,
-    RegistryAdapterMetadataV2, RegistryFinalityTypeV2, RegistryReferenceV2, TraceEventKind,
-    TraceEventV2, ed25519_public_key_b64, object_hash, sign_ed25519,
+    QueryEvidenceGraphV2, RegistryAdapterMetadataV2, RegistryFinalityTypeV2, RegistryReferenceV2,
+    TraceEventKind, TraceEventV2, VerificationMode, ed25519_public_key_b64, object_hash,
+    sign_ed25519,
 };
-use ri_store::{EvidenceStore, TraceResponseMatch};
+use ri_store::{CacheSourceGraphSelector, EvidenceStore, TraceResponseMatch};
 use rusqlite::{Connection, params};
 
 const PRIVATE_KEY: &str = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
@@ -668,6 +669,241 @@ fn schema_v2_evm_snapshot_migrates_without_data_loss() {
             .unwrap(),
         "evm"
     );
+}
+
+#[test]
+fn cache_source_lookup_succeeds_across_queries_with_optional_pin() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("evidence.db");
+    let store = EvidenceStore::open(&path).unwrap();
+    let graph_digest = put_cache_source(
+        &store,
+        &path,
+        "source-trace",
+        "source-query",
+        "source-query",
+        "source-response",
+        "source-response",
+        "cache-object",
+        "source-trace",
+    );
+
+    let unpinned = store
+        .find_cache_source_graph(&CacheSourceGraphSelector {
+            cache_object_digest: "cache-object",
+            graph_digest: None,
+        })
+        .unwrap()
+        .unwrap();
+    assert_eq!(unpinned.graph.query_digest, "source-query");
+    assert_eq!(unpinned.graph_digest, graph_digest);
+
+    let pinned = store
+        .find_cache_source_graph(&CacheSourceGraphSelector {
+            cache_object_digest: "cache-object",
+            graph_digest: Some(&graph_digest),
+        })
+        .unwrap()
+        .unwrap();
+    assert_eq!(pinned, unpinned);
+}
+
+#[test]
+fn cache_source_lookup_rejects_wrong_object_and_graph_digests() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("evidence.db");
+    let store = EvidenceStore::open(&path).unwrap();
+    put_cache_source(
+        &store,
+        &path,
+        "source-trace",
+        "source-query",
+        "source-query",
+        "source-response",
+        "source-response",
+        "cache-object",
+        "source-trace",
+    );
+
+    assert!(
+        store
+            .find_cache_source_graph(&CacheSourceGraphSelector {
+                cache_object_digest: "wrong-object",
+                graph_digest: None,
+            })
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        store
+            .find_cache_source_graph(&CacheSourceGraphSelector {
+                cache_object_digest: "cache-object",
+                graph_digest: Some("wrong-graph"),
+            })
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[test]
+fn cache_source_lookup_requires_current_generation_and_claimed_lineage() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("evidence.db");
+    let store = EvidenceStore::open(&path).unwrap();
+    put_cache_source(
+        &store,
+        &path,
+        "stale-trace",
+        "source-query",
+        "source-query",
+        "source-response",
+        "source-response",
+        "stale-object",
+        "stale-trace",
+    );
+    put_cache_source(
+        &store,
+        &path,
+        "unclaimed-trace",
+        "source-query",
+        "source-query",
+        "source-response",
+        "source-response",
+        "unclaimed-object",
+        "different-trace",
+    );
+    Connection::open(&path)
+        .unwrap()
+        .execute(
+            "UPDATE ri_v2_evidence_graphs SET snapshot_generation=1 WHERE trace_id='stale-trace'",
+            [],
+        )
+        .unwrap();
+
+    for cache_object_digest in ["stale-object", "unclaimed-object"] {
+        assert!(
+            store
+                .find_cache_source_graph(&CacheSourceGraphSelector {
+                    cache_object_digest,
+                    graph_digest: None,
+                })
+                .unwrap()
+                .is_none(),
+            "unexpected source for {cache_object_digest}"
+        );
+    }
+}
+
+#[test]
+fn cache_source_lookup_requires_source_query_and_response_match() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("evidence.db");
+    let store = EvidenceStore::open(&path).unwrap();
+    put_cache_source(
+        &store,
+        &path,
+        "query-mismatch-trace",
+        "graph-query",
+        "event-query",
+        "source-response",
+        "source-response",
+        "query-mismatch-object",
+        "query-mismatch-trace",
+    );
+    put_cache_source(
+        &store,
+        &path,
+        "response-mismatch-trace",
+        "source-query",
+        "source-query",
+        "graph-response",
+        "event-response",
+        "response-mismatch-object",
+        "response-mismatch-trace",
+    );
+
+    for cache_object_digest in ["query-mismatch-object", "response-mismatch-object"] {
+        assert!(
+            store
+                .find_cache_source_graph(&CacheSourceGraphSelector {
+                    cache_object_digest,
+                    graph_digest: None,
+                })
+                .unwrap()
+                .is_none(),
+            "unexpected source for {cache_object_digest}"
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn put_cache_source(
+    store: &EvidenceStore,
+    path: &std::path::Path,
+    graph_trace_id: &str,
+    graph_query_digest: &str,
+    event_query_digest: &str,
+    graph_response_digest: &str,
+    event_response_digest: &str,
+    cache_object_digest: &str,
+    claimed_trace_id: &str,
+) -> String {
+    let graph = QueryEvidenceGraphV2 {
+        schema_version: QUERY_EVIDENCE_GRAPH_V2.into(),
+        trace_id: graph_trace_id.into(),
+        correlation_id: format!("correlation-{graph_trace_id}"),
+        challenge: format!("challenge-{graph_trace_id}"),
+        query_digest: graph_query_digest.into(),
+        response_digest: graph_response_digest.into(),
+        mode: VerificationMode::PublicHybrid,
+        entry_server_id: "operator/r1".into(),
+        issued_at: 1_800_000_000,
+        expires_at: 1_800_000_300,
+        dnssec_status: DnssecStatus::Secure,
+        cache_provenance: None,
+        terminal_cache_graphs: vec![],
+        nodes: vec![],
+        edges: vec![],
+        terminal_node_ids: vec![],
+        final_result: true,
+        graph_errors: vec![],
+        key_id: "test-key".into(),
+        signature: None,
+    };
+    let graph_digest = store.put_graph(&graph).unwrap();
+    let event_id = format!("cache-response-{graph_trace_id}");
+    store
+        .put_trace_event(&TraceEventV2 {
+            schema_version: TRACE_EVENT_V2.into(),
+            event_id: event_id.clone(),
+            trace_id: format!("cache-trace-{graph_trace_id}"),
+            sequence: 0,
+            correlation_id: format!("cache-correlation-{graph_trace_id}"),
+            parent_event_id: None,
+            kind: TraceEventKind::ClientResponse,
+            observer_server_id: "operator/r1".into(),
+            target_server_id: None,
+            target_endpoint: None,
+            target_correlation_id: None,
+            attempt: None,
+            query_digest: event_query_digest.into(),
+            response_digest: Some(event_response_digest.into()),
+            cache_object_digest: Some(cache_object_digest.into()),
+            observed_at: 1_800_000_000,
+            dnssec_status: DnssecStatus::Secure,
+            ttl_expires_at: Some(1_800_000_300),
+            source_graph_digest: Some(graph_digest.clone()),
+            failure_reason: None,
+        })
+        .unwrap();
+    Connection::open(path)
+        .unwrap()
+        .execute(
+            "INSERT INTO ri_v2_trace_event_claims(event_id,request_trace_id) VALUES(?,?)",
+            params![event_id, claimed_trace_id],
+        )
+        .unwrap();
+    graph_digest
 }
 
 fn response_event(

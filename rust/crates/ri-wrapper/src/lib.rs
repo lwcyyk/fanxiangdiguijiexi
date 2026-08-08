@@ -7,8 +7,9 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use futures_util::StreamExt;
 use rand::RngCore;
 use ri_core::{
-    DnsEndpoint, EvidencePolicy, EvidenceValidator, IssuerKeyRegistry, QueryEvidenceGraphV2,
-    VerificationMode, dns_correlation_id, dns_wire_digest,
+    DnsEndpoint, DnsServerIdentityV2, EvidencePolicy, EvidenceValidator, IssuerKeyRegistry,
+    QueryEvidenceGraphV2, RegistryReferenceV2, VerificationMode, dns_correlation_id,
+    dns_wire_digest,
 };
 use ri_store::{EvidenceStore, StoreError, same_registry_state};
 use serde::{Serialize, de::DeserializeOwned};
@@ -389,10 +390,12 @@ impl WrapperState {
                             node.identity.server_id
                         ))
                     })?;
-                if local_identity != node.identity
-                    || !same_registry_state(&local_registry, &node.registry)
-                    || node.registry.checkpoint_height > local_registry.checkpoint_height
-                {
+                if !registry_evidence_matches(
+                    &local_identity,
+                    &local_registry,
+                    &node.identity,
+                    &node.registry,
+                ) {
                     return Err(WrapperError::RegistryMismatch(format!(
                         "{} differs from the local Registry snapshot",
                         node.identity.server_id
@@ -446,6 +449,17 @@ fn registry_is_fresh(
     Ok(last_success > 0
         && last_success <= now.saturating_add(5)
         && now.saturating_sub(last_success) <= max_staleness_seconds)
+}
+
+fn registry_evidence_matches(
+    local_identity: &DnsServerIdentityV2,
+    local_registry: &RegistryReferenceV2,
+    evidence_identity: &DnsServerIdentityV2,
+    evidence_registry: &RegistryReferenceV2,
+) -> bool {
+    local_identity == evidence_identity
+        && local_registry.snapshot_generation == evidence_registry.snapshot_generation
+        && same_registry_state(local_registry, evidence_registry)
 }
 
 async fn decode_json_limited<T: DeserializeOwned>(
@@ -850,9 +864,13 @@ mod tests {
     use std::sync::atomic::Ordering;
     use std::time::Duration;
 
-    use ri_core::{dns_correlation_id, dns_wire_digest};
+    use ri_core::{
+        DnsEndpoint, DnsServerIdentityV2, DnsServerRole, RegistryAdapterMetadataV2,
+        RegistryFinalityTypeV2, RegistryReferenceV2, dns_correlation_id, dns_wire_digest,
+        object_hash,
+    };
 
-    use super::TransactionIdPool;
+    use super::{TransactionIdPool, registry_evidence_matches};
 
     #[test]
     fn active_transaction_ids_are_unique_and_released() {
@@ -893,5 +911,106 @@ mod tests {
             dns_correlation_id(&original).unwrap(),
             dns_correlation_id(&internal).unwrap()
         );
+    }
+
+    #[test]
+    fn registry_evidence_accepts_same_state_at_different_checkpoints() {
+        let identity = identity();
+        let local = registry(&identity, 200, "0xlocal");
+        let evidence = registry(&identity, 205, "0xevidence");
+
+        assert!(registry_evidence_matches(
+            &identity, &local, &identity, &evidence
+        ));
+    }
+
+    #[test]
+    fn registry_evidence_rejects_changed_state_or_generation() {
+        let identity = identity();
+        let local = registry(&identity, 200, "0xlocal");
+        let mut evidence = registry(&identity, 205, "0xevidence");
+        evidence.state_root = "0xchanged".into();
+        assert!(!registry_evidence_matches(
+            &identity, &local, &identity, &evidence
+        ));
+
+        evidence = registry(&identity, 205, "0xevidence");
+        evidence.snapshot_generation += 1;
+        assert!(!registry_evidence_matches(
+            &identity, &local, &identity, &evidence
+        ));
+    }
+
+    #[test]
+    fn registry_evidence_rejects_changed_identity() {
+        let identity = identity();
+        let local = registry(&identity, 200, "0xlocal");
+        let mut changed = identity.clone();
+        changed.server_id = "operator/L01/other".into();
+
+        assert!(!registry_evidence_matches(
+            &identity,
+            &local,
+            &changed,
+            &registry(&identity, 205, "0xevidence"),
+        ));
+    }
+
+    fn identity() -> DnsServerIdentityV2 {
+        DnsServerIdentityV2 {
+            schema_version: "dns-server-identity-v2".into(),
+            server_id: "operator/L01/r1".into(),
+            operator_id: "operator".into(),
+            role: DnsServerRole::Recursive,
+            endpoints: vec![DnsEndpoint {
+                endpoint_id: None,
+                ip: Some("192.0.2.53".into()),
+                port: Some(53),
+                transport: "udp".into(),
+                uri: None,
+                server_name: None,
+                alpn: vec![],
+            }],
+            anycast: false,
+            anycast_service_id: None,
+            agent: None,
+            valid_from: 1_700_000_000,
+            valid_until: 1_900_000_000,
+            object_version: 1,
+            status: "ACTIVE".into(),
+            issuer: "test-issuer".into(),
+            key_id: "issuer-key".into(),
+            signature: None,
+        }
+    }
+
+    fn registry(
+        identity: &DnsServerIdentityV2,
+        checkpoint_height: u64,
+        checkpoint_hash: &str,
+    ) -> RegistryReferenceV2 {
+        RegistryReferenceV2 {
+            chain_adapter: "norn".into(),
+            chain_identity: "norn-genesis:0xgenesis".into(),
+            registry_locator: "norn:0xregistry#resolver-identity-registry-v2".into(),
+            registry_schema_hash: "0xschema".into(),
+            adapter_metadata: RegistryAdapterMetadataV2::Norn {
+                genesis_block_hash: "0xgenesis".into(),
+                registry_address: "0xregistry".into(),
+                registry_key: "resolver-identity-registry-v2".into(),
+                snapshot_signer_issuer: "norn-registry".into(),
+                snapshot_signer_key_id: "snapshot-key-1".into(),
+            },
+            checkpoint_height,
+            checkpoint_hash: checkpoint_hash.into(),
+            finality_type: RegistryFinalityTypeV2::NornDualNodeConfirmations,
+            state_root: "0xstate".into(),
+            object_hash: object_hash(identity).unwrap(),
+            object_version: identity.object_version,
+            resolver_status: "ACTIVE".into(),
+            root_status: "ACTIVE".into(),
+            endpoint_binding_status: "MATCHED".into(),
+            snapshot_generation: 3,
+        }
     }
 }

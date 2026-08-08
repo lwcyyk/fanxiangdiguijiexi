@@ -17,9 +17,11 @@ use ri_core::{
     EvidenceNodeV2, EvidencePolicy, EvidenceValidator, IssuerKeyRegistry,
     LEGACY_UNVERIFIED_CACHE_SOURCE_GRAPH_DIGEST, QueryEvidenceGraphV2, RegistryReferenceV2,
     ServerHopEvidenceV2, TargetResponseAttestationV2, TraceEventKind, TraceEventV2,
-    VerificationMode, sign_ed25519,
+    VerificationMode, object_hash, sign_ed25519,
 };
-use ri_store::{EvidenceStore, StoreError, TraceResponseMatch, same_registry_state};
+use ri_store::{
+    CacheSourceGraphSelector, EvidenceStore, StoreError, TraceResponseMatch, same_registry_state,
+};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -605,7 +607,6 @@ impl AgentState {
                 "cache-hit TTL is outside policy".into(),
             ));
         }
-        let query_digest = request.query_digest.clone();
         let cache_object_digest = cache_hit.cache_object_digest.clone().ok_or_else(|| {
             AgentError::EvidenceUnavailable(
                 "cache-hit event has no normalized cache object digest".into(),
@@ -626,13 +627,14 @@ impl AgentState {
             }
         };
         let claimed_source_digest = source_digest.to_owned();
-        let source_graph = self
+        let selected_cache_object_digest = cache_object_digest.clone();
+        let selected_source_digest = claimed_source_digest.clone();
+        let source = self
             .with_store(move |store| {
-                Ok(store.find_cache_source_graph_by_digest(
-                    &query_digest,
-                    &cache_object_digest,
-                    &claimed_source_digest,
-                )?)
+                Ok(store.find_cache_source_graph(&CacheSourceGraphSelector {
+                    cache_object_digest: &selected_cache_object_digest,
+                    graph_digest: Some(&selected_source_digest),
+                })?)
             })
             .await?
             .ok_or_else(|| {
@@ -640,6 +642,30 @@ impl AgentState {
                     "cache-hit source graph is absent from the current Registry generation".into(),
                 )
             })?;
+        if source.graph_digest != claimed_source_digest
+            || object_hash(&source.graph)? != claimed_source_digest
+        {
+            return Err(AgentError::EvidenceUnavailable(
+                "cache-hit source graph digest does not match stored evidence".into(),
+            ));
+        }
+        let source_graph = source.graph;
+        let policy = match self.config.mode {
+            VerificationMode::ControlledStrict => EvidencePolicy::controlled_strict(),
+            VerificationMode::PublicHybrid => EvidencePolicy::public_hybrid(),
+        };
+        EvidenceValidator {
+            policy: &policy,
+            issuer_keys: &self.issuer_keys,
+        }
+        .validate_graph(
+            &source_graph,
+            &source_graph.challenge,
+            source_graph.issued_at,
+        )?;
+        let snapshot_generation = self_record.1.snapshot_generation;
+        let identity_expires_at =
+            validate_cache_source_current(&source_graph, snapshot_generation, now)?;
         if cache_hit.dnssec_status != source_graph.dnssec_status {
             return Err(AgentError::EvidenceUnavailable(
                 "cache-hit DNSSEC status differs from source evidence".into(),
@@ -651,15 +677,6 @@ impl AgentState {
                 "cache source graph does not preserve required DNSSEC evidence".into(),
             ));
         }
-        let identity_expires_at = source_graph
-            .nodes
-            .iter()
-            .map(|node| node.identity.valid_until)
-            .min()
-            .ok_or_else(|| {
-                AgentError::EvidenceUnavailable("cache source graph has no identities".into())
-            })?;
-        let snapshot_generation = self_record.1.snapshot_generation;
         let entry_server_id = self_record.0.server_id.clone();
         let mut graph = QueryEvidenceGraphV2 {
             schema_version: QUERY_EVIDENCE_GRAPH_V2.into(),
@@ -1550,6 +1567,51 @@ fn graph_requires_dnssec(graph: &QueryEvidenceGraphV2) -> bool {
             .terminal_cache_graphs
             .iter()
             .any(graph_requires_dnssec)
+}
+
+fn validate_cache_source_current(
+    graph: &QueryEvidenceGraphV2,
+    snapshot_generation: u64,
+    now: i64,
+) -> Result<i64, AgentError> {
+    let mut identity_expires_at = i64::MAX;
+    for node in &graph.nodes {
+        if !node.identity.active_at(now) {
+            return Err(AgentError::EvidenceUnavailable(
+                "cache source graph contains an inactive identity".into(),
+            ));
+        }
+        if node.registry.snapshot_generation != snapshot_generation {
+            return Err(AgentError::EvidenceUnavailable(
+                "cache source graph is from a stale Registry generation".into(),
+            ));
+        }
+        identity_expires_at = identity_expires_at.min(node.identity.valid_until);
+    }
+    if let Some(provenance) = &graph.cache_provenance {
+        if provenance.snapshot_generation != snapshot_generation
+            || provenance.dns_ttl_expires_at < now
+            || provenance.identity_expires_at < now
+        {
+            return Err(AgentError::EvidenceUnavailable(
+                "nested cache source provenance is stale".into(),
+            ));
+        }
+        identity_expires_at = identity_expires_at.min(provenance.identity_expires_at);
+    }
+    for child in &graph.terminal_cache_graphs {
+        identity_expires_at = identity_expires_at.min(validate_cache_source_current(
+            child,
+            snapshot_generation,
+            now,
+        )?);
+    }
+    if identity_expires_at == i64::MAX {
+        return Err(AgentError::EvidenceUnavailable(
+            "cache source graph has no identities".into(),
+        ));
+    }
+    Ok(identity_expires_at)
 }
 
 async fn decode_json_limited<T: DeserializeOwned>(

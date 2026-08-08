@@ -11,7 +11,8 @@ use axum::extract::State;
 use axum::http::{StatusCode, header};
 use axum::response::IntoResponse;
 use axum::routing::get;
-use ri_core::TraceEventV2;
+use ri_core::{TraceEventV2, object_hash};
+use ri_store::CacheSourceGraphSelector;
 use rusqlite::{Connection, OptionalExtension, params};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
@@ -239,13 +240,15 @@ async fn prepare_upload_batch(
         .as_deref()
         .ok_or("cache-hit event has no normalized cache object digest")?
         .to_owned();
-    let query_digest = event.query_digest.clone();
     let source_store = evidence_store.clone();
     let source = tokio::task::spawn_blocking(move || {
-        source_store.find_latest_cache_source_graph(&query_digest, &cache_object_digest)
+        source_store.find_cache_source_graph(&CacheSourceGraphSelector {
+            cache_object_digest: &cache_object_digest,
+            graph_digest: None,
+        })
     })
     .await??;
-    let Some((source_graph, source_digest)) = source else {
+    let Some(source) = source else {
         // Earlier Trace rows are uploaded first.  The Wrapper/Agent creates the
         // source graph from those exact rows, after which this event can be
         // enriched without blocking the Resolver's durable spool ACK.
@@ -272,11 +275,9 @@ async fn prepare_upload_batch(
         }
         return Ok(BatchPreparation::Waiting);
     };
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)?
-        .as_secs() as i64;
-    if source_graph.expires_at < now {
-        return Err("cache-hit source graph is expired".into());
+    let source_digest = object_hash(&source.graph)?;
+    if source_digest != source.graph_digest {
+        return Err("cache-hit source graph digest does not match stored evidence".into());
     }
     let mut enriched = event.clone();
     enriched.source_graph_digest = Some(source_digest);
@@ -967,8 +968,8 @@ fn parse_bounded_u64(
 
 #[cfg(test)]
 mod tests {
-    use ri_core::evidence::TRACE_EVENT_V2;
-    use ri_core::{DnssecStatus, TraceEventKind};
+    use ri_core::evidence::{QUERY_EVIDENCE_GRAPH_V2, TRACE_EVENT_V2};
+    use ri_core::{DnssecStatus, QueryEvidenceGraphV2, TraceEventKind, VerificationMode};
 
     use super::*;
 
@@ -1093,10 +1094,137 @@ mod tests {
             .quarantine_trace(&original.trace_id, "missing cache provenance")
             .unwrap();
         assert_eq!(spool.stats().unwrap(), (0, 1));
+        assert_eq!(trace_readiness(State(spool)).await, StatusCode::NO_CONTENT);
+    }
+
+    #[tokio::test]
+    async fn prepare_upload_batch_uses_typed_cache_source_and_persists_recomputed_digest() {
+        let directory = tempfile::tempdir().unwrap();
+        let evidence_store =
+            ri_store::EvidenceStore::open(directory.path().join("evidence.db")).unwrap();
+        let spool = TraceSpool::open(&directory.path().join("trace-spool.db"), 100).unwrap();
+        let cache_object_digest =
+            "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+        let source_query_digest =
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+        let current_query_digest =
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let source_digest =
+            put_claimed_cache_source(&evidence_store, cache_object_digest, source_query_digest);
+
+        let mut cache_hit = trace_event("current-cache-hit");
+        let mut current_query = trace_event_with_trace(&cache_hit.trace_id, "current-query");
+        current_query.query_digest = current_query_digest.into();
+        cache_hit.sequence = 2;
+        cache_hit.parent_event_id = Some(current_query.event_id.clone());
+        cache_hit.kind = TraceEventKind::CacheHit;
+        cache_hit.query_digest = current_query_digest.into();
+        cache_hit.response_digest =
+            Some("0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd".into());
+        cache_hit.cache_object_digest = Some(cache_object_digest.into());
+        cache_hit.ttl_expires_at = Some(1_800_000_300);
+        spool.enqueue(&current_query).unwrap();
+        spool.enqueue(&cache_hit).unwrap();
+        let mut waits = HashMap::from([(cache_hit.event_id.clone(), tokio::time::Instant::now())]);
+
+        let prepared = prepare_upload_batch(
+            &spool,
+            &evidence_store,
+            vec![cache_hit.clone()],
+            &mut waits,
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap();
+        let BatchPreparation::Ready(events) = prepared else {
+            panic!("cache source should make the batch ready");
+        };
+
         assert_eq!(
-            trace_readiness(State(spool)).await,
-            StatusCode::NO_CONTENT
+            source_query_digest,
+            evidence_store
+                .get_graph("source-trace")
+                .unwrap()
+                .unwrap()
+                .query_digest
         );
+        assert_ne!(source_query_digest, current_query_digest);
+        assert_eq!(events.len(), 1);
+        assert_eq!(
+            events[0].source_graph_digest.as_deref(),
+            Some(source_digest.as_str())
+        );
+        let stored = spool
+            .load_batch(10)
+            .unwrap()
+            .into_iter()
+            .find(|event| event.event_id == cache_hit.event_id)
+            .unwrap();
+        assert_eq!(
+            stored.source_graph_digest.as_deref(),
+            Some(source_digest.as_str())
+        );
+        assert!(!waits.contains_key(&cache_hit.event_id));
+    }
+
+    #[tokio::test]
+    async fn prepare_upload_batch_rejects_tampered_cache_source_digest() {
+        let directory = tempfile::tempdir().unwrap();
+        let evidence_path = directory.path().join("evidence.db");
+        let evidence_store = ri_store::EvidenceStore::open(&evidence_path).unwrap();
+        let spool = TraceSpool::open(&directory.path().join("trace-spool.db"), 100).unwrap();
+        let cache_object_digest =
+            "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+        put_claimed_cache_source(
+            &evidence_store,
+            cache_object_digest,
+            "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        );
+        Connection::open(&evidence_path)
+            .unwrap()
+            .execute(
+                "UPDATE ri_v2_evidence_graphs SET graph_digest=? WHERE trace_id=?",
+                params![
+                    "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                    "source-trace"
+                ],
+            )
+            .unwrap();
+
+        let mut cache_hit = trace_event("tampered-cache-hit");
+        let mut current_query = trace_event_with_trace(&cache_hit.trace_id, "tampered-query");
+        current_query.query_digest =
+            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into();
+        cache_hit.sequence = 2;
+        cache_hit.parent_event_id = Some(current_query.event_id.clone());
+        cache_hit.kind = TraceEventKind::CacheHit;
+        cache_hit.query_digest = current_query.query_digest.clone();
+        cache_hit.cache_object_digest = Some(cache_object_digest.into());
+        spool.enqueue(&current_query).unwrap();
+        spool.enqueue(&cache_hit).unwrap();
+        let mut waits = HashMap::new();
+
+        let error = match prepare_upload_batch(
+            &spool,
+            &evidence_store,
+            vec![cache_hit.clone()],
+            &mut waits,
+            Duration::from_secs(30),
+        )
+        .await
+        {
+            Err(error) => error,
+            Ok(_) => panic!("tampered source digest should reject the batch"),
+        };
+
+        assert!(error.to_string().contains("digest does not match"));
+        let stored = spool
+            .load_batch(10)
+            .unwrap()
+            .into_iter()
+            .find(|event| event.event_id == cache_hit.event_id)
+            .unwrap();
+        assert!(stored.source_graph_digest.is_none());
     }
 
     #[test]
@@ -1497,6 +1625,72 @@ mod tests {
 
     fn trace_event(event_id: &str) -> TraceEventV2 {
         trace_event_with_trace(&format!("resolver-trace-{event_id}"), event_id)
+    }
+
+    fn put_claimed_cache_source(
+        store: &ri_store::EvidenceStore,
+        cache_object_digest: &str,
+        query_digest: &str,
+    ) -> String {
+        let response_digest = "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+        let correlation_id = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+        store
+            .register_query_context(
+                "source-trace",
+                correlation_id,
+                query_digest,
+                1_800_000_000,
+                1_800_000_300,
+            )
+            .unwrap();
+        let mut query = trace_event_with_trace("producer-trace", "source-query");
+        query.correlation_id = correlation_id.into();
+        query.query_digest = query_digest.into();
+        let mut response = trace_event_with_trace("producer-trace", "source-response");
+        response.sequence = 2;
+        response.parent_event_id = Some(query.event_id.clone());
+        response.kind = TraceEventKind::ClientResponse;
+        response.correlation_id = correlation_id.into();
+        response.query_digest = query_digest.into();
+        response.response_digest = Some(response_digest.into());
+        response.cache_object_digest = Some(cache_object_digest.into());
+        response.ttl_expires_at = Some(1_800_000_300);
+        store.put_trace_events(&[query, response]).unwrap();
+        store
+            .claim_registered_trace_anchor(
+                "source-trace",
+                "operator/r1",
+                correlation_id,
+                query_digest,
+                response_digest,
+                1_800_000_000,
+            )
+            .unwrap()
+            .unwrap();
+        store
+            .put_graph(&QueryEvidenceGraphV2 {
+                schema_version: QUERY_EVIDENCE_GRAPH_V2.into(),
+                trace_id: "source-trace".into(),
+                correlation_id: correlation_id.into(),
+                challenge: "source-challenge".into(),
+                query_digest: query_digest.into(),
+                response_digest: response_digest.into(),
+                mode: VerificationMode::PublicHybrid,
+                entry_server_id: "operator/r1".into(),
+                issued_at: 1_800_000_000,
+                expires_at: 1_800_000_300,
+                dnssec_status: DnssecStatus::Secure,
+                cache_provenance: None,
+                terminal_cache_graphs: vec![],
+                nodes: vec![],
+                edges: vec![],
+                terminal_node_ids: vec![],
+                final_result: true,
+                graph_errors: vec![],
+                key_id: "test-key".into(),
+                signature: None,
+            })
+            .unwrap()
     }
 
     fn trace_event_with_trace(trace_id: &str, event_id: &str) -> TraceEventV2 {

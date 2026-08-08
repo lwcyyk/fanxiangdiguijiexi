@@ -141,6 +141,8 @@
     "secret_dir": "/opt/domain-center-install/cloud-928ed0e/secret/secrets",
     "agent_tls_dir": "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls",
     "norn_tls_dir": "/opt/domain-center-install/cloud-928ed0e/secret/norn-tls",
-    "dnssec_trust_anchors": []
+    "dnssec_trust_anchors": [
+      "ri-test.invalid. 3600 IN DNSKEY 257 3 13 BWN2ZypufNFrwx359sO76Y37IgXevR4w6K5x56DWFLGaXp8Vfuq+PCuHw8g2fHuwZQY23t8/3OnUaBfyF04klg=="
+    ]
   }
 }
