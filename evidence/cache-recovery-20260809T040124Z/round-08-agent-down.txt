@@ -1,0 +1,16 @@
+
+; <<>> DiG 9.18.39-0ubuntu0.24.04.5-Ubuntu <<>> @10.206.16.14 -p 1053 txt.ri-test.invalid TXT +dnssec +time=5 +tries=1 +comments +answer +stats
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: SERVFAIL, id: 37665
+;; flags: qr rd ra; QUERY: 1, ANSWER: 0, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;txt.ri-test.invalid.		IN	TXT
+
+;; Query time: 10 msec
+;; SERVER: 10.206.16.14#1053(10.206.16.14) (UDP)
+;; WHEN: Sun Aug 09 12:07:26 CST 2026
+;; MSG SIZE  rcvd: 37
+

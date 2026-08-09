@@ -1,0 +1,52 @@
+test_start_utc=2026-08-09T04:49:56Z
+producer_pid_before=333090
+resolver_pid_before=123374
+adapter_pid_before=334225
+adapter_ready_http=204
+query_1_status=TIMEOUT
+query_1_millis=40036
+;; communications error to 10.206.16.14#1053: timed out
+
+; <<>> DiG 9.18.39-0ubuntu0.24.04.5-Ubuntu <<>> @10.206.16.14 -p 1053 txt.ri-test.invalid TXT +dnssec +time=40 +tries=1 +comments +answer +stats
+; (1 server found)
+;; global options: +cmd
+;; no servers could be reached
+query_2_status=NOERROR
+query_2_millis=99
+
+; <<>> DiG 9.18.39-0ubuntu0.24.04.5-Ubuntu <<>> @10.206.16.14 -p 1053 txt.ri-test.invalid TXT +dnssec +time=40 +tries=1 +comments +answer +stats
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 38835
+;; flags: qr rd ra ad; QUERY: 1, ANSWER: 2, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags: do; udp: 1232
+;; QUESTION SECTION:
+;txt.ri-test.invalid.		IN	TXT
+
+;; ANSWER SECTION:
+txt.ri-test.invalid.	648	IN	TXT	"resolver-identity-lab-test"
+txt.ri-test.invalid.	648	IN	RRSIG	TXT 13 3 3600 20260821070033 20260807084626 47348 ri-test.invalid. WWIjwqFtrBw9pSYVImHiLDML4F+Q0JAomVrhnNSiFdGraPb28TJsabJG QzqaMimctye+Tub+KEp7WPW6mg3qIg==
+
+;; Query time: 81 msec
+;; SERVER: 10.206.16.14#1053(10.206.16.14) (UDP)
+;; WHEN: Sun Aug 09 12:50:36 CST 2026
+;; MSG SIZE  rcvd: 198
+
+producer_pid_after=333090
+resolver_pid_after=123374
+adapter_pid_after=335009
+producer_pid_unchanged=true
+resolver_pid_unchanged=true
+===producer_logs===
+[2m2026-08-09T04:45:36.098116Z[0m [32m INFO[0m [2mri_knot_trace_producer[0m[2m:[0m Knot Trace Producer listening [3msocket[0m[2m=[0m/run/resolver-identity/trace/knot-hook.sock [3mexpected_uid[0m[2m=[0m10003
+[2m2026-08-09T04:48:10.961261Z[0m [33m WARN[0m [2mri_knot_trace_producer[0m[2m:[0m Trace Adapter durable spool failed [3merror[0m[2m=[0mBroken pipe (os error 32)
+[2m2026-08-09T04:49:56.468140Z[0m [33m WARN[0m [2mri_knot_trace_producer[0m[2m:[0m Trace Adapter durable spool failed [3merror[0m[2m=[0mBroken pipe (os error 32)
+===metrics===
+# TYPE resolver_identity_trace_spool_pending gauge
+resolver_identity_trace_spool_pending 0
+# TYPE resolver_identity_trace_dead_letter_total gauge
+resolver_identity_trace_dead_letter_total 0
+test_end_utc=2026-08-09T04:50:36Z

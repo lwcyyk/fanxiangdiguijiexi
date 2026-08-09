@@ -1,0 +1,84 @@
+{
+  "schema_version": "cache-recovery-rc15-result-v1",
+  "release": "0.3.0-norn-knot-rc15",
+  "test_window_utc": {
+    "start": "2026-08-09T04:01:24Z",
+    "end": "2026-08-09T04:09:34.120299+00:00"
+  },
+  "query": {
+    "qname": "txt.ri-test.invalid.",
+    "qtype": "TXT",
+    "endpoint": "10.206.16.14:1053/udp",
+    "controlled_strict": true
+  },
+  "canonical_cache_provenance": {
+    "cache_object_digest": "0xf16e09ef8ebaeb2f4b15471240c63805addd5e207992ba4e4bac64df0db1b1aa",
+    "root_source_graph_digest": "0x4cb8149bf274481029053b2320132456ee14b49ed950a1abc89b8b9e4e3d40a3",
+    "initial_miss_graph_is_root": true,
+    "three_consecutive_hits_reference_root": true,
+    "all_observed_derived_graphs_reference_root": true,
+    "observed_derived_graph_count": 27
+  },
+  "restart_tests": {
+    "agent_restart_immediate_cached_query": "passed",
+    "registry_sync_restart_then_reconciliation_cached_query": "passed",
+    "trace_adapter_restart_first_query_fail_closed": "passed",
+    "trace_adapter_automatic_recovery_without_producer_restart": "passed",
+    "trace_adapter_recovery_after_producer_restart": "superseded_by_automatic_reconnect_fix"
+  },
+  "agent_down_up_rounds": {
+    "requested": 20,
+    "completed": 20,
+    "all_down_servfail": true,
+    "all_up_noerror": true,
+    "all_cache_object_digest_constant": true,
+    "all_root_source_graph_digest_constant": true,
+    "down_query_millis": {
+      "min": 16,
+      "max": 37,
+      "median": 28.0
+    },
+    "up_query_millis": {
+      "min": 80,
+      "max": 251,
+      "median": 229.0
+    }
+  },
+  "final_health": {
+    "r1_trace_spool_pending": 0,
+    "r1_dead_letter_total": 0,
+    "r1_registry_age_seconds": 0,
+    "r1_service_restart_counts_zero": true
+  },
+  "known_failure": {
+    "component": "patched Knot hook deployment pending",
+    "observation": "The Rust Trace Producer now reconnects automatically on the next query. The matching Knot C hook change is source-tested but its patched Resolver image could not be rebuilt offline because the pinned Debian builder/base image and source layers were not cached.",
+    "impact": "Automatic recovery is proven with the currently deployed Knot hook behavior, which reconnects its Producer stream after ERR. Deployment of the C-side persistent-ERR optimization remains pending and is not required for correctness of the demonstrated second-query recovery.",
+    "resolver_restarted": false,
+    "cache_cleared": false,
+    "ttl_waited": false
+  },
+  "flags": {
+    "canonical_cache_provenance_passed": true,
+    "agent_failure_recovery_20_rounds_passed": true,
+    "cache_recovery_passed": true,
+    "recovery_after_identity_failure": true,
+    "trace_adapter_restart_recovery_passed": true,
+    "trace_binding_passed": false,
+    "release_ready": false,
+    "production_capacity_validated": false,
+    "production_deployed": false
+  },
+  "release_artifacts": {
+    "rc15_oci_archive_sha256": "634eaf6078d449ea23de803313a9cbfc4871c289e426d0deb24a94a98bd09713",
+    "rc15_manifest_digest": "sha256:1e4409aaffcbb38c2d13d91b3e8fb6b004f677d7ddb566ae8007aa5ae8ebe23f",
+    "reconnect_producer_binary_sha256": "d1eba1c7780926fc6d3f6c868c496ff335f88a2feb5f9ef84391334ce604c752",
+    "reconnect_producer_image_id": "sha256:e14e118da311d8bdaf87b3516a0befce20d2a80fd3f4733e391d5e4a6ee01396",
+    "reconnect_producer_image_archive_sha256": "97d7194b0a701ecff1e56270fbe8d39ef7a21564ae419d53617678c91328dc07",
+    "reconnect_producer_build": "Rust 1.97.0 Bookworm, --locked --offline, Docker --network none",
+    "reconnect_producer_max_required_glibc": "GLIBC_2.34",
+    "reconnect_producer_reproducible_ab_build": "not_run",
+    "patched_knot_image_build": "blocked: pinned Debian base/builder input and source layers not cached for offline rebuild",
+    "reconnect_producer_release_scope": "RC16 follow-up binary built from RC15 version metadata before the workspace version advanced; formal RC16 A/B build and OCI assembly not run"
+  }
+}

@@ -1,0 +1,4 @@
+# TYPE resolver_identity_trace_spool_pending gauge
+resolver_identity_trace_spool_pending 0
+# TYPE resolver_identity_trace_dead_letter_total gauge
+resolver_identity_trace_dead_letter_total 0

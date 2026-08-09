@@ -1,0 +1,5 @@
+/ri-r1-agent-1 state=running restarts=0 image=resolver-identity/rust-data-plane:0.3.0-norn-knot-rc15
+/ri-r1-trace-adapter-1 state=running restarts=0 image=resolver-identity/rust-data-plane:0.3.0-norn-knot-rc15
+/ri-r1-trace-producer-1 state=running restarts=0 image=offline/resolver-identity/rust:ri-e268b76c159f002c
+/ri-r1-resolver-1 state=running restarts=0 image=offline/resolver-identity/knot:ri-61e01beae33fd414
+/ri-r1-wrapper-1 state=running restarts=0 image=offline/resolver-identity/rust:ri-e268b76c159f002c

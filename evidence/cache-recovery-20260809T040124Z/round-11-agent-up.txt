@@ -1,0 +1,22 @@
+
+; <<>> DiG 9.18.39-0ubuntu0.24.04.5-Ubuntu <<>> @10.206.16.14 -p 1053 txt.ri-test.invalid TXT +dnssec +time=40 +tries=1 +comments +answer +stats
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 57547
+;; flags: qr rd ra ad; QUERY: 1, ANSWER: 2, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags: do; udp: 1232
+;; QUESTION SECTION:
+;txt.ri-test.invalid.		IN	TXT
+
+;; ANSWER SECTION:
+txt.ri-test.invalid.	3206	IN	TXT	"resolver-identity-lab-test"
+txt.ri-test.invalid.	3206	IN	RRSIG	TXT 13 3 3600 20260821070033 20260807084626 47348 ri-test.invalid. WWIjwqFtrBw9pSYVImHiLDML4F+Q0JAomVrhnNSiFdGraPb28TJsabJG QzqaMimctye+Tub+KEp7WPW6mg3qIg==
+
+;; Query time: 72 msec
+;; SERVER: 10.206.16.14#1053(10.206.16.14) (UDP)
+;; WHEN: Sun Aug 09 12:07:58 CST 2026
+;; MSG SIZE  rcvd: 198
+
