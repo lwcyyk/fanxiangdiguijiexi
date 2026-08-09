@@ -1,0 +1,40 @@
+name: ${RI_FIELD_COMPOSE_PROJECT:-ri-management}
+
+services:
+  management-tools:
+    image: ${RI_MANAGEMENT_IMAGE:-offline/resolver-identity/management@sha256:8a6d7aeb1500996769c8bbf3396e381c7a938ca1d8b154108edf87f2d004d0a0}
+    profiles: [tools]
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    user: "10001:10001"
+    volumes:
+      - ${RI_MANAGEMENT_WORK_DIR:?required}:/work
+      - ${RI_MANAGEMENT_SECRET_DIR:?required}:/run/field-secrets:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: ${RI_DOCKER_LOG_MAX_SIZE:-50m}
+        max-file: ${RI_DOCKER_LOG_MAX_FILES:-5}
+
+  norn-publisher:
+    image: ${RI_NORN_IMAGE:-offline/resolver-identity/norn@sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323}
+    profiles: [publisher]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    user: "10003:10003"
+    networks: [field]
+    volumes:
+      - ${RI_MANAGEMENT_WORK_DIR:?required}:/work:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: ${RI_DOCKER_LOG_MAX_SIZE:-50m}
+        max-file: ${RI_DOCKER_LOG_MAX_FILES:-5}
+
+networks:
+  field:
+    external: true
+    name: ${RI_FIELD_NETWORK:-ri-norn-field}

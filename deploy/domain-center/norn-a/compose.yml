@@ -1,0 +1,65 @@
+name: ${RI_FIELD_COMPOSE_PROJECT:-ri-norn-a}
+
+services:
+  norn-node:
+    image: ${RI_NORN_IMAGE:-offline/resolver-identity/norn@sha256:ad8b495d892c35b18da82d4c55899eaa8ff15d501fd63551e684a85479432323}
+    hostname: ${RI_NORN_NODE_HOSTNAME:-norn-node}
+    user: "${RI_NORN_UID:-10003}:${RI_NORN_GID:-10003}"
+    entrypoint: ["/field/start-norn.sh"]
+    environment:
+      RI_NORN_ROLE: node-a
+      RI_NORN_BOOTSTRAP: ""
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    volumes:
+      - ${RI_NORN_START_SCRIPT:?required}:/field/start-norn.sh:ro
+      - ${RI_NORN_CONFIG_DIR:?required}:/config:ro
+      - ${RI_FIELD_DATA_DIR:?required}:/data
+    ports:
+      - "${RI_NORN_NATIVE_BIND_ADDRESS:-127.0.0.1}:${RI_NORN_NATIVE_LOOPBACK_PORT:-45555}:45555/tcp"
+      - "${RI_NORN_P2P_BIND_ADDRESS:?required}:31258:31258/tcp"
+    networks:
+      field:
+        aliases:
+          - ${RI_NORN_NODE_HOSTNAME:-norn-node}
+    logging:
+      driver: json-file
+      options:
+        max-size: ${RI_DOCKER_LOG_MAX_SIZE:-50m}
+        max-file: ${RI_DOCKER_LOG_MAX_FILES:-5}
+
+  norn-read-proxy:
+    image: ${RI_NGINX_IMAGE:-offline/resolver-identity/nginx@sha256:8d9da9cfb339e4147190984ce6a61e148e036125aaf33d09c023c3c87b0166ae}
+    hostname: ${RI_NORN_READ_HOSTNAME:-ri-norn-a}
+    user: "${RI_NORN_UID:-10003}:${RI_NORN_GID:-10003}"
+    entrypoint: ["/field/start-read-proxy.sh"]
+    environment:
+      RI_NORN_NODE_HOSTNAME: ${RI_NORN_NODE_HOSTNAME:-norn-node}
+    depends_on: [norn-node]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    tmpfs: [/var/cache/nginx, /var/run, /tmp]
+    volumes:
+      - ${RI_NORN_NGINX_CONFIG:?required}:/field/nginx-readonly.conf:ro
+      - ${RI_NORN_READ_PROXY_START_SCRIPT:?required}:/field/start-read-proxy.sh:ro
+      - ${RI_NORN_TLS_DIR:?required}:/tls:ro
+    ports:
+      - "${RI_NORN_READ_BIND_ADDRESS:?required}:${RI_NORN_READ_PORT:-8443}:8443/tcp"
+    networks:
+      field:
+        aliases:
+          - ${RI_NORN_READ_HOSTNAME:-ri-norn-a}
+    logging:
+      driver: json-file
+      options:
+        max-size: ${RI_DOCKER_LOG_MAX_SIZE:-50m}
+        max-file: ${RI_DOCKER_LOG_MAX_FILES:-5}
+
+networks:
+  field:
+    external: true
+    name: ${RI_FIELD_NETWORK:-ri-norn-field}
