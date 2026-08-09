@@ -13,11 +13,12 @@ import subprocess
 import sys
 from typing import NoReturn
 
-ROLES = ("management", "norn-a", "norn-b", "r1", "r2", "r3")
+ROLES = ("management", "norn-a", "norn-b", "authdns", "r1", "r2", "r3")
 ROLE_CN = {
     "management": "管理节点",
     "norn-a": "Norn A 节点",
     "norn-b": "Norn B 节点",
+    "authdns": "权威 DNS 节点",
     "r1": "R1 首跳解析节点",
     "r2": "R2 上游解析节点",
     "r3": "R3 上游解析节点",

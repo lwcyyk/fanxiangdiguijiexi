@@ -8,7 +8,7 @@
   "properties": {
     "schema": {"const": "domain-center-install-state-v2"},
     "host": {"type": "string", "minLength": 1},
-    "role": {"enum": ["management", "norn-a", "norn-b", "r1", "r2", "r3"]},
+    "role": {"enum": ["management", "norn-a", "norn-b", "authdns", "r1", "r2", "r3"]},
     "version": {"type": "string", "minLength": 1},
     "role_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "config_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},

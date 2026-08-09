@@ -46,8 +46,10 @@ def test_contracts_enforce_status_vocabulary_and_false_flags():
     preflight = json.loads((SCHEMAS / "preflight-result.schema.json").read_text())
     assert preflight["properties"]["result"]["enum"] == ["passed", "failed"]
     assert preflight["properties"]["checks"]["items"]["properties"]["status"]["enum"] == ["passed", "failed"]
+    assert preflight["properties"]["role"]["enum"] == ["management", "norn-a", "norn-b", "authdns", "r1", "r2", "r3"]
     install = json.loads((SCHEMAS / "install-state-v2.schema.json").read_text())
     assert install["properties"]["schema"]["const"] == "domain-center-install-state-v2"
+    assert install["properties"]["role"]["enum"] == preflight["properties"]["role"]["enum"]
     for name in ("support-bundle-manifest.schema.json", "shadow-acceptance.schema.json"):
         schema = json.loads((SCHEMAS / name).read_text())
         assert schema["properties"]["real_server_deployed"]["const"] is False

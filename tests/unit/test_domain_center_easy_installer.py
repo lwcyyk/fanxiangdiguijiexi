@@ -6,6 +6,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import sqlite3
 import subprocess
 import sys
@@ -195,6 +196,7 @@ def _fixture(tmp_path: Path) -> tuple[Path, Path]:
             {"hostname": "dc-mgmt-01", "role": "management"},
             {"hostname": "dc-norn-a", "role": "norn-a"},
             {"hostname": "dc-norn-b", "role": "norn-b"},
+            {"hostname": "dc-authdns", "role": "authdns"},
             {"hostname": "dc-r1-01", "role": "r1"},
             {"hostname": "dc-r2-01", "role": "r2"},
             {"hostname": "dc-r3-01", "role": "r3"},
@@ -482,6 +484,35 @@ def test_show_mismatch_reports_but_never_bypasses(capsys: pytest.CaptureFixture[
     output = capsys.readouterr().out
     assert "期望 dc-r1-01.example" in output
     assert "实际 dc-r1-01.other" in output
+
+
+def test_authdns_is_formal_seventh_role_with_host_managed_bind_backend():
+    assert "authdns" in wizard.ROLES
+    assert generator.ROLE_COUNTS["authdns"] == 1
+    assert generator.ROLE_IMAGES["authdns"] == ("rust",)
+    assert lifecycle.ROLE_KIND["authdns"] == "authoritative-dns"
+    assert lifecycle.AUTHDNS_TLS_FILES == ("authority-client.crt", "authority-client.key")
+    compose = (PRODUCT_KIT / "authdns" / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "ri-authority-proxy" in compose
+    assert "RI_AUTHORITY_BACKEND: ${RI_AUTHORITY_BACKEND:-127.0.0.1:5353}" in compose
+    assert "network_mode: host" in compose
+    assert not re.search(r"(?m)^\s{2}(?:bind|bind9|named)\s*:\s*$", compose)
+    assert "RC16" not in compose
+    generator._validate_role_structure(PRODUCT_KIT / "authdns", "authdns")
+
+
+def test_authdns_start_order_preserves_host_bind(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    commands: list[list[str]] = []
+    readiness: list[str] = []
+    monkeypatch.setattr(lifecycle, "compose", lambda target, action, check=True: commands.append(action) or subprocess.CompletedProcess(action, 0, "", ""))
+    monkeypatch.setattr(lifecycle, "_wait_readiness", lambda role, phase, env, secret: readiness.append(phase))
+    lifecycle.start_ordered(tmp_path, "authdns", {}, None, {}, tmp_path / "state.json")
+    assert commands == [
+        ["up", "-d", "registry-sync"],
+        ["up", "-d", "agent"],
+        ["up", "-d", "authority-proxy"],
+    ]
+    assert readiness == ["registry_ready", "authdns_agent_ready", "authority_ready"]
 
 
 def test_compose_requirements_use_real_norn_name_and_all_agent_tokens():

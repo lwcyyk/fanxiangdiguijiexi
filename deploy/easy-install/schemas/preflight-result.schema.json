@@ -7,7 +7,7 @@
   "required": ["host", "role", "kind", "checked_at", "result", "status_zh", "checks"],
   "properties": {
     "host": {"type": "string", "minLength": 1},
-    "role": {"enum": ["management", "norn-a", "norn-b", "r1", "r2", "r3"]},
+    "role": {"enum": ["management", "norn-a", "norn-b", "authdns", "r1", "r2", "r3"]},
     "kind": {"type": "string", "minLength": 1},
     "checked_at": {"type": "string", "minLength": 1},
     "result": {"enum": ["passed", "failed"]},

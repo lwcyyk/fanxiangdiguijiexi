@@ -67,6 +67,7 @@ ROLE_COUNTS = {
     "management": 1,
     "norn-a": 1,
     "norn-b": 1,
+    "authdns": 1,
     "r1": 1,
     "r2": 1,
     "r3": 1,
@@ -76,6 +77,7 @@ ROLE_IMAGES = {
     "management": ("management", "norn"),
     "norn-a": ("norn", "nginx"),
     "norn-b": ("norn", "nginx"),
+    "authdns": ("rust",),
     "r1": ("rust", "knot"),
     "r2": ("rust", "knot"),
     "r3": ("rust", "knot"),
@@ -652,8 +654,8 @@ def validate_inputs(site_path: Path, release_path: Path) -> dict[str, Any]:
         }
 
     hosts = [_object(item, f"hosts[{index}]") for index, item in enumerate(_array(site["hosts"], "hosts"))]
-    if len(hosts) != 6:
-        raise BundleError("hosts must contain exactly six entries")
+    if len(hosts) != len(ROLE_COUNTS):
+        raise BundleError("hosts must contain exactly seven entries")
     counts = {role: 0 for role in ROLE_COUNTS}
     names: list[str] = []
     clean_hosts: list[dict[str, str]] = []
@@ -691,7 +693,7 @@ def validate_inputs(site_path: Path, release_path: Path) -> dict[str, Any]:
         names.append(hostname)
         clean_hosts.append(clean_host)
     if counts != ROLE_COUNTS:
-        raise BundleError(f"six-host role counts must equal {ROLE_COUNTS}")
+        raise BundleError(f"seven-host role counts must equal {ROLE_COUNTS}")
     if len(set(names)) != len(names) or len(set(machine_ids)) != len(machine_ids) or len(set(management_ips)) != len(management_ips):
         raise BundleError("hostnames, supplied machine IDs, and supplied management IPs must be unique")
     requirements = _object(site.get("external_requirements", {}), "external_requirements")
@@ -868,6 +870,10 @@ def _validate_role_structure(role_root: Path, role: str) -> None:
             raise BundleError(f"{role} Compose contains prohibited image reference")
     if role in {"r2", "r3"} and _contains_wrapper_structure(text):
         raise BundleError(f"{role} structurally contains Wrapper/first-hop configuration")
+    if role == "authdns":
+        required = ("ri-authority-proxy", "RI_AUTHORITY_BACKEND", "127.0.0.1:5353", "network_mode: host")
+        if any(item not in text for item in required) or re.search(r"(?m)^\s{2}(?:bind|bind9|named)\s*:\s*$", text):
+            raise BundleError("Auth DNS must preserve a host-managed loopback BIND backend")
     if role == "r1":
         wrapper_services = len(re.findall(r"(?m)^\s{2}(?:['\"]wrapper['\"]|wrapper)\s*:\s*$", text, re.IGNORECASE))
         first_hop_profiles = len(re.findall(r"\bfirst-hop\b", text, re.IGNORECASE))
@@ -1463,8 +1469,8 @@ def verify_delivery(
     evidence = _object(load_json(root / "证据.json", "delivery evidence"), "delivery evidence")
     if evidence.get("schema_version") != EVIDENCE_SCHEMA:
         raise BundleError("delivery evidence schema is invalid")
-    if evidence.get("host_count") != 6:
-        raise BundleError("delivery evidence does not describe six hosts")
+    if evidence.get("host_count") != len(ROLE_COUNTS):
+        raise BundleError("delivery evidence does not describe seven hosts")
     release_manifest = _object(load_json(root / "01-发布信息" / "release-manifest.json", "release manifest"), "release manifest")
     for key in ("version", "source_commit", "source_release_manifest_sha256"):
         if evidence.get(key) != release_manifest.get(key):
@@ -1530,11 +1536,11 @@ def verify_delivery(
     if evidence.get("delivery_ready") is not (all_checks_passed and not evidence.get("blockers")):
         raise BundleError("delivery_ready is inconsistent with mandatory acceptance checks and blockers")
     archives = sorted((root / "03-主机包").glob("*.tar.gz"))
-    if len(archives) != 6:
-        raise BundleError("delivery must contain exactly six host archives")
+    if len(archives) != len(ROLE_COUNTS):
+        raise BundleError("delivery must contain exactly seven host archives")
     host_records = evidence.get("hosts")
-    if not isinstance(host_records, list) or len(host_records) != 6:
-        raise BundleError("delivery evidence must contain exactly six host records")
+    if not isinstance(host_records, list) or len(host_records) != len(ROLE_COUNTS):
+        raise BundleError("delivery evidence must contain exactly seven host records")
     record_by_archive: dict[str, dict[str, Any]] = {}
     role_counts = {role: 0 for role in ROLE_COUNTS}
     for index, raw_record in enumerate(host_records):
@@ -1848,7 +1854,7 @@ def build_delivery(
             "version": validated["version"],
             "source_commit": validated["source_commit"],
             "source_release_manifest_sha256": validated["release_manifest_sha256"],
-            "host_count": 6,
+            "host_count": len(ROLE_COUNTS),
             "hosts": host_evidence,
             "oci_validation": {"passed": True, "strict_single_platform": validated["platform"], "images": all_image_records},
             "sbom": {"spdx_json": "04-软件物料清单/site.spdx.json", "cyclonedx_json": "04-软件物料清单/site.cdx.json"},

@@ -41,15 +41,18 @@ else:
 
 ROLE_KIND = {
     "management": "management", "norn-a": "norn-node", "norn-b": "norn-node",
+    "authdns": "authoritative-dns",
     "r1": "resolver-link", "r2": "resolver-link", "r3": "resolver-link",
 }
+LINK_SECRETS = ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_wrapper_token", "secrets/agent_peer_credentials.json")
 REQUIRED_SECRETS = {
     "management": ("identity-issuer-ed25519-private-key", "snapshot-issuer-ed25519-private-key", "publication-ssh-identity"),
     "norn-a": ("node/config.yml", "tls/server.crt", "tls/server.key", "tls/ca.crt"),
     "norn-b": ("node/config.yml", "tls/server.crt", "tls/server.key", "tls/ca.crt"),
-    "r1": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_wrapper_token", "secrets/agent_peer_credentials.json"),
-    "r2": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_wrapper_token", "secrets/agent_peer_credentials.json"),
-    "r3": ("secrets/agent_private_key", "secrets/trace_ingest_token", "secrets/agent_wrapper_token", "secrets/agent_peer_credentials.json"),
+    "authdns": LINK_SECRETS,
+    "r1": LINK_SECRETS,
+    "r2": LINK_SECRETS,
+    "r3": LINK_SECRETS,
 }
 RESOLVER_TLS_FILES = {
     "agent-tls": (
@@ -59,6 +62,7 @@ RESOLVER_TLS_FILES = {
     "norn-tls": ("ca.crt", "client.crt", "client.key"),
 }
 R1_TLS_FILES = ("wrapper-client.crt", "wrapper-client.key")
+AUTHDNS_TLS_FILES = ("authority-client.crt", "authority-client.key")
 TLS_KEY_SUFFIXES = (".key",)
 DATA_MARKER = ".domain-center-owned-data.json"
 STATE_SCHEMA = "domain-center-install-state-v2"
@@ -177,6 +181,7 @@ def validate_images(env: dict[str, str], role: str) -> None:
     keys = {
         "management": ("RI_MANAGEMENT_IMAGE", "RI_NORN_IMAGE"),
         "norn-a": ("RI_NORN_IMAGE", "RI_NGINX_IMAGE"), "norn-b": ("RI_NORN_IMAGE", "RI_NGINX_IMAGE"),
+        "authdns": ("RI_IMAGE",),
         "r1": ("RI_IMAGE", "RI_KNOT_IMAGE"), "r2": ("RI_IMAGE", "RI_KNOT_IMAGE"), "r3": ("RI_IMAGE", "RI_KNOT_IMAGE"),
     }[role]
     for key in keys:
@@ -220,10 +225,7 @@ def validate_invariants(env: dict[str, str], role: str) -> None:
             die("SEC101", "Norn 角色与安装包不一致", "使用对应节点的专用配置。")
         if env.get("RI_NORN_NATIVE_BIND_ADDRESS") != "127.0.0.1":
             die("SEC102", "Norn 原生写接口不是仅回环绑定", "设置 RI_NORN_NATIVE_BIND_ADDRESS=127.0.0.1。")
-    if role in {"r1", "r2", "r3"}:
-        expected_role = "first-hop" if role == "r1" else "upstream"
-        if env.get("RI_RESOLVER_ROLE") != expected_role:
-            die("SEC103", "解析节点角色错误", "R1 使用 first-hop；R2/R3 使用 upstream。")
+    if role in {"authdns", "r1", "r2", "r3"}:
         if env.get("RI_CHAIN_ADAPTER") != "norn":
             die("SEC104", "链适配器不是 norn", "禁止回退到其他链适配器。")
         endpoints = env.get("RI_CHAIN_RPC_URLS", "").split(",")
@@ -231,11 +233,27 @@ def validate_invariants(env: dict[str, str], role: str) -> None:
             die("SEC105", "必须配置两个 HTTPS Norn 只读端点", "使用相互独立、启用 mTLS 的只读代理。")
         if any("localhost" in value or "127.0.0.1" in value for value in endpoints):
             die("SEC105", "跨机 Norn 端点不能使用本机地址", "填写 norn-a 与 norn-b 的只读地址。")
-        address = env.get("RI_MANAGEMENT_BIND_ADDRESS", "")
+        address_key = "RI_AUTHDNS_MANAGEMENT_IP" if role == "authdns" else "RI_MANAGEMENT_BIND_ADDRESS"
+        address = env.get(address_key, "")
         if address in {"", "0.0.0.0", "::", "127.0.0.1"}:
             die("SEC106", "管理接口必须绑定专用非回环地址", "填写本机管理网地址并配合防火墙白名单。")
+    if role in {"r1", "r2", "r3"}:
+        expected_role = "first-hop" if role == "r1" else "upstream"
+        if env.get("RI_RESOLVER_ROLE") != expected_role:
+            die("SEC103", "解析节点角色错误", "R1 使用 first-hop；R2/R3 使用 upstream。")
         if env.get("RI_TRACE_PRODUCER_UID") == env.get("RI_KNOT_RESOLVER_UID"):
             die("SEC107", "Trace Producer 与 Resolver UID 必须隔离", "分配不同的固定非特权 UID。")
+    if role == "authdns":
+        if env.get("RI_VERIFICATION_MODE", "controlled-strict") != "controlled-strict":
+            die("SEC109", "Auth DNS Agent 必须使用 controlled-strict", "保持稳定 RC15 验证模式。")
+        if env.get("RI_REGISTRY_MAX_STALENESS_SECONDS", "45") != "45":
+            die("SEC110", "Auth DNS Registry freshness 必须为 45 秒", "使用稳定部署基线的 45 秒 freshness。")
+        backend = env.get("RI_AUTHORITY_BACKEND", "127.0.0.1:5353")
+        if backend not in {"127.0.0.1:5353", "[::1]:5353"}:
+            die("SEC111", "Auth DNS backend 必须是主机管理的回环 BIND", "保持 BIND 由主机 systemd 管理并监听 loopback:5353。")
+        public_bind = env.get("RI_AUTHORITY_PUBLIC_BIND", "")
+        if public_bind not in {f"{address}:53", f"[{address}]:53"}:
+            die("SEC112", "Authority Proxy 公网 DNS 监听必须绑定本机管理地址 53 端口", "设置 RI_AUTHORITY_PUBLIC_BIND=<RI_AUTHDNS_MANAGEMENT_IP>:53。")
 
 
 def _validate_management_secret_material(secret_dir: Path) -> dict[str, dict[str, str]]:
@@ -316,19 +334,23 @@ def check_secret_tree(secret_dir: Path, role: str, install_root: Path | None = N
         _restricted_file(secret_dir / name, name)
     if role == "management":
         _validate_management_secret_material(secret_dir)
-    if role in {"r1", "r2", "r3"}:
+    if role in {"authdns", "r1", "r2", "r3"}:
         for dirname, names in RESOLVER_TLS_FILES.items():
             directory = secret_dir / dirname
             if not directory.is_dir() or directory.is_symlink() or directory.stat().st_mode & 0o077:
-                die("SEC205", f"TLS 材料目录缺失或权限不安全：{dirname}", "为每台解析主机提供唯一 mTLS 材料并 chmod 0700。")
-            required = names + (R1_TLS_FILES if role == "r1" and dirname == "agent-tls" else ())
+                die("SEC205", f"TLS 材料目录缺失或权限不安全：{dirname}", "为每台身份链主机提供唯一 mTLS 材料并 chmod 0700。")
+            extras = R1_TLS_FILES if role == "r1" and dirname == "agent-tls" else ()
+            if role == "authdns" and dirname == "agent-tls":
+                extras = AUTHDNS_TLS_FILES
+            required = names + extras
             for name in required:
                 _restricted_file(directory / name, f"{dirname}/{name}")
                 if name.endswith(".crt"):
                     _validate_certificate(directory / name)
         if not shutil.which("openssl"):
             die("SEC207", "缺少 openssl，无法验证 TLS 证书与私钥匹配", "离线安装 openssl 后重试。")
-        for stem in ("agent", "agent-client", "trace-client") + (("wrapper-client",) if role == "r1" else ()):
+        extra_stems = ("wrapper-client",) if role == "r1" else (("authority-client",) if role == "authdns" else ())
+        for stem in ("agent", "agent-client", "trace-client") + extra_stems:
             _match_tls_pair(secret_dir / "agent-tls", stem)
         _match_tls_pair(secret_dir / "norn-tls", "client")
         values = [(secret_dir / name).read_bytes().strip() for name in REQUIRED_SECRETS[role] if "token" in name]
@@ -436,6 +458,15 @@ def _package_metadata(role_root: Path) -> dict[str, object]:
 
 
 def _port_specs(env: dict[str, str], role: str) -> list[tuple[str, int, str]]:
+    if role == "authdns":
+        address = env.get("RI_AUTHDNS_MANAGEMENT_IP", "")
+        return [
+            (address, 53, "udp"),
+            (address, 53, "tcp"),
+            (address, 8443, "tcp"),
+            (address, 9109, "tcp"),
+            ("127.0.0.1", 9111, "tcp"),
+        ]
     if role in {"r1", "r2", "r3"}:
         specs = [
             (env.get("RI_RESOLVER_BIND_ADDRESS", ""), 53, "udp"),
@@ -511,6 +542,7 @@ def preflight(args: argparse.Namespace, role_root: Path) -> dict[str, object]:
         "management": {"RI_MANAGEMENT_SECRET_DIR": secret_root},
         "norn-a": {"RI_NORN_CONFIG_DIR": secret_root / "node", "RI_NORN_TLS_DIR": secret_root / "tls"},
         "norn-b": {"RI_NORN_CONFIG_DIR": secret_root / "node", "RI_NORN_TLS_DIR": secret_root / "tls"},
+        "authdns": {"RI_RESOLVER_SECRET_DIR": secret_root / "secrets", "RI_AGENT_TLS_DIR": secret_root / "agent-tls", "RI_NORN_CLIENT_TLS_DIR": secret_root / "norn-tls"},
         "r1": {"RI_RESOLVER_SECRET_DIR": secret_root / "secrets", "RI_AGENT_TLS_DIR": secret_root / "agent-tls", "RI_NORN_CLIENT_TLS_DIR": secret_root / "norn-tls"},
         "r2": {"RI_RESOLVER_SECRET_DIR": secret_root / "secrets", "RI_AGENT_TLS_DIR": secret_root / "agent-tls", "RI_NORN_CLIENT_TLS_DIR": secret_root / "norn-tls"},
         "r3": {"RI_RESOLVER_SECRET_DIR": secret_root / "secrets", "RI_AGENT_TLS_DIR": secret_root / "agent-tls", "RI_NORN_CLIENT_TLS_DIR": secret_root / "norn-tls"},
@@ -545,6 +577,12 @@ def preflight(args: argparse.Namespace, role_root: Path) -> dict[str, object]:
     if isinstance(metadata.get("management_ip"), str):
         expected_ips.append(str(metadata["management_ip"]))
     checks.append(_check(not expected_ips or bool(set(expected_ips) & _local_ips()), "machine.ip", "本机 IP 与主机包一致", required=bool(expected_ips), details=expected_ips or "manifest-not-specified"))
+    if args.role == "authdns":
+        bind_service = "bind9" if shutil.which("systemctl") and run(["systemctl", "is-active", "--quiet", "bind9"], check=False).returncode == 0 else "named"
+        bind_active = bool(shutil.which("systemctl")) and run(["systemctl", "is-active", "--quiet", bind_service], check=False).returncode == 0
+        backend_ready = bind_active and _dns_query("127.0.0.1", 5353, False) and _dns_query("127.0.0.1", 5353, True)
+        checks.append(_check(bind_active, "authdns.bind_service", "主机管理的 BIND 服务正在运行", details=bind_service))
+        checks.append(_check(backend_ready, "authdns.bind_backend", "BIND 回环后端 127.0.0.1:5353 UDP/TCP 可用"))
     active = (args.install_root / "current").is_symlink()
     ports_ok, occupied = (True, []) if active else _ports_available(_port_specs(env, args.role))
     checks.append(_check(ports_ok, "machine.ports", "角色所需端口可绑定", details=occupied))
@@ -783,7 +821,7 @@ def _dns_query(address: str, port: int, tcp: bool) -> bool:
 
 
 def readiness_probe(role: str, phase: str, env: dict[str, str], secret_dir: Path | None) -> bool:
-    address = env.get("RI_MANAGEMENT_BIND_ADDRESS", "127.0.0.1")
+    address = env.get("RI_AUTHDNS_MANAGEMENT_IP" if role == "authdns" else "RI_MANAGEMENT_BIND_ADDRESS", "127.0.0.1")
     if phase == "registry_ready":
         return _http_ready(f"http://{address}:9109/readyz")
     if phase == "agent_trace_ready":
@@ -798,6 +836,15 @@ def readiness_probe(role: str, phase: str, env: dict[str, str], secret_dir: Path
         bind = env.get("DNS_BIND_ADDRESS", "")
         port = 1053
         return port == 1053 and _http_ready(f"http://{address}:9108/readyz") and _dns_query(bind, port, False) and _dns_query(bind, port, True)
+    if phase == "authdns_agent_ready":
+        authdns_address = env.get("RI_AUTHDNS_MANAGEMENT_IP", "")
+        context = ssl.create_default_context(cafile=str(secret_dir / "agent-tls" / "agent-ca.crt") if secret_dir else None)
+        if secret_dir:
+            context.load_cert_chain(str(secret_dir / "agent-tls" / "agent-client.crt"), str(secret_dir / "agent-tls" / "agent-client.key"))
+        return bool(authdns_address) and _http_ready(f"https://{authdns_address}:8443/readyz", context)
+    if phase == "authority_ready":
+        bind = env.get("RI_AUTHDNS_MANAGEMENT_IP", "")
+        return _http_ready("http://127.0.0.1:9111/readyz") and _dns_query(bind, 53, False) and _dns_query(bind, 53, True)
     if phase == "norn_ready":
         _norn_grpc_ready(env, secret_dir)
         return True
@@ -822,7 +869,20 @@ def _wait_readiness(role: str, phase: str, env: dict[str, str], secret_dir: Path
 
 
 def start_ordered(target: Path, role: str, env: dict[str, str], secret_dir: Path | None, state: dict[str, object], state_file: Path) -> None:
-    if role in {"r1", "r2", "r3"}:
+    if role == "authdns":
+        sequence = [
+            ("registry_ready", ["up", "-d", "registry-sync"]),
+            ("authdns_agent_ready", ["up", "-d", "agent"]),
+            ("authority_ready", ["up", "-d", "authority-proxy"]),
+        ]
+        phases = state.get("phases", {})
+        for phase_name, action in sequence:
+            if isinstance(phases, dict) and phase_name in phases and readiness_probe(role, phase_name, env, secret_dir):
+                continue
+            compose(target, action)
+            _wait_readiness(role, phase_name, env, secret_dir)
+            _phase(state, state_file, phase_name, hashlib.sha256(" ".join(action).encode()).hexdigest())
+    elif role in {"r1", "r2", "r3"}:
         sequence = [
             ("registry_ready", ["up", "-d", "registry-sync"]),
             ("agent_trace_ready", ["up", "-d", "agent", "trace-adapter"]),
@@ -1208,7 +1268,7 @@ def backup(args: argparse.Namespace) -> None:
             "excluded_live_files": sorted(excluded),
         }
         staged_database = staging / "evidence-v2.db"
-        if args.role in {"r1", "r2", "r3"} and database.is_file() and not database.is_symlink():
+        if args.role in {"authdns", "r1", "r2", "r3"} and database.is_file() and not database.is_symlink():
             integrity = _sqlite_backup(database, staged_database)
             manifest["database"] = {
                 "path": "data/evidence-v2.db", "status": "backed_up", "method": "sqlite3_online_backup",
@@ -1370,7 +1430,7 @@ def prepare_secrets(args: argparse.Namespace) -> None:
         die("SEC201", "密钥目录不能是符号链接", "使用本机真实目录并设置 0700 权限。")
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(root, 0o700)
-    if args.role in {"r1", "r2", "r3"}:
+    if args.role in {"authdns", "r1", "r2", "r3"}:
         for name in ("secrets", "agent-tls", "norn-tls"):
             path = root / name
             if path.is_symlink():
@@ -1400,9 +1460,12 @@ def prepare_secrets(args: argparse.Namespace) -> None:
             path.mkdir(exist_ok=True, mode=0o700)
             os.chmod(path, 0o700)
     missing = [name for name in REQUIRED_SECRETS[args.role] if not (root / name).is_file()]
-    if args.role in {"r1", "r2", "r3"}:
+    if args.role in {"authdns", "r1", "r2", "r3"}:
         for dirname, names in RESOLVER_TLS_FILES.items():
-            required = names + (R1_TLS_FILES if args.role == "r1" and dirname == "agent-tls" else ())
+            extras = R1_TLS_FILES if args.role == "r1" and dirname == "agent-tls" else ()
+            if args.role == "authdns" and dirname == "agent-tls":
+                extras = AUTHDNS_TLS_FILES
+            required = names + extras
             missing.extend(f"{dirname}/{name}" for name in required if not (root / dirname / name).is_file())
     evidence = {
         "host": safe_host(args.expected_host), "role": args.role, "checked_at": now(),
