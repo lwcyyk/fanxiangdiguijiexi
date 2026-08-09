@@ -1,0 +1,54 @@
+[
+  {
+    "snapshot_key": "registry-v2:operator/L01/r1",
+    "adapter_type": "norn",
+    "chain_identity": "norn-genesis:0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+    "registry_locator": "norn:0x1000000000000000000000000000000000000001#resolver-identity-registry-v2",
+    "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+    "finality_type": "norn-dual-node-confirmations",
+    "finalized_block": 141206,
+    "finalized_block_hash": "0xfb71cb61cc99824e047237d15193d90947d99f944dd523a4e8fc9a1087deb784",
+    "snapshot_generation": 3,
+    "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+    "updated_at": "2026-08-08 14:21:08"
+  },
+  {
+    "snapshot_key": "registry-v2:operator/L01/r2",
+    "adapter_type": "norn",
+    "chain_identity": "norn-genesis:0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+    "registry_locator": "norn:0x1000000000000000000000000000000000000001#resolver-identity-registry-v2",
+    "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+    "finality_type": "norn-dual-node-confirmations",
+    "finalized_block": 141206,
+    "finalized_block_hash": "0xfb71cb61cc99824e047237d15193d90947d99f944dd523a4e8fc9a1087deb784",
+    "snapshot_generation": 3,
+    "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+    "updated_at": "2026-08-08 14:21:08"
+  },
+  {
+    "snapshot_key": "registry-v2:operator/L01/r3",
+    "adapter_type": "norn",
+    "chain_identity": "norn-genesis:0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+    "registry_locator": "norn:0x1000000000000000000000000000000000000001#resolver-identity-registry-v2",
+    "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+    "finality_type": "norn-dual-node-confirmations",
+    "finalized_block": 141206,
+    "finalized_block_hash": "0xfb71cb61cc99824e047237d15193d90947d99f944dd523a4e8fc9a1087deb784",
+    "snapshot_generation": 3,
+    "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+    "updated_at": "2026-08-08 14:21:08"
+  },
+  {
+    "snapshot_key": "registry-v2:operator/authdns",
+    "adapter_type": "norn",
+    "chain_identity": "norn-genesis:0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+    "registry_locator": "norn:0x1000000000000000000000000000000000000001#resolver-identity-registry-v2",
+    "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+    "finality_type": "norn-dual-node-confirmations",
+    "finalized_block": 141206,
+    "finalized_block_hash": "0xfb71cb61cc99824e047237d15193d90947d99f944dd523a4e8fc9a1087deb784",
+    "snapshot_generation": 3,
+    "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+    "updated_at": "2026-08-08 14:21:08"
+  }
+]

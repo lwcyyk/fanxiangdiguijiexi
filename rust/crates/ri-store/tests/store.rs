@@ -1,9 +1,9 @@
 use ri_core::evidence::{DNS_SERVER_IDENTITY_V2, QUERY_EVIDENCE_GRAPH_V2, TRACE_EVENT_V2};
 use ri_core::{
-    AgentBindingV2, DnsEndpoint, DnsServerIdentityV2, DnsServerRole, DnssecStatus,
-    QueryEvidenceGraphV2, RegistryAdapterMetadataV2, RegistryFinalityTypeV2, RegistryReferenceV2,
-    TraceEventKind, TraceEventV2, VerificationMode, ed25519_public_key_b64, object_hash,
-    sign_ed25519,
+    AgentBindingV2, CacheProvenanceV2, DnsEndpoint, DnsServerIdentityV2, DnsServerRole,
+    DnssecStatus, EvidenceNodeV2, QueryEvidenceGraphV2, RegistryAdapterMetadataV2,
+    RegistryFinalityTypeV2, RegistryReferenceV2, TraceEventKind, TraceEventV2, VerificationMode,
+    ed25519_public_key_b64, object_hash, sign_ed25519,
 };
 use ri_store::{CacheSourceGraphSelector, EvidenceStore, TraceResponseMatch};
 use rusqlite::{Connection, params};
@@ -709,6 +709,56 @@ fn cache_source_lookup_succeeds_across_queries_with_optional_pin() {
 }
 
 #[test]
+fn cache_source_hit_chains_never_replace_earliest_canonical_root() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("evidence.db");
+    let store = EvidenceStore::open(&path).unwrap();
+    let root_digest = put_cache_source(
+        &store,
+        &path,
+        "root-trace",
+        "source-query",
+        "source-query",
+        "source-response",
+        "source-response",
+        "cache-object",
+        "root-trace",
+    );
+    put_cache_source(
+        &store,
+        &path,
+        "derived-trace",
+        "source-query",
+        "source-query",
+        "source-response",
+        "source-response",
+        "cache-object",
+        "derived-trace",
+    );
+    let derived_digest = set_cache_provenance(&path, "derived-trace", &root_digest);
+
+    let unpinned = store
+        .find_cache_source_graph(&CacheSourceGraphSelector {
+            cache_object_digest: "cache-object",
+            graph_digest: None,
+        })
+        .unwrap()
+        .unwrap();
+    assert_eq!(unpinned.graph.trace_id, "root-trace");
+    assert_eq!(unpinned.graph_digest, root_digest);
+
+    assert!(
+        store
+            .find_cache_source_graph(&CacheSourceGraphSelector {
+                cache_object_digest: "cache-object",
+                graph_digest: Some(&derived_digest),
+            })
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[test]
 fn cache_source_lookup_rejects_wrong_object_and_graph_digests() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("evidence.db");
@@ -746,20 +796,20 @@ fn cache_source_lookup_rejects_wrong_object_and_graph_digests() {
 }
 
 #[test]
-fn cache_source_lookup_requires_current_generation_and_claimed_lineage() {
+fn cache_source_lookup_survives_generation_bump_but_requires_claimed_lineage() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("evidence.db");
     let store = EvidenceStore::open(&path).unwrap();
-    put_cache_source(
+    let root_digest = put_cache_source(
         &store,
         &path,
-        "stale-trace",
+        "root-trace",
         "source-query",
         "source-query",
         "source-response",
         "source-response",
-        "stale-object",
-        "stale-trace",
+        "root-object",
+        "root-trace",
     );
     put_cache_source(
         &store,
@@ -772,26 +822,84 @@ fn cache_source_lookup_requires_current_generation_and_claimed_lineage() {
         "unclaimed-object",
         "different-trace",
     );
+
     Connection::open(&path)
         .unwrap()
         .execute(
-            "UPDATE ri_v2_evidence_graphs SET snapshot_generation=1 WHERE trace_id='stale-trace'",
+            "UPDATE ri_v2_meta SET meta_value='1' WHERE meta_key='cache_generation'",
             [],
         )
         .unwrap();
+    assert_eq!(store.cache_generation().unwrap(), 1);
 
-    for cache_object_digest in ["stale-object", "unclaimed-object"] {
-        assert!(
-            store
-                .find_cache_source_graph(&CacheSourceGraphSelector {
-                    cache_object_digest,
-                    graph_digest: None,
-                })
-                .unwrap()
-                .is_none(),
-            "unexpected source for {cache_object_digest}"
-        );
+    let found = store
+        .find_cache_source_graph(&CacheSourceGraphSelector {
+            cache_object_digest: "root-object",
+            graph_digest: None,
+        })
+        .unwrap()
+        .unwrap();
+    assert_eq!(found.graph_digest, root_digest);
+    assert!(
+        store
+            .find_cache_source_graph(&CacheSourceGraphSelector {
+                cache_object_digest: "unclaimed-object",
+                graph_digest: None,
+            })
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[test]
+fn cache_source_lookup_deterministically_selects_earliest_concurrent_root() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("evidence.db");
+    let store = EvidenceStore::open(&path).unwrap();
+    let first_digest = put_cache_source(
+        &store,
+        &path,
+        "first-trace",
+        "first-query",
+        "first-query",
+        "first-response",
+        "first-response",
+        "cache-object",
+        "first-trace",
+    );
+    let second_digest = put_cache_source(
+        &store,
+        &path,
+        "second-trace",
+        "second-query",
+        "second-query",
+        "second-response",
+        "second-response",
+        "cache-object",
+        "second-trace",
+    );
+
+    for _ in 0..10 {
+        let found = store
+            .find_cache_source_graph(&CacheSourceGraphSelector {
+                cache_object_digest: "cache-object",
+                graph_digest: None,
+            })
+            .unwrap()
+            .unwrap();
+        assert_eq!(found.graph.trace_id, "first-trace");
+        assert_eq!(found.graph_digest, first_digest);
     }
+    assert_ne!(first_digest, second_digest);
+    assert!(
+        store
+            .find_cache_source_graph(&CacheSourceGraphSelector {
+                cache_object_digest: "cache-object",
+                graph_digest: Some(&second_digest),
+            })
+            .unwrap()
+            .is_none()
+    );
 }
 
 #[test]
@@ -836,6 +944,60 @@ fn cache_source_lookup_requires_source_query_and_response_match() {
     }
 }
 
+#[test]
+fn cache_source_lookup_requires_original_successful_nonempty_graph() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("evidence.db");
+    let store = EvidenceStore::open(&path).unwrap();
+
+    for trace_id in ["empty", "failed", "errors"] {
+        put_cache_source(
+            &store,
+            &path,
+            trace_id,
+            "source-query",
+            "source-query",
+            "source-response",
+            "source-response",
+            trace_id,
+            trace_id,
+        );
+    }
+    let connection = Connection::open(&path).unwrap();
+    connection
+        .execute(
+            "UPDATE ri_v2_evidence_graphs SET graph_json=json_set(graph_json,'$.nodes',json('[]')) WHERE trace_id='empty'",
+            [],
+        )
+        .unwrap();
+    connection
+        .execute(
+            "UPDATE ri_v2_evidence_graphs SET graph_json=json_set(graph_json,'$.final_result',json('false')) WHERE trace_id='failed'",
+            [],
+        )
+        .unwrap();
+    connection
+        .execute(
+            "UPDATE ri_v2_evidence_graphs SET graph_json=json_set(graph_json,'$.graph_errors',json('[\"error\"]')) WHERE trace_id='errors'",
+            [],
+        )
+        .unwrap();
+    drop(connection);
+
+    for cache_object_digest in ["empty", "failed", "errors"] {
+        assert!(
+            store
+                .find_cache_source_graph(&CacheSourceGraphSelector {
+                    cache_object_digest,
+                    graph_digest: None,
+                })
+                .unwrap()
+                .is_none(),
+            "unexpected source for {cache_object_digest}"
+        );
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn put_cache_source(
     store: &EvidenceStore,
@@ -862,9 +1024,9 @@ fn put_cache_source(
         dnssec_status: DnssecStatus::Secure,
         cache_provenance: None,
         terminal_cache_graphs: vec![],
-        nodes: vec![],
+        nodes: vec![cache_source_node()],
         edges: vec![],
-        terminal_node_ids: vec![],
+        terminal_node_ids: vec!["operator/r1".into()],
         final_result: true,
         graph_errors: vec![],
         key_id: "test-key".into(),
@@ -904,6 +1066,53 @@ fn put_cache_source(
         )
         .unwrap();
     graph_digest
+}
+
+fn set_cache_provenance(
+    path: &std::path::Path,
+    trace_id: &str,
+    source_graph_digest: &str,
+) -> String {
+    let connection = Connection::open(path).unwrap();
+    let graph_json = connection
+        .query_row(
+            "SELECT graph_json FROM ri_v2_evidence_graphs WHERE trace_id=?",
+            [trace_id],
+            |row| row.get::<_, String>(0),
+        )
+        .unwrap();
+    let mut graph: QueryEvidenceGraphV2 = serde_json::from_str(&graph_json).unwrap();
+    graph.cache_provenance = Some(CacheProvenanceV2 {
+        source_graph_digest: source_graph_digest.into(),
+        source_dnssec_required: true,
+        cached_at: 1_800_000_000,
+        dns_ttl_expires_at: 1_800_000_300,
+        identity_expires_at: 1_900_000_000,
+        snapshot_generation: 0,
+    });
+    let graph_digest = object_hash(&graph).unwrap();
+    connection
+        .execute(
+            "UPDATE ri_v2_evidence_graphs SET graph_json=?,graph_digest=? WHERE trace_id=?",
+            params![
+                serde_json::to_string(&graph).unwrap(),
+                graph_digest,
+                trace_id
+            ],
+        )
+        .unwrap();
+    graph_digest
+}
+
+fn cache_source_node() -> EvidenceNodeV2 {
+    let identity = unsigned_identity();
+    EvidenceNodeV2 {
+        registry: registry(&identity, 0),
+        identity,
+        evidence_levels: vec![],
+        accepted: true,
+        reasons: vec![],
+    }
 }
 
 fn response_event(

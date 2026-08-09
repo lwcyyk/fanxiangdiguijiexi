@@ -1,0 +1,72 @@
+{
+  "schema_version": "tencent-cloud-oci-rc15-verification-v1",
+  "release": "0.3.0-norn-knot-rc15",
+  "verified_at_utc": "2026-08-08T17:43:00Z",
+  "source": {
+    "git_commit": "c022d17546b92d399562810c526d5fd7932ae50c",
+    "working_tree_clean": false,
+    "cargo_toml_sha256": "139c7b7a7f938acbf0e64bbc0f0e2ee0849917a64e5e70ff94f577f9679ee992",
+    "cargo_lock_sha256": "4278854dcafc58259a55ca7e05cf30a93016a4bb8a6d9276bb9f8d70a107f940",
+    "release_source_note": "Built from recorded commit plus the current RC15 working-tree Cache Provenance fix and version update. RC14 historical evidence and unrelated untracked deployment artifacts were excluded from build inputs."
+  },
+  "builder": {
+    "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+    "cargo": "cargo 1.97.0 (c980f4866 2026-06-30)",
+    "network_during_build": "disabled by Docker --network none and cargo --offline",
+    "cargo_mode": "--locked --offline --release --workspace",
+    "stable_cargo_home": "/cargo-home",
+    "stable_target_path": "/target",
+    "source_date_epoch": 1785888000,
+    "image": "rust:1.97.0-bookworm",
+    "pinned_multiarch_digest": "sha256:8fa55b2f3ddf97471ab6a767bfa3f37e6bad0986ba823e75fea57e2a2a5c3073",
+    "execution_host": "ri-r3 cloud lab host",
+    "max_required_glibc": "GLIBC_2.34"
+  },
+  "reproducible_build": {
+    "independent_clean_target_directories": true,
+    "same_stable_build_paths": true,
+    "binary_sha256_identical": true,
+    "build_ids_identical": true,
+    "binaries_sha256": {
+      "ri-agent": "1c7a3348062b14ab172449378336c13d789c31e3b8e7db6aaf64d8134b1e02fd",
+      "ri-authority-proxy": "2702a59f9b99dc88e9299f18aad82e5e950594c9c01e54b47b7e0fd7a69dbc78",
+      "ri-knot-trace-producer": "51c1f0103be31e81de9d202686e7155465fec27287f64a188b649b38d0ee9630",
+      "ri-registry-sync": "c14f79f1fef798a36e005de87b328367f44aaf33a3f62315ee1b337ea2c42481",
+      "ri-trace-adapter": "5c3d0c1e36b3b811bc71d1be50c820640762f180bc4e0569db258416746b2f54",
+      "ri-wrapper": "6c5537f450773aee49a4db668ec3ec5875c46ca937adec07464b9c27285b53ac"
+    },
+    "build_ids": {
+      "ri-agent": "4ee40f91d6ab475d32276354e1cb310b7077622b",
+      "ri-authority-proxy": "e501d373ab8d492af2da31e68186d83631aad410",
+      "ri-knot-trace-producer": "7c57af92c290623bf538d8d72007e51ac08b30ae",
+      "ri-registry-sync": "6173e421dd2a6cad64b62026b41d74542bb107a5",
+      "ri-trace-adapter": "990cef4b0fe64363ba9be18697ac7e7a956a4d4b",
+      "ri-wrapper": "3910ed027e03e46fbc44153b021e76fde0b83f79"
+    },
+    "initial_different-path_probe_identical": false,
+    "initial_probe_note": "A preliminary build used different absolute Cargo/target paths and correctly produced different binaries because dependency source paths are embedded. The formal A/B builds used separate clean targets at the same stable paths, matching the RC13 reproducibility method.",
+    "initial_different_path_probe_identical": false,
+    "bookworm_formal_builds": 2
+  },
+  "oci_reproducibility": {
+    "assembly_runs": 2,
+    "archive_byte_identical": true,
+    "digest_record_identical": true,
+    "archive_sha256": "634eaf6078d449ea23de803313a9cbfc4871c289e426d0deb24a94a98bd09713",
+    "manifest_digest": "sha256:1e4409aaffcbb38c2d13d91b3e8fb6b004f677d7ddb566ae8007aa5ae8ebe23f",
+    "config_digest": "sha256:82fdaaffee47a55ab3b31e6f05367a7777184e9a1a6d6e93eb1289815993d754",
+    "derived_from": {
+      "archive": "rust-data-plane-oci-rc14.tar",
+      "archive_sha256": "95dc54ec9bcda0bb9f206fb24ddd23007cdba9ea490e7dda080a51584ee19f5f",
+      "manifest_digest": "sha256:d6c4f9da0821dd1387906dae499e0f9e3d6cd9e1dc93cfadd5fbbe71ac10cf80"
+    }
+  },
+  "release_flags": {
+    "cache_recovery_passed": false,
+    "trace_binding_passed": false,
+    "trace_binding_known_p0": true,
+    "release_ready": false,
+    "production_capacity_validated": false,
+    "production_deployed": false
+  }
+}

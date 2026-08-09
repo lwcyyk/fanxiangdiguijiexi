@@ -1,0 +1,158 @@
+[
+  {
+    "edge_id": "3e570b54ff0af0ff848892bb83dc17ce:0x31e9c2d6b7dbba395ea090c34b847e96845abfab002c4aeeec4b27c46b24bd13",
+    "verifier": "operator/L01/r1",
+    "subject": "operator/L01/r2",
+    "from_endpoint": {
+      "ip": "10.206.16.14",
+      "port": 53,
+      "transport": "udp"
+    },
+    "to_endpoint": {
+      "ip": "10.206.16.17",
+      "port": 53,
+      "transport": "udp"
+    },
+    "target_correlation_id": "0xef9378615bcbd5e41d652ed76767a92a53e97f5d10bf4e9242d3026a96bd0188",
+    "query_digest": "0xa51fab273e827f2d82f5beb4d50bb72d807ca1695097bb3a1051b6e2527caf20",
+    "response_digest": "0x87cbdd020aca7595a80c1a8d9ab6784113d86111359f7d0319a6bc109918697e",
+    "registry_snapshot_generation": 3,
+    "registry_state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+    "registry_status": "ACTIVE",
+    "endpoint_binding_status": "MATCHED",
+    "target_attestation_server_id": "operator/L01/r2",
+    "target_attestation_key_id": "agent-key-L01-r2",
+    "accepted": true,
+    "reasons": []
+  },
+  {
+    "edge_id": "3e570b54ff0af0ff848892bb83dc17ce:0x4e896ca40b26eb1eb1ee1e5439ef1e9083f165bdce7a40a086a2c0cd2d56de71",
+    "verifier": "operator/L01/r2",
+    "subject": "operator/L01/r3",
+    "from_endpoint": {
+      "ip": "10.206.16.17",
+      "port": 53,
+      "transport": "udp"
+    },
+    "to_endpoint": {
+      "ip": "10.206.16.7",
+      "port": 53,
+      "transport": "udp"
+    },
+    "target_correlation_id": "0xb9322592c1dd847c32f6d826293489b77ae5b71a6a54d3d6df64a33df383cfc7",
+    "query_digest": "0xf0e6253056bf8aae8cc6ed2914b394b4dee968d92cd2a632b0b28a84bc78ad7b",
+    "response_digest": "0xb6c2da1becba4ff70af71f86ed65a101d7a98d4feecf414727422c2f77710f36",
+    "registry_snapshot_generation": 3,
+    "registry_state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+    "registry_status": "ACTIVE",
+    "endpoint_binding_status": "MATCHED",
+    "target_attestation_server_id": "operator/L01/r3",
+    "target_attestation_key_id": "agent-key-L01-r3",
+    "accepted": true,
+    "reasons": []
+  },
+  {
+    "edge_id": "3e570b54ff0af0ff848892bb83dc17ce:0x52a5d86cabe3322ed5414071bec938d6c6b2b5998ab6e133365e635c908e9659",
+    "verifier": "operator/L01/r1",
+    "subject": "operator/L01/r2",
+    "from_endpoint": {
+      "ip": "10.206.16.14",
+      "port": 53,
+      "transport": "udp"
+    },
+    "to_endpoint": {
+      "ip": "10.206.16.17",
+      "port": 53,
+      "transport": "udp"
+    },
+    "target_correlation_id": "0xbcb2e40662b047f0e0881b1a7226f32e4dc746c7828dda3cd43bae36eff766e5",
+    "query_digest": "0xe35f7563d9b150eeb2779a4c69532ede09e750e82db09f72de63b1a98994f2e7",
+    "response_digest": "0x33172594d980d884e7f3270c4ba10c768ca0e7f277ca00d82c25199d284ecba7",
+    "registry_snapshot_generation": 3,
+    "registry_state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+    "registry_status": "ACTIVE",
+    "endpoint_binding_status": "MATCHED",
+    "target_attestation_server_id": "operator/L01/r2",
+    "target_attestation_key_id": "agent-key-L01-r2",
+    "accepted": true,
+    "reasons": []
+  },
+  {
+    "edge_id": "3e570b54ff0af0ff848892bb83dc17ce:0x60f623e1f96490d9762956d3a44d15419fac0c1f5af767e29b7fc3d6c6fd2130",
+    "verifier": "operator/L01/r2",
+    "subject": "operator/L01/r3",
+    "from_endpoint": {
+      "ip": "10.206.16.17",
+      "port": 53,
+      "transport": "udp"
+    },
+    "to_endpoint": {
+      "ip": "10.206.16.7",
+      "port": 53,
+      "transport": "udp"
+    },
+    "target_correlation_id": "0x1df666ef487f8779bee7084fa72b0ab7a1d760f9da07ad43a2317185a53bf3ac",
+    "query_digest": "0x584d28c6ee3e6dcb84a9169a792418f4fef22b582658c50e03fb2923da4c75f4",
+    "response_digest": "0x9177d36e9e9a5ad6a02484c43b87d47269317f4d8730fac152e90c68a3859706",
+    "registry_snapshot_generation": 3,
+    "registry_state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+    "registry_status": "ACTIVE",
+    "endpoint_binding_status": "MATCHED",
+    "target_attestation_server_id": "operator/L01/r3",
+    "target_attestation_key_id": "agent-key-L01-r3",
+    "accepted": true,
+    "reasons": []
+  },
+  {
+    "edge_id": "3e570b54ff0af0ff848892bb83dc17ce:0x8d26d593d2190e5d941ba19ae1fb7772fd854ab8a26f4075ca8419eb93f520c9",
+    "verifier": "operator/L01/r3",
+    "subject": "operator/authdns",
+    "from_endpoint": {
+      "ip": "10.206.16.7",
+      "port": 53,
+      "transport": "udp"
+    },
+    "to_endpoint": {
+      "ip": "10.206.16.13",
+      "port": 53,
+      "transport": "udp"
+    },
+    "target_correlation_id": "0xeae47293d79daf197d2d1d4a19aa220f4b45991c1a3e3142495de579a4006f08",
+    "query_digest": "0x117479e8e8b435b22e36e795f8a2ea8b58b74bf08e00db3d181b186d86b4692f",
+    "response_digest": "0x064c85ccbbfdf27c7e3e55ccd1356bb968c66ab44902d357cbc9b8ecbffde982",
+    "registry_snapshot_generation": 3,
+    "registry_state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+    "registry_status": "ACTIVE",
+    "endpoint_binding_status": "MATCHED",
+    "target_attestation_server_id": "operator/authdns",
+    "target_attestation_key_id": "agent-key-authdns",
+    "accepted": true,
+    "reasons": []
+  },
+  {
+    "edge_id": "3e570b54ff0af0ff848892bb83dc17ce:0xe2ffb394b24f2f3368e0cf24876898a1c6b73595ffe46e328aa0b1a9f53d47e1",
+    "verifier": "operator/L01/r3",
+    "subject": "operator/authdns",
+    "from_endpoint": {
+      "ip": "10.206.16.7",
+      "port": 53,
+      "transport": "udp"
+    },
+    "to_endpoint": {
+      "ip": "10.206.16.13",
+      "port": 53,
+      "transport": "udp"
+    },
+    "target_correlation_id": "0x6dc7a3c5e7b3e4120fb6bf959cb0907afe7d771841d97034959f26196df95a95",
+    "query_digest": "0x7849463442631d9a9b3edffa661d31017a2ff7e78e5098398b64f8c2ca553a3e",
+    "response_digest": "0x9273259e49574d82f3c956fdaa1e3184ccc87dba5e27af0bf2f97925df4f2c63",
+    "registry_snapshot_generation": 3,
+    "registry_state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+    "registry_status": "ACTIVE",
+    "endpoint_binding_status": "MATCHED",
+    "target_attestation_server_id": "operator/authdns",
+    "target_attestation_key_id": "agent-key-authdns",
+    "accepted": true,
+    "reasons": []
+  }
+]

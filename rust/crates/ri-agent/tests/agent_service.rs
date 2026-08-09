@@ -233,7 +233,7 @@ async fn timed_out_upstream_is_causally_closed_before_retry_succeeds() {
 }
 
 #[tokio::test]
-async fn cache_hit_requires_source_graph_in_current_registry_generation() {
+async fn cache_hit_requires_canonical_source_graph() {
     let fixture = fixture(VerificationMode::PublicHybrid);
     let timestamp = now() - 1;
     let mut source_final = event(
@@ -345,8 +345,7 @@ async fn cache_hit_requires_source_graph_in_current_registry_generation() {
         "unverified cache cannot attest DNSSEC status"
     );
 
-    // CacheHit referencing a source graph that does not exist in the
-    // current Registry generation must still be rejected.
+    // CacheHit referencing a source graph that does not exist must still be rejected.
     let mut missing_source_hit = cache_hit.clone();
     missing_source_hit.event_id = "cached-hit-missing-source".into();
     missing_source_hit.trace_id = "cached-missing-trace".into();
@@ -373,8 +372,7 @@ async fn cache_hit_requires_source_graph_in_current_registry_generation() {
         "missing source graph must produce a source-graph error, got: {error}"
     );
 
-    // CacheHit with a source_graph_digest that exists in the Registry
-    // produces a fully-verified cache graph.
+    // CacheHit with a canonical source_graph_digest produces a fully verified cache graph.
     let mut valid_source_hit = cache_hit;
     valid_source_hit.event_id = "cached-hit-valid".into();
     valid_source_hit.trace_id = "cached-valid-trace".into();
@@ -440,17 +438,181 @@ async fn cache_hit_rejects_tampered_source_signature_with_unchanged_object_hash(
 }
 
 #[tokio::test]
-async fn cache_hit_rejects_source_from_stale_registry_generation() {
+async fn cache_hit_accepts_registry_generation_advancement_without_semantic_change() {
+    let (fixture, source_graph) = cache_source_fixture().await;
+    let source_digest = object_hash(&source_graph).unwrap();
+    advance_registry_generation(&fixture.store, 8);
+
+    let request = put_cache_hit_trace(&fixture.store, &source_digest, "advanced-generation");
+    let graph = fixture.state.build_graph(&request).await.unwrap();
+
+    assert_eq!(
+        graph.cache_provenance.unwrap().source_graph_digest,
+        source_digest
+    );
+}
+
+#[tokio::test]
+async fn cache_hit_accepts_source_after_agent_restart_on_same_database() {
+    let (fixture, source_graph) = cache_source_fixture().await;
+    let source_digest = object_hash(&source_graph).unwrap();
+    let restarted_state = AgentState::new(
+        fixture.state.config.clone(),
+        fixture.store.clone(),
+        fixture.state.issuer_keys.clone(),
+        reqwest::Client::builder().no_proxy().build().unwrap(),
+    );
+    let request = put_cache_hit_trace(&fixture.store, &source_digest, "agent-restart");
+
+    let graph = restarted_state.build_graph(&request).await.unwrap();
+
+    assert_eq!(
+        graph.cache_provenance.unwrap().source_graph_digest,
+        source_digest
+    );
+}
+
+#[tokio::test]
+async fn cache_hit_rejects_revoked_current_identity() {
+    let (fixture, source_graph) = cache_source_fixture().await;
+    let source_digest = object_hash(&source_graph).unwrap();
+    assert!(
+        fixture
+            .store
+            .quarantine_identity("root/a", "REVOKED")
+            .unwrap()
+    );
+    assert_eq!(
+        fixture.store.put_graph(&source_graph).unwrap(),
+        source_digest
+    );
+
+    let request = put_cache_hit_trace(&fixture.store, &source_digest, "revoked-identity");
+    let error = fixture.state.build_graph(&request).await.unwrap_err();
+    assert!(
+        error.to_string().contains("current Registry binding"),
+        "revoked source identity must fail current-state validation, got: {error}"
+    );
+}
+
+#[tokio::test]
+async fn cache_hit_rejects_replaced_current_identity() {
+    let (fixture, source_graph) = cache_source_fixture().await;
+    let source_digest = object_hash(&source_graph).unwrap();
+    let mut replacement = fixture.store.get_identity("root/a").unwrap().unwrap().0;
+    replacement.valid_until += 60;
+    replacement.object_version += 1;
+    replacement.signature = Some(sign_ed25519(&replacement, &key(1)).unwrap());
+    let mut current_registry = registry(&replacement);
+    current_registry.snapshot_generation = 8;
+    fixture
+        .store
+        .put_identity(&replacement, &current_registry)
+        .unwrap();
+    assert_eq!(
+        fixture.store.put_graph(&source_graph).unwrap(),
+        source_digest
+    );
+
+    let request = put_cache_hit_trace(&fixture.store, &source_digest, "replaced-identity");
+    let error = fixture.state.build_graph(&request).await.unwrap_err();
+    assert!(
+        error.to_string().contains("was replaced"),
+        "replaced source identity must fail current-state validation, got: {error}"
+    );
+}
+
+#[tokio::test]
+async fn cache_hit_rejects_current_endpoint_or_agent_key_mismatch() {
+    for (case, mutate) in [("endpoint-mismatch", 0_u8), ("agent-key-mismatch", 1_u8)] {
+        let (fixture, source_graph) = cache_source_fixture().await;
+        let source_digest = object_hash(&source_graph).unwrap();
+        let mut replacement = fixture
+            .store
+            .get_identity("operator/r1")
+            .unwrap()
+            .unwrap()
+            .0;
+        if mutate == 0 {
+            replacement.endpoints = vec![endpoint("192.0.2.99")];
+        } else {
+            replacement.agent.as_mut().unwrap().public_key =
+                ed25519_public_key_b64(&key(65)).unwrap();
+        }
+        replacement.object_version += 1;
+        replacement.signature = Some(sign_ed25519(&replacement, &key(1)).unwrap());
+        let mut current_registry = registry(&replacement);
+        current_registry.snapshot_generation = 8;
+        fixture
+            .store
+            .put_identity(&replacement, &current_registry)
+            .unwrap();
+        assert_eq!(
+            fixture.store.put_graph(&source_graph).unwrap(),
+            source_digest
+        );
+
+        let request = put_cache_hit_trace(&fixture.store, &source_digest, case);
+        let error = fixture.state.build_graph(&request).await.unwrap_err();
+        assert!(
+            error.to_string().contains("was replaced"),
+            "{case} must fail current identity matching, got: {error}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn cache_hit_rejects_reused_nested_provenance_graph() {
     let (fixture, mut source_graph) = cache_source_fixture().await;
-    source_graph.nodes[0].registry.snapshot_generation -= 1;
+    let child = source_graph.clone();
+    source_graph.terminal_cache_graphs = vec![child.clone(), child];
     source_graph.signature = Some(sign_ed25519(&source_graph, &key(33)).unwrap());
     let source_digest = fixture.store.put_graph(&source_graph).unwrap();
 
-    let request = put_cache_hit_trace(&fixture.store, &source_digest, "stale-generation");
+    let request = put_cache_hit_trace(&fixture.store, &source_digest, "provenance-cycle");
     let error = fixture.state.build_graph(&request).await.unwrap_err();
     assert!(
-        error.to_string().contains("stale Registry generation"),
-        "stale source generation must fail current-state validation, got: {error}"
+        error.to_string().contains("cycle"),
+        "reused provenance graph digest must fail closed, got: {error}"
+    );
+}
+
+#[tokio::test]
+async fn cache_hit_rejects_provenance_self_reference() {
+    let (fixture, mut source_graph) = cache_source_fixture().await;
+    source_graph.cache_provenance = Some(ri_core::CacheProvenanceV2 {
+        source_graph_digest: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            .into(),
+        source_dnssec_required: true,
+        cached_at: source_graph.issued_at,
+        dns_ttl_expires_at: now() + 60,
+        identity_expires_at: source_graph
+            .nodes
+            .iter()
+            .map(|node| node.identity.valid_until)
+            .min()
+            .unwrap(),
+        snapshot_generation: source_graph.nodes[0].registry.snapshot_generation,
+    });
+    source_graph.signature = Some(sign_ed25519(&source_graph, &key(33)).unwrap());
+    let source_digest = object_hash(&source_graph).unwrap();
+    source_graph
+        .cache_provenance
+        .as_mut()
+        .unwrap()
+        .source_graph_digest = source_digest.clone();
+    source_graph.signature = Some(sign_ed25519(&source_graph, &key(33)).unwrap());
+    let stored_digest = fixture.store.put_graph(&source_graph).unwrap();
+
+    let request = put_cache_hit_trace(&fixture.store, &stored_digest, "provenance-self-reference");
+    let error = fixture.state.build_graph(&request).await.unwrap_err();
+    assert!(
+        error.to_string().contains("self-reference")
+            || error.to_string().contains("cycle")
+            || error
+                .to_string()
+                .contains("canonical cache-hit source graph"),
+        "self-referential provenance must fail closed, got: {error}"
     );
 }
 
@@ -469,7 +631,9 @@ async fn cache_hit_rejects_source_identity_expired_after_issue() {
     let request = put_cache_hit_trace(&fixture.store, &source_digest, "expired-identity");
     let error = fixture.state.build_graph(&request).await.unwrap_err();
     assert!(
-        error.to_string().contains("inactive identity"),
+        error.to_string().contains("was replaced")
+            || error.to_string().contains("not active")
+            || error.to_string().contains("inactive identity"),
         "identity valid at issue time but expired now must fail, got: {error}"
     );
 }
@@ -1316,6 +1480,18 @@ fn identity(
     };
     identity.signature = Some(sign_ed25519(&identity, issuer_private).unwrap());
     identity
+}
+
+fn advance_registry_generation(store: &EvidenceStore, snapshot_generation: u64) {
+    for server_id in store.identity_ids().unwrap() {
+        let (identity, mut current_registry) = store.get_identity(&server_id).unwrap().unwrap();
+        current_registry.snapshot_generation = snapshot_generation;
+        current_registry.checkpoint_height += 1;
+        current_registry.checkpoint_hash =
+            ri_core::sha256_hex(format!("checkpoint:{server_id}:{snapshot_generation}"));
+        store.put_identity(&identity, &current_registry).unwrap();
+    }
+    store.mark_registry_sync_success(now()).unwrap();
 }
 
 fn registry(identity: &DnsServerIdentityV2) -> RegistryReferenceV2 {

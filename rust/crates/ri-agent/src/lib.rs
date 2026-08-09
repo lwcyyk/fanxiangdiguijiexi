@@ -639,7 +639,8 @@ impl AgentState {
             .await?
             .ok_or_else(|| {
                 AgentError::EvidenceUnavailable(
-                    "cache-hit source graph is absent from the current Registry generation".into(),
+                    "canonical cache-hit source graph is unavailable or does not match the claim"
+                        .into(),
                 )
             })?;
         if source.graph_digest != claimed_source_digest
@@ -654,18 +655,24 @@ impl AgentState {
             VerificationMode::ControlledStrict => EvidencePolicy::controlled_strict(),
             VerificationMode::PublicHybrid => EvidencePolicy::public_hybrid(),
         };
-        EvidenceValidator {
-            policy: &policy,
-            issuer_keys: &self.issuer_keys,
+        let source_graphs = self
+            .load_cache_source_provenance(&source_graph, &claimed_source_digest)
+            .await?;
+        for (_, historical_graph) in &source_graphs {
+            EvidenceValidator {
+                policy: &policy,
+                issuer_keys: &self.issuer_keys,
+            }
+            .validate_graph(
+                historical_graph,
+                &historical_graph.challenge,
+                historical_graph.issued_at,
+            )?;
         }
-        .validate_graph(
-            &source_graph,
-            &source_graph.challenge,
-            source_graph.issued_at,
-        )?;
         let snapshot_generation = self_record.1.snapshot_generation;
-        let identity_expires_at =
-            validate_cache_source_current(&source_graph, snapshot_generation, now)?;
+        let identity_expires_at = self
+            .validate_cache_source_current(&source_graphs, now)
+            .await?;
         if cache_hit.dnssec_status != source_graph.dnssec_status {
             return Err(AgentError::EvidenceUnavailable(
                 "cache-hit DNSSEC status differs from source evidence".into(),
@@ -939,6 +946,169 @@ impl AgentState {
             ));
         }
         Ok(())
+    }
+
+    async fn load_cache_source_provenance(
+        &self,
+        source_graph: &QueryEvidenceGraphV2,
+        claimed_digest: &str,
+    ) -> Result<Vec<(String, QueryEvidenceGraphV2)>, AgentError> {
+        let root_digest = object_hash(source_graph)?;
+        if root_digest != claimed_digest {
+            return Err(AgentError::EvidenceUnavailable(
+                "cache-hit source graph digest does not match stored evidence".into(),
+            ));
+        }
+
+        let mut graphs = vec![(root_digest.clone(), source_graph.clone())];
+        let mut visited = HashSet::from([root_digest.clone()]);
+        let mut pending = Vec::new();
+        enqueue_cache_provenance_reference(source_graph, &root_digest, 0, &visited, &mut pending)?;
+        collect_embedded_cache_graphs(
+            source_graph,
+            &root_digest,
+            0,
+            &mut visited,
+            &mut graphs,
+            &mut pending,
+        )?;
+
+        while let Some((source_digest, depth)) = pending.pop() {
+            if !visited.insert(source_digest.clone()) {
+                return Err(AgentError::EvidenceUnavailable(
+                    "cache source provenance contains a graph cycle".into(),
+                ));
+            }
+            if graphs.len() >= MAX_CACHE_PROVENANCE_GRAPHS {
+                return Err(AgentError::EvidenceUnavailable(
+                    "cache source provenance contains too many graphs".into(),
+                ));
+            }
+            let lookup_digest = source_digest.clone();
+            let graph = self
+                .with_store(move |store| Ok(store.get_graph_by_digest(&lookup_digest)?))
+                .await?
+                .ok_or_else(|| {
+                    AgentError::EvidenceUnavailable(format!(
+                        "cache source provenance graph {source_digest} is missing"
+                    ))
+                })?;
+            if object_hash(&graph)? != source_digest {
+                return Err(AgentError::EvidenceUnavailable(format!(
+                    "cache source provenance graph {source_digest} is tampered"
+                )));
+            }
+            enqueue_cache_provenance_reference(
+                &graph,
+                &source_digest,
+                depth,
+                &visited,
+                &mut pending,
+            )?;
+            collect_embedded_cache_graphs(
+                &graph,
+                &source_digest,
+                depth,
+                &mut visited,
+                &mut graphs,
+                &mut pending,
+            )?;
+            graphs.push((source_digest, graph));
+        }
+        Ok(graphs)
+    }
+
+    async fn validate_cache_source_current(
+        &self,
+        source_graphs: &[(String, QueryEvidenceGraphV2)],
+        now: i64,
+    ) -> Result<i64, AgentError> {
+        let mut historical_nodes = HashMap::<String, &EvidenceNodeV2>::new();
+        let mut provenance_expires_at = i64::MAX;
+        for (_, graph) in source_graphs {
+            for node in &graph.nodes {
+                match historical_nodes.get(&node.identity.server_id) {
+                    Some(existing)
+                        if existing.identity != node.identity
+                            || !same_registry_state(&existing.registry, &node.registry) =>
+                    {
+                        return Err(AgentError::EvidenceUnavailable(format!(
+                            "cache source provenance contains conflicting historical identity for {}",
+                            node.identity.server_id
+                        )));
+                    }
+                    Some(_) => {}
+                    None => {
+                        historical_nodes.insert(node.identity.server_id.clone(), node);
+                    }
+                }
+            }
+            if let Some(provenance) = &graph.cache_provenance {
+                if provenance.dns_ttl_expires_at < now || provenance.identity_expires_at < now {
+                    return Err(AgentError::EvidenceUnavailable(
+                        "nested cache source provenance is stale".into(),
+                    ));
+                }
+                provenance_expires_at = provenance_expires_at.min(provenance.identity_expires_at);
+            }
+        }
+        if historical_nodes.is_empty() {
+            return Err(AgentError::EvidenceUnavailable(
+                "cache source graph has no identities".into(),
+            ));
+        }
+
+        let server_ids = historical_nodes.keys().cloned().collect::<Vec<_>>();
+        let current_records = self
+            .with_store(move |store| {
+                server_ids
+                    .into_iter()
+                    .map(|server_id| {
+                        let record = store.get_identity(&server_id)?;
+                        Ok((server_id, record))
+                    })
+                    .collect::<Result<Vec<_>, StoreError>>()
+                    .map_err(AgentError::from)
+            })
+            .await?;
+
+        let mut identity_expires_at = provenance_expires_at;
+        for (server_id, current) in current_records {
+            let historical = historical_nodes[&server_id];
+            let (current_identity, current_registry) = current.ok_or_else(|| {
+                AgentError::EvidenceUnavailable(format!(
+                    "cache source identity {server_id} is missing from the current Registry"
+                ))
+            })?;
+            if current_identity != historical.identity {
+                return Err(AgentError::EvidenceUnavailable(format!(
+                    "cache source identity {server_id} was replaced in the current Registry"
+                )));
+            }
+            if !same_current_identity_binding(&current_registry, &historical.registry) {
+                return Err(AgentError::EvidenceUnavailable(format!(
+                    "cache source identity {server_id} current Registry binding differs from historical evidence"
+                )));
+            }
+            if !current_identity.active_at(now)
+                || current_registry.resolver_status != "ACTIVE"
+                || current_registry.root_status != "ACTIVE"
+                || current_registry.endpoint_binding_status != "MATCHED"
+                || current_registry.object_hash != object_hash(&current_identity)?
+                || current_registry.object_version != current_identity.object_version
+            {
+                return Err(AgentError::EvidenceUnavailable(format!(
+                    "cache source identity {server_id} is not active in the current Registry"
+                )));
+            }
+            identity_expires_at = identity_expires_at.min(current_identity.valid_until);
+        }
+        if identity_expires_at == i64::MAX {
+            return Err(AgentError::EvidenceUnavailable(
+                "cache source graph has no identities".into(),
+            ));
+        }
+        Ok(identity_expires_at)
     }
 
     async fn wait_for_matching_response(
@@ -1569,49 +1739,86 @@ fn graph_requires_dnssec(graph: &QueryEvidenceGraphV2) -> bool {
             .any(graph_requires_dnssec)
 }
 
-fn validate_cache_source_current(
+const MAX_CACHE_PROVENANCE_DEPTH: usize = 64;
+const MAX_CACHE_PROVENANCE_GRAPHS: usize = 256;
+
+fn same_current_identity_binding(
+    current: &RegistryReferenceV2,
+    historical: &RegistryReferenceV2,
+) -> bool {
+    current.chain_adapter == historical.chain_adapter
+        && current.chain_identity == historical.chain_identity
+        && current.registry_locator == historical.registry_locator
+        && current.registry_schema_hash == historical.registry_schema_hash
+        && current.adapter_metadata == historical.adapter_metadata
+        && current.object_hash == historical.object_hash
+        && current.object_version == historical.object_version
+        && current.resolver_status == historical.resolver_status
+        && current.root_status == historical.root_status
+        && current.endpoint_binding_status == historical.endpoint_binding_status
+}
+
+fn enqueue_cache_provenance_reference(
     graph: &QueryEvidenceGraphV2,
-    snapshot_generation: u64,
-    now: i64,
-) -> Result<i64, AgentError> {
-    let mut identity_expires_at = i64::MAX;
-    for node in &graph.nodes {
-        if !node.identity.active_at(now) {
-            return Err(AgentError::EvidenceUnavailable(
-                "cache source graph contains an inactive identity".into(),
-            ));
-        }
-        if node.registry.snapshot_generation != snapshot_generation {
-            return Err(AgentError::EvidenceUnavailable(
-                "cache source graph is from a stale Registry generation".into(),
-            ));
-        }
-        identity_expires_at = identity_expires_at.min(node.identity.valid_until);
-    }
-    if let Some(provenance) = &graph.cache_provenance {
-        if provenance.snapshot_generation != snapshot_generation
-            || provenance.dns_ttl_expires_at < now
-            || provenance.identity_expires_at < now
-        {
-            return Err(AgentError::EvidenceUnavailable(
-                "nested cache source provenance is stale".into(),
-            ));
-        }
-        identity_expires_at = identity_expires_at.min(provenance.identity_expires_at);
-    }
-    for child in &graph.terminal_cache_graphs {
-        identity_expires_at = identity_expires_at.min(validate_cache_source_current(
-            child,
-            snapshot_generation,
-            now,
-        )?);
-    }
-    if identity_expires_at == i64::MAX {
+    graph_digest: &str,
+    depth: usize,
+    visited: &HashSet<String>,
+    pending: &mut Vec<(String, usize)>,
+) -> Result<(), AgentError> {
+    if depth > MAX_CACHE_PROVENANCE_DEPTH {
         return Err(AgentError::EvidenceUnavailable(
-            "cache source graph has no identities".into(),
+            "cache source provenance exceeds maximum depth".into(),
         ));
     }
-    Ok(identity_expires_at)
+    if let Some(provenance) = &graph.cache_provenance {
+        let source_digest = provenance.source_graph_digest.clone();
+        if source_digest == LEGACY_UNVERIFIED_CACHE_SOURCE_GRAPH_DIGEST {
+            return Err(AgentError::EvidenceUnavailable(
+                "verified cache source provenance cannot reference legacy unverified evidence"
+                    .into(),
+            ));
+        }
+        if source_digest == graph_digest || visited.contains(&source_digest) {
+            return Err(AgentError::EvidenceUnavailable(
+                "cache source provenance contains a self-reference or cycle".into(),
+            ));
+        }
+        pending.push((source_digest, depth + 1));
+    }
+    Ok(())
+}
+
+fn collect_embedded_cache_graphs(
+    graph: &QueryEvidenceGraphV2,
+    graph_digest: &str,
+    depth: usize,
+    visited: &mut HashSet<String>,
+    graphs: &mut Vec<(String, QueryEvidenceGraphV2)>,
+    pending: &mut Vec<(String, usize)>,
+) -> Result<(), AgentError> {
+    for child in &graph.terminal_cache_graphs {
+        let child_depth = depth + 1;
+        if child_depth > MAX_CACHE_PROVENANCE_DEPTH {
+            return Err(AgentError::EvidenceUnavailable(
+                "cache source provenance exceeds maximum depth".into(),
+            ));
+        }
+        if graphs.len() >= MAX_CACHE_PROVENANCE_GRAPHS {
+            return Err(AgentError::EvidenceUnavailable(
+                "cache source provenance contains too many graphs".into(),
+            ));
+        }
+        let child_digest = object_hash(child)?;
+        if child_digest == graph_digest || !visited.insert(child_digest.clone()) {
+            return Err(AgentError::EvidenceUnavailable(
+                "cache source provenance contains a graph cycle".into(),
+            ));
+        }
+        enqueue_cache_provenance_reference(child, &child_digest, child_depth, visited, pending)?;
+        collect_embedded_cache_graphs(child, &child_digest, child_depth, visited, graphs, pending)?;
+        graphs.push((child_digest, child.clone()));
+    }
+    Ok(())
 }
 
 async fn decode_json_limited<T: DeserializeOwned>(

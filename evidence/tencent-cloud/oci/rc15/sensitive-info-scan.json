@@ -1,0 +1,50 @@
+{
+  "schema_version": "sensitive-info-scan-v1",
+  "release": "0.3.0-norn-knot-rc15",
+  "passed": false,
+  "files": [
+    {
+      "file": "ri-authority-proxy",
+      "sha256": "2702a59f9b99dc88e9299f18aad82e5e950594c9c01e54b47b7e0fd7a69dbc78",
+      "matches": []
+    },
+    {
+      "file": "ri-registry-sync",
+      "sha256": "c14f79f1fef798a36e005de87b328367f44aaf33a3f62315ee1b337ea2c42481",
+      "matches": [
+        "(?i)(?:password|token|secret)\\s*[=:]\\s*[^\\s,;]{12,}"
+      ]
+    },
+    {
+      "file": "ri-trace-adapter",
+      "sha256": "5c3d0c1e36b3b811bc71d1be50c820640762f180bc4e0569db258416746b2f54",
+      "matches": [
+        "(?i)(?:password|token|secret)\\s*[=:]\\s*[^\\s,;]{12,}"
+      ]
+    },
+    {
+      "file": "ri-knot-trace-producer",
+      "sha256": "51c1f0103be31e81de9d202686e7155465fec27287f64a188b649b38d0ee9630",
+      "matches": []
+    },
+    {
+      "file": "ri-agent",
+      "sha256": "1c7a3348062b14ab172449378336c13d789c31e3b8e7db6aaf64d8134b1e02fd",
+      "matches": [
+        "(?i)(?:password|token|secret)\\s*[=:]\\s*[^\\s,;]{12,}"
+      ]
+    },
+    {
+      "file": "ri-wrapper",
+      "sha256": "6c5537f450773aee49a4db668ec3ec5875c46ca937adec07464b9c27285b53ac",
+      "matches": [
+        "(?i)(?:password|token|secret)\\s*[=:]\\s*[^\\s,;]{12,}"
+      ]
+    },
+    {
+      "file": "rust-data-plane-oci-rc15.tar",
+      "sha256": "634eaf6078d449ea23de803313a9cbfc4871c289e426d0deb24a94a98bd09713",
+      "matches": []
+    }
+  ]
+}

@@ -659,6 +659,22 @@ impl EvidenceStore {
             .transpose()
     }
 
+    pub fn get_graph_by_digest(
+        &self,
+        graph_digest: &str,
+    ) -> Result<Option<QueryEvidenceGraphV2>, StoreError> {
+        let connection = self.connect()?;
+        connection
+            .query_row(
+                "SELECT graph_json FROM ri_v2_evidence_graphs WHERE graph_digest=? LIMIT 1",
+                [graph_digest],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()?
+            .map(|value| serde_json::from_str(&value).map_err(StoreError::from))
+            .transpose()
+    }
+
     pub fn find_cached_graph(
         &self,
         query_digest: &str,
@@ -713,24 +729,30 @@ impl EvidenceStore {
         &self,
         selector: &CacheSourceGraphSelector<'_>,
     ) -> Result<Option<CacheSourceGraphResult>, StoreError> {
-        let generation = self.cache_generation()?;
-        let generation_sql = sql_i64(generation, "cache_generation")?;
         let connection = self.connect()?;
         connection
             .query_row(
-                r#"SELECT g.graph_json,g.graph_digest
-                   FROM ri_v2_evidence_graphs g
-                   JOIN ri_v2_trace_event_claims c ON c.request_trace_id=g.trace_id
-                   JOIN ri_v2_trace_events e ON e.event_id=c.event_id
-                   WHERE g.snapshot_generation=?
-                     AND json_extract(e.event_json,'$.kind')='CLIENT_RESPONSE'
-                     AND json_extract(e.event_json,'$.cache_object_digest')=?
-                     AND g.query_digest=json_extract(e.event_json,'$.query_digest')
-                     AND g.response_digest=json_extract(e.event_json,'$.response_digest')
-                     AND (? IS NULL OR g.graph_digest=?)
-                   ORDER BY g.rowid DESC LIMIT 1"#,
+                r#"WITH canonical_root AS (
+                     SELECT g.graph_json,g.graph_digest
+                     FROM ri_v2_evidence_graphs g
+                     JOIN ri_v2_trace_event_claims c ON c.request_trace_id=g.trace_id
+                     JOIN ri_v2_trace_events e ON e.event_id=c.event_id
+                     WHERE json_extract(e.event_json,'$.kind')='CLIENT_RESPONSE'
+                       AND json_extract(e.event_json,'$.cache_object_digest')=?
+                       AND g.query_digest=json_extract(g.graph_json,'$.query_digest')
+                       AND g.response_digest=json_extract(g.graph_json,'$.response_digest')
+                       AND g.query_digest=json_extract(e.event_json,'$.query_digest')
+                       AND g.response_digest=json_extract(e.event_json,'$.response_digest')
+                       AND (json_type(g.graph_json,'$.cache_provenance') IS NULL
+                            OR json_type(g.graph_json,'$.cache_provenance')='null')
+                       AND json_array_length(g.graph_json,'$.nodes')>0
+                       AND json_extract(g.graph_json,'$.final_result')=1
+                       AND json_array_length(g.graph_json,'$.graph_errors')=0
+                     ORDER BY g.rowid ASC,e.rowid ASC LIMIT 1
+                   )
+                   SELECT graph_json,graph_digest FROM canonical_root
+                   WHERE (? IS NULL OR graph_digest=?)"#,
                 params![
-                    generation_sql,
                     selector.cache_object_digest,
                     selector.graph_digest,
                     selector.graph_digest,

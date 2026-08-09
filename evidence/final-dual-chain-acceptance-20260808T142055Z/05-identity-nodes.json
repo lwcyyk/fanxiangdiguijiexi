@@ -1,0 +1,129 @@
+[
+  {
+    "role": "RECURSIVE",
+    "server_id": "operator/L01/r1",
+    "endpoints": [
+      {
+        "ip": "10.206.16.14",
+        "port": 53,
+        "transport": "udp"
+      },
+      {
+        "ip": "10.206.16.14",
+        "port": 53,
+        "transport": "tcp"
+      }
+    ],
+    "agent_service_url": "https://10.206.16.14:8443",
+    "identity_status": "ACTIVE",
+    "registry_status": "ACTIVE",
+    "root_status": "ACTIVE",
+    "endpoint_binding_status": "MATCHED",
+    "snapshot_generation": 3,
+    "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+    "checkpoint_height": 141199,
+    "checkpoint_hash": "0xe0041ac205630e3d9ed571062415818e2cf8bbbbad199f244c74c24bd559449f",
+    "evidence_levels": [
+      "REGISTRY_BOUND",
+      "AGENT_ATTESTED"
+    ],
+    "accepted": true,
+    "reasons": []
+  },
+  {
+    "role": "FORWARDER",
+    "server_id": "operator/L01/r2",
+    "endpoints": [
+      {
+        "ip": "10.206.16.17",
+        "port": 53,
+        "transport": "udp"
+      },
+      {
+        "ip": "10.206.16.17",
+        "port": 53,
+        "transport": "tcp"
+      }
+    ],
+    "agent_service_url": "https://10.206.16.17:8443",
+    "identity_status": "ACTIVE",
+    "registry_status": "ACTIVE",
+    "root_status": "ACTIVE",
+    "endpoint_binding_status": "MATCHED",
+    "snapshot_generation": 3,
+    "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+    "checkpoint_height": 141199,
+    "checkpoint_hash": "0xe0041ac205630e3d9ed571062415818e2cf8bbbbad199f244c74c24bd559449f",
+    "evidence_levels": [
+      "REGISTRY_BOUND",
+      "AGENT_ATTESTED",
+      "DNSSEC_VALIDATED"
+    ],
+    "accepted": true,
+    "reasons": []
+  },
+  {
+    "role": "FORWARDER",
+    "server_id": "operator/L01/r3",
+    "endpoints": [
+      {
+        "ip": "10.206.16.7",
+        "port": 53,
+        "transport": "udp"
+      },
+      {
+        "ip": "10.206.16.7",
+        "port": 53,
+        "transport": "tcp"
+      }
+    ],
+    "agent_service_url": "https://10.206.16.7:8443",
+    "identity_status": "ACTIVE",
+    "registry_status": "ACTIVE",
+    "root_status": "ACTIVE",
+    "endpoint_binding_status": "MATCHED",
+    "snapshot_generation": 3,
+    "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+    "checkpoint_height": 141200,
+    "checkpoint_hash": "0x0093f6f109d210020223c232467158c892f06307f73707d8d5ef4b327fb7004a",
+    "evidence_levels": [
+      "REGISTRY_BOUND",
+      "AGENT_ATTESTED",
+      "DNSSEC_VALIDATED"
+    ],
+    "accepted": true,
+    "reasons": []
+  },
+  {
+    "role": "AUTHORITATIVE",
+    "server_id": "operator/authdns",
+    "endpoints": [
+      {
+        "ip": "10.206.16.13",
+        "port": 53,
+        "transport": "udp"
+      },
+      {
+        "ip": "10.206.16.13",
+        "port": 53,
+        "transport": "tcp"
+      }
+    ],
+    "agent_service_url": "https://10.206.16.13:8443",
+    "identity_status": "ACTIVE",
+    "registry_status": "ACTIVE",
+    "root_status": "ACTIVE",
+    "endpoint_binding_status": "MATCHED",
+    "snapshot_generation": 3,
+    "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+    "checkpoint_height": 141199,
+    "checkpoint_hash": "0xe0041ac205630e3d9ed571062415818e2cf8bbbbad199f244c74c24bd559449f",
+    "evidence_levels": [
+      "REGISTRY_BOUND",
+      "AGENT_ATTESTED",
+      "DNSSEC_VALIDATED"
+    ],
+    "accepted": true,
+    "reasons": []
+  }
+]

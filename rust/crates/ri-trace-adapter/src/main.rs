@@ -968,8 +968,12 @@ fn parse_bounded_u64(
 
 #[cfg(test)]
 mod tests {
-    use ri_core::evidence::{QUERY_EVIDENCE_GRAPH_V2, TRACE_EVENT_V2};
-    use ri_core::{DnssecStatus, QueryEvidenceGraphV2, TraceEventKind, VerificationMode};
+    use ri_core::evidence::{DNS_SERVER_IDENTITY_V2, QUERY_EVIDENCE_GRAPH_V2, TRACE_EVENT_V2};
+    use ri_core::{
+        CacheProvenanceV2, DnsEndpoint, DnsServerIdentityV2, DnsServerRole, DnssecStatus,
+        EvidenceNodeV2, QueryEvidenceGraphV2, RegistryAdapterMetadataV2, RegistryFinalityTypeV2,
+        RegistryReferenceV2, TraceEventKind, VerificationMode, sign_ed25519,
+    };
 
     use super::*;
 
@@ -1165,6 +1169,309 @@ mod tests {
             Some(source_digest.as_str())
         );
         assert!(!waits.contains_key(&cache_hit.event_id));
+    }
+
+    #[tokio::test]
+    async fn prepare_upload_batch_always_enriches_derived_hits_with_canonical_root() {
+        let directory = tempfile::tempdir().unwrap();
+        let evidence_store =
+            ri_store::EvidenceStore::open(directory.path().join("evidence.db")).unwrap();
+        let spool = TraceSpool::open(&directory.path().join("trace-spool.db"), 100).unwrap();
+        let cache_object_digest =
+            "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+        let root_digest = put_claimed_cache_source_named(
+            &evidence_store,
+            "source-g0",
+            "producer-g0",
+            "source-query-g0",
+            "source-response-g0",
+            cache_object_digest,
+            None,
+        );
+        let derived_g1_digest = put_claimed_cache_source_named(
+            &evidence_store,
+            "source-g1",
+            "producer-g1",
+            "source-query-g1",
+            "source-response-g1",
+            cache_object_digest,
+            Some(root_digest.as_str()),
+        );
+        let derived_g2_digest = put_claimed_cache_source_named(
+            &evidence_store,
+            "source-g2",
+            "producer-g2",
+            "source-query-g2",
+            "source-response-g2",
+            cache_object_digest,
+            Some(derived_g1_digest.as_str()),
+        );
+        assert_ne!(root_digest, derived_g1_digest);
+        assert_ne!(root_digest, derived_g2_digest);
+
+        for suffix in ["g1-hit", "g2-hit"] {
+            let cache_hit = enqueue_cache_hit(&spool, suffix, cache_object_digest);
+            let mut waits = HashMap::new();
+            let prepared = prepare_upload_batch(
+                &spool,
+                &evidence_store,
+                vec![cache_hit.clone()],
+                &mut waits,
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
+            let BatchPreparation::Ready(events) = prepared else {
+                panic!("canonical source graph should make {suffix} ready");
+            };
+            assert_eq!(
+                events[0].source_graph_digest.as_deref(),
+                Some(root_digest.as_str()),
+                "{suffix} must point directly to G0"
+            );
+            let stored = spool
+                .load_batch(100)
+                .unwrap()
+                .into_iter()
+                .find(|event| event.event_id == cache_hit.event_id)
+                .unwrap();
+            assert_eq!(
+                stored.source_graph_digest.as_deref(),
+                Some(root_digest.as_str()),
+                "durable enrichment for {suffix} must persist G0"
+            );
+            spool.acknowledge(std::slice::from_ref(&stored)).unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn prepare_upload_batch_restart_still_selects_canonical_root() {
+        let directory = tempfile::tempdir().unwrap();
+        let evidence_store =
+            ri_store::EvidenceStore::open(directory.path().join("evidence.db")).unwrap();
+        let spool_path = directory.path().join("trace-spool.db");
+        let cache_object_digest =
+            "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+        let root_digest = put_claimed_cache_source_named(
+            &evidence_store,
+            "restart-g0",
+            "restart-producer-g0",
+            "restart-query-g0",
+            "restart-response-g0",
+            cache_object_digest,
+            None,
+        );
+        let derived_digest = put_claimed_cache_source_named(
+            &evidence_store,
+            "restart-g1",
+            "restart-producer-g1",
+            "restart-query-g1",
+            "restart-response-g1",
+            cache_object_digest,
+            Some(root_digest.as_str()),
+        );
+        let cache_hit = {
+            let spool = TraceSpool::open(&spool_path, 100).unwrap();
+            enqueue_cache_hit(&spool, "restart-hit", cache_object_digest)
+        };
+
+        let reopened_spool = TraceSpool::open(&spool_path, 100).unwrap();
+        let recovered = reopened_spool
+            .load_batch(10)
+            .unwrap()
+            .into_iter()
+            .find(|event| event.event_id == cache_hit.event_id)
+            .unwrap();
+        let mut fresh_waits = HashMap::new();
+        let prepared = prepare_upload_batch(
+            &reopened_spool,
+            &evidence_store,
+            vec![recovered],
+            &mut fresh_waits,
+            Duration::from_secs(30),
+        )
+        .await
+        .unwrap();
+        let BatchPreparation::Ready(events) = prepared else {
+            panic!("restarted adapter should find the canonical source");
+        };
+        assert_ne!(root_digest, derived_digest);
+        assert_eq!(
+            events[0].source_graph_digest.as_deref(),
+            Some(root_digest.as_str())
+        );
+        assert!(fresh_waits.is_empty());
+        assert_eq!(
+            reopened_spool
+                .load_batch(10)
+                .unwrap()
+                .into_iter()
+                .find(|event| event.event_id == cache_hit.event_id)
+                .unwrap()
+                .source_graph_digest
+                .as_deref(),
+            Some(root_digest.as_str())
+        );
+    }
+
+    #[tokio::test]
+    async fn prepare_upload_batch_wrong_or_missing_root_waits_then_uploads_without_provenance() {
+        for scenario in ["wrong-root", "missing-root"] {
+            let directory = tempfile::tempdir().unwrap();
+            let evidence_store =
+                ri_store::EvidenceStore::open(directory.path().join("evidence.db")).unwrap();
+            let spool = TraceSpool::open(&directory.path().join("trace-spool.db"), 100).unwrap();
+            let cache_object_digest =
+                "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+            if scenario == "wrong-root" {
+                let other_object_digest =
+                    "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+                let wrong_root_digest = put_claimed_cache_source_named(
+                    &evidence_store,
+                    "wrong-root-g0",
+                    "wrong-root-producer-g0",
+                    "wrong-root-query-g0",
+                    "wrong-root-response-g0",
+                    other_object_digest,
+                    None,
+                );
+                put_claimed_cache_source_named(
+                    &evidence_store,
+                    "wrong-root-g1",
+                    "wrong-root-producer-g1",
+                    "wrong-root-query-g1",
+                    "wrong-root-response-g1",
+                    cache_object_digest,
+                    Some(wrong_root_digest.as_str()),
+                );
+            }
+            let cache_hit = enqueue_cache_hit(&spool, scenario, cache_object_digest);
+            let mut waits = HashMap::new();
+
+            let waiting = prepare_upload_batch(
+                &spool,
+                &evidence_store,
+                vec![cache_hit.clone()],
+                &mut waits,
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
+            assert!(matches!(waiting, BatchPreparation::Waiting));
+            assert!(waits.contains_key(&cache_hit.event_id));
+
+            waits.insert(
+                cache_hit.event_id.clone(),
+                tokio::time::Instant::now() - Duration::from_secs(31),
+            );
+            let prepared = prepare_upload_batch(
+                &spool,
+                &evidence_store,
+                vec![cache_hit.clone()],
+                &mut waits,
+                Duration::from_secs(30),
+            )
+            .await
+            .unwrap();
+            let BatchPreparation::Ready(events) = prepared else {
+                panic!("{scenario} should fall back after the wait expires");
+            };
+            assert_eq!(events.as_slice(), std::slice::from_ref(&cache_hit));
+            assert!(events[0].source_graph_digest.is_none());
+            assert!(!waits.contains_key(&cache_hit.event_id));
+            let stored = spool
+                .load_batch(10)
+                .unwrap()
+                .into_iter()
+                .find(|event| event.event_id == cache_hit.event_id)
+                .unwrap();
+            assert!(stored.source_graph_digest.is_none());
+        }
+    }
+
+    #[tokio::test]
+    async fn concurrent_same_cache_object_events_do_not_cross_select_another_object_graph() {
+        let directory = tempfile::tempdir().unwrap();
+        let evidence_store =
+            ri_store::EvidenceStore::open(directory.path().join("evidence.db")).unwrap();
+        let spool = TraceSpool::open(&directory.path().join("trace-spool.db"), 100).unwrap();
+        let shared_object_digest =
+            "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+        let other_object_digest =
+            "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+        let shared_root_digest = put_claimed_cache_source_named(
+            &evidence_store,
+            "shared-g0",
+            "shared-producer-g0",
+            "shared-query-g0",
+            "shared-response-g0",
+            shared_object_digest,
+            None,
+        );
+        let other_root_digest = put_claimed_cache_source_named(
+            &evidence_store,
+            "other-g0",
+            "other-producer-g0",
+            "other-query-g0",
+            "other-response-g0",
+            other_object_digest,
+            None,
+        );
+        put_claimed_cache_source_named(
+            &evidence_store,
+            "shared-g1",
+            "shared-producer-g1",
+            "shared-query-g1",
+            "shared-response-g1",
+            shared_object_digest,
+            Some(shared_root_digest.as_str()),
+        );
+        let first = enqueue_cache_hit(&spool, "concurrent-first", shared_object_digest);
+        let second = enqueue_cache_hit(&spool, "concurrent-second", shared_object_digest);
+        let mut first_waits = HashMap::new();
+        let mut second_waits = HashMap::new();
+
+        let (first_prepared, second_prepared) = tokio::join!(
+            prepare_upload_batch(
+                &spool,
+                &evidence_store,
+                vec![first.clone()],
+                &mut first_waits,
+                Duration::from_secs(30),
+            ),
+            prepare_upload_batch(
+                &spool,
+                &evidence_store,
+                vec![second.clone()],
+                &mut second_waits,
+                Duration::from_secs(30),
+            )
+        );
+        for prepared in [first_prepared.unwrap(), second_prepared.unwrap()] {
+            let BatchPreparation::Ready(events) = prepared else {
+                panic!("shared cache object source should be ready");
+            };
+            assert_eq!(
+                events[0].source_graph_digest.as_deref(),
+                Some(shared_root_digest.as_str())
+            );
+            assert_ne!(
+                events[0].source_graph_digest.as_deref(),
+                Some(other_root_digest.as_str())
+            );
+        }
+        assert!(first_waits.is_empty());
+        assert!(second_waits.is_empty());
+        for event in
+            spool.load_batch(100).unwrap().into_iter().filter(|event| {
+                event.event_id == first.event_id || event.event_id == second.event_id
+            })
+        {
+            assert_eq!(
+                event.source_graph_digest.as_deref(),
+                Some(shared_root_digest.as_str())
+            );
+        }
     }
 
     #[tokio::test]
@@ -1632,35 +1939,81 @@ mod tests {
         cache_object_digest: &str,
         query_digest: &str,
     ) -> String {
-        let response_digest = "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
-        let correlation_id = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+        put_claimed_cache_source_named(
+            store,
+            "source-trace",
+            "producer-trace",
+            query_digest,
+            "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            cache_object_digest,
+            None,
+        )
+    }
+
+    fn enqueue_cache_hit(
+        spool: &TraceSpool,
+        suffix: &str,
+        cache_object_digest: &str,
+    ) -> TraceEventV2 {
+        let trace_id = format!("resolver-{suffix}");
+        let query_id = format!("{suffix}-query");
+        let hit_id = format!("{suffix}-cache-hit");
+        let query = trace_event_with_trace(&trace_id, &query_id);
+        let mut cache_hit = trace_event_with_trace(&trace_id, &hit_id);
+        cache_hit.sequence = 2;
+        cache_hit.parent_event_id = Some(query.event_id.clone());
+        cache_hit.kind = TraceEventKind::CacheHit;
+        cache_hit.query_digest = query.query_digest.clone();
+        cache_hit.response_digest =
+            Some("0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd".into());
+        cache_hit.cache_object_digest = Some(cache_object_digest.into());
+        cache_hit.ttl_expires_at = Some(1_800_000_300);
+        spool.enqueue(&query).unwrap();
+        spool.enqueue(&cache_hit).unwrap();
+        cache_hit
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn put_claimed_cache_source_named(
+        store: &ri_store::EvidenceStore,
+        graph_trace_id: &str,
+        producer_trace_id: &str,
+        query_digest: &str,
+        response_digest: &str,
+        cache_object_digest: &str,
+        source_graph_digest: Option<&str>,
+    ) -> String {
+        let correlation_id = format!("correlation-{graph_trace_id}");
         store
             .register_query_context(
-                "source-trace",
-                correlation_id,
+                graph_trace_id,
+                &correlation_id,
                 query_digest,
                 1_800_000_000,
                 1_800_000_300,
             )
             .unwrap();
-        let mut query = trace_event_with_trace("producer-trace", "source-query");
-        query.correlation_id = correlation_id.into();
+        let query_event_id = format!("{producer_trace_id}-query");
+        let response_event_id = format!("{producer_trace_id}-response");
+        let mut query = trace_event_with_trace(producer_trace_id, &query_event_id);
+        query.correlation_id = correlation_id.clone();
         query.query_digest = query_digest.into();
-        let mut response = trace_event_with_trace("producer-trace", "source-response");
+        let mut response = trace_event_with_trace(producer_trace_id, &response_event_id);
         response.sequence = 2;
         response.parent_event_id = Some(query.event_id.clone());
         response.kind = TraceEventKind::ClientResponse;
-        response.correlation_id = correlation_id.into();
+        response.correlation_id = correlation_id.clone();
         response.query_digest = query_digest.into();
         response.response_digest = Some(response_digest.into());
         response.cache_object_digest = Some(cache_object_digest.into());
         response.ttl_expires_at = Some(1_800_000_300);
+        response.source_graph_digest = source_graph_digest.map(str::to_owned);
         store.put_trace_events(&[query, response]).unwrap();
         store
             .claim_registered_trace_anchor(
-                "source-trace",
+                graph_trace_id,
                 "operator/r1",
-                correlation_id,
+                &correlation_id,
                 query_digest,
                 response_digest,
                 1_800_000_000,
@@ -1670,9 +2023,9 @@ mod tests {
         store
             .put_graph(&QueryEvidenceGraphV2 {
                 schema_version: QUERY_EVIDENCE_GRAPH_V2.into(),
-                trace_id: "source-trace".into(),
-                correlation_id: correlation_id.into(),
-                challenge: "source-challenge".into(),
+                trace_id: graph_trace_id.into(),
+                correlation_id,
+                challenge: format!("challenge-{graph_trace_id}"),
                 query_digest: query_digest.into(),
                 response_digest: response_digest.into(),
                 mode: VerificationMode::PublicHybrid,
@@ -1680,9 +2033,16 @@ mod tests {
                 issued_at: 1_800_000_000,
                 expires_at: 1_800_000_300,
                 dnssec_status: DnssecStatus::Secure,
-                cache_provenance: None,
+                cache_provenance: source_graph_digest.map(|digest| CacheProvenanceV2 {
+                    source_graph_digest: digest.into(),
+                    source_dnssec_required: true,
+                    cached_at: 1_800_000_000,
+                    dns_ttl_expires_at: 1_800_000_300,
+                    identity_expires_at: 1_800_000_300,
+                    snapshot_generation: 0,
+                }),
                 terminal_cache_graphs: vec![],
-                nodes: vec![],
+                nodes: vec![cache_source_node()],
                 edges: vec![],
                 terminal_node_ids: vec![],
                 final_result: true,
@@ -1691,6 +2051,75 @@ mod tests {
                 signature: None,
             })
             .unwrap()
+    }
+
+    fn cache_source_node() -> EvidenceNodeV2 {
+        let identity = cache_source_identity();
+        EvidenceNodeV2 {
+            registry: cache_source_registry(&identity),
+            identity,
+            evidence_levels: vec![],
+            accepted: true,
+            reasons: vec![],
+        }
+    }
+
+    fn cache_source_identity() -> DnsServerIdentityV2 {
+        const PRIVATE_KEY: &str = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
+        let mut identity = DnsServerIdentityV2 {
+            schema_version: DNS_SERVER_IDENTITY_V2.into(),
+            server_id: "operator/r1".into(),
+            operator_id: "operator".into(),
+            role: DnsServerRole::Recursive,
+            endpoints: vec![DnsEndpoint {
+                endpoint_id: None,
+                ip: Some("192.0.2.53".into()),
+                port: Some(53),
+                transport: "udp".into(),
+                uri: None,
+                server_name: None,
+                alpn: vec![],
+            }],
+            anycast: false,
+            anycast_service_id: None,
+            agent: None,
+            valid_from: 1_700_000_000,
+            valid_until: 1_900_000_000,
+            object_version: 1,
+            status: "ACTIVE".into(),
+            issuer: "issuer".into(),
+            key_id: "issuer-key".into(),
+            signature: None,
+        };
+        identity.signature = Some(sign_ed25519(&identity, PRIVATE_KEY).unwrap());
+        identity
+    }
+
+    fn cache_source_registry(identity: &DnsServerIdentityV2) -> RegistryReferenceV2 {
+        RegistryReferenceV2 {
+            chain_adapter: "evm".into(),
+            chain_identity: "eip155:31337".into(),
+            registry_locator: "evm:0x1111111111111111111111111111111111111111".into(),
+            registry_schema_hash:
+                "0x2222222222222222222222222222222222222222222222222222222222222222".into(),
+            adapter_metadata: RegistryAdapterMetadataV2::Evm {
+                chain_id: 31_337,
+                contract_address: "0x1111111111111111111111111111111111111111".into(),
+                runtime_code_hash:
+                    "0x2222222222222222222222222222222222222222222222222222222222222222".into(),
+            },
+            checkpoint_height: 100,
+            checkpoint_hash: "0x3333333333333333333333333333333333333333333333333333333333333333"
+                .into(),
+            finality_type: RegistryFinalityTypeV2::EvmFinalized,
+            state_root: "0x4444444444444444444444444444444444444444444444444444444444444444".into(),
+            object_hash: object_hash(identity).unwrap(),
+            object_version: identity.object_version,
+            resolver_status: "ACTIVE".into(),
+            root_status: "ACTIVE".into(),
+            endpoint_binding_status: "MATCHED".into(),
+            snapshot_generation: 0,
+        }
     }
 
     fn trace_event_with_trace(trace_id: &str, event_id: &str) -> TraceEventV2 {

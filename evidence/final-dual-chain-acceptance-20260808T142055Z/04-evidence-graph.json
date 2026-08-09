@@ -1,0 +1,709 @@
+{
+  "schema_version": "dns-query-evidence-graph-v2",
+  "trace_id": "3e570b54ff0af0ff848892bb83dc17ce",
+  "correlation_id": "0x4259d924897d6792ff47b5cea17c8ffd3e71300aebd601b38e3ee7300515cfbe",
+  "challenge": "b667b144ee4b5d47edf74b113063550f17ce0aec98df7f1c65967267acdb5df3",
+  "query_digest": "0xa1d32e3cd41c2e32b051cc4bca4812d97f491eef9fcf3b1b91e0b8dea744c9b2",
+  "response_digest": "0xedf0875b1eab20b8bdfd5decdcbd32a2b3eadb52b322d9d203153988e57e7779",
+  "mode": "CONTROLLED_STRICT",
+  "entry_server_id": "operator/L01/r1",
+  "issued_at": 1786198855,
+  "expires_at": 1786198885,
+  "dnssec_status": "SECURE",
+  "nodes": [
+    {
+      "identity": {
+        "schema_version": "dns-server-identity-v2",
+        "server_id": "operator/L01/r1",
+        "operator_id": "operator",
+        "role": "RECURSIVE",
+        "endpoints": [
+          {
+            "ip": "10.206.16.14",
+            "port": 53,
+            "transport": "udp"
+          },
+          {
+            "ip": "10.206.16.14",
+            "port": 53,
+            "transport": "tcp"
+          }
+        ],
+        "anycast": false,
+        "agent": {
+          "key_id": "agent-key-L01-r1",
+          "algorithm": "ed25519",
+          "public_key": "DWAWoWXdWYrVisTBf4li7+oGQDyAQovhNNxiUr5Gh1E=",
+          "service_url": "https://10.206.16.14:8443"
+        },
+        "valid_from": 1786089127,
+        "valid_until": 1786693987,
+        "object_version": 1,
+        "status": "ACTIVE",
+        "issuer": "field-identity-authority",
+        "key_id": "identity-key-1",
+        "signature": "base64:ed25519:wUaXofgL6730PRYoFYoe0WmfL/CeJMGozYhfZkLPLLDg1Joqas7ikO1ny36GZZO5ory3Rukm+lqpocGcmmLOAg=="
+      },
+      "registry": {
+        "chain_adapter": "norn",
+        "chain_identity": "norn-genesis:0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+        "registry_locator": "norn:0x1000000000000000000000000000000000000001#resolver-identity-registry-v2",
+        "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+        "adapter_metadata": {
+          "adapter_type": "norn",
+          "genesis_block_hash": "0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+          "registry_address": "0x1000000000000000000000000000000000000001",
+          "registry_key": "resolver-identity-registry-v2",
+          "snapshot_signer_issuer": "norn-registry",
+          "snapshot_signer_key_id": "snapshot-key-1"
+        },
+        "checkpoint_height": 141199,
+        "checkpoint_hash": "0xe0041ac205630e3d9ed571062415818e2cf8bbbbad199f244c74c24bd559449f",
+        "finality_type": "norn-dual-node-confirmations",
+        "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+        "object_hash": "0x9183d3d4ff6f0378567a4c30f273eac7bca6bc09a5918f175d22ddc4f70c3151",
+        "object_version": 1,
+        "resolver_status": "ACTIVE",
+        "root_status": "ACTIVE",
+        "endpoint_binding_status": "MATCHED",
+        "snapshot_generation": 3
+      },
+      "evidence_levels": [
+        "REGISTRY_BOUND",
+        "AGENT_ATTESTED"
+      ],
+      "accepted": true,
+      "reasons": []
+    },
+    {
+      "identity": {
+        "schema_version": "dns-server-identity-v2",
+        "server_id": "operator/L01/r2",
+        "operator_id": "operator",
+        "role": "FORWARDER",
+        "endpoints": [
+          {
+            "ip": "10.206.16.17",
+            "port": 53,
+            "transport": "udp"
+          },
+          {
+            "ip": "10.206.16.17",
+            "port": 53,
+            "transport": "tcp"
+          }
+        ],
+        "anycast": false,
+        "agent": {
+          "key_id": "agent-key-L01-r2",
+          "algorithm": "ed25519",
+          "public_key": "gnbL+HlWDFqMNkqkP7+N2qIF+6V7ONf3DUUrSgdttBw=",
+          "service_url": "https://10.206.16.17:8443"
+        },
+        "valid_from": 1786089127,
+        "valid_until": 1786693987,
+        "object_version": 1,
+        "status": "ACTIVE",
+        "issuer": "field-identity-authority",
+        "key_id": "identity-key-1",
+        "signature": "base64:ed25519:49hXLyYiXAvT/U1L/EaDS2MaZj9ytFHbwXoXuGwYT5lg3Iyz1VoXuCYzzyfFdlsRQoM+7jIXp3xDBo1XYJ2hCA=="
+      },
+      "registry": {
+        "chain_adapter": "norn",
+        "chain_identity": "norn-genesis:0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+        "registry_locator": "norn:0x1000000000000000000000000000000000000001#resolver-identity-registry-v2",
+        "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+        "adapter_metadata": {
+          "adapter_type": "norn",
+          "genesis_block_hash": "0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+          "registry_address": "0x1000000000000000000000000000000000000001",
+          "registry_key": "resolver-identity-registry-v2",
+          "snapshot_signer_issuer": "norn-registry",
+          "snapshot_signer_key_id": "snapshot-key-1"
+        },
+        "checkpoint_height": 141199,
+        "checkpoint_hash": "0xe0041ac205630e3d9ed571062415818e2cf8bbbbad199f244c74c24bd559449f",
+        "finality_type": "norn-dual-node-confirmations",
+        "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+        "object_hash": "0xc7bae043abfa6937badbaebc009f4097adb535e38845be80d67decdf668daf37",
+        "object_version": 1,
+        "resolver_status": "ACTIVE",
+        "root_status": "ACTIVE",
+        "endpoint_binding_status": "MATCHED",
+        "snapshot_generation": 3
+      },
+      "evidence_levels": [
+        "REGISTRY_BOUND",
+        "AGENT_ATTESTED",
+        "DNSSEC_VALIDATED"
+      ],
+      "accepted": true,
+      "reasons": []
+    },
+    {
+      "identity": {
+        "schema_version": "dns-server-identity-v2",
+        "server_id": "operator/L01/r3",
+        "operator_id": "operator",
+        "role": "FORWARDER",
+        "endpoints": [
+          {
+            "ip": "10.206.16.7",
+            "port": 53,
+            "transport": "udp"
+          },
+          {
+            "ip": "10.206.16.7",
+            "port": 53,
+            "transport": "tcp"
+          }
+        ],
+        "anycast": false,
+        "agent": {
+          "key_id": "agent-key-L01-r3",
+          "algorithm": "ed25519",
+          "public_key": "Yoc1rFwhilOJlnumah9u+rpz5Kgz1B0eStPkQpn22YI=",
+          "service_url": "https://10.206.16.7:8443"
+        },
+        "valid_from": 1786089127,
+        "valid_until": 1786693987,
+        "object_version": 1,
+        "status": "ACTIVE",
+        "issuer": "field-identity-authority",
+        "key_id": "identity-key-1",
+        "signature": "base64:ed25519:NC46QH7CORj7nxmevv6rphZZuZpvdtpNYuhtbOSWM89jwJbDjlMmFrK9N6syO0Hhg5eX1LtK9Yq/hMFHByraCg=="
+      },
+      "registry": {
+        "chain_adapter": "norn",
+        "chain_identity": "norn-genesis:0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+        "registry_locator": "norn:0x1000000000000000000000000000000000000001#resolver-identity-registry-v2",
+        "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+        "adapter_metadata": {
+          "adapter_type": "norn",
+          "genesis_block_hash": "0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+          "registry_address": "0x1000000000000000000000000000000000000001",
+          "registry_key": "resolver-identity-registry-v2",
+          "snapshot_signer_issuer": "norn-registry",
+          "snapshot_signer_key_id": "snapshot-key-1"
+        },
+        "checkpoint_height": 141200,
+        "checkpoint_hash": "0x0093f6f109d210020223c232467158c892f06307f73707d8d5ef4b327fb7004a",
+        "finality_type": "norn-dual-node-confirmations",
+        "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+        "object_hash": "0x1bae9ff4604409bbd95a6c692af26b3cffc56b32a58efbedbaf175b58f7214d0",
+        "object_version": 1,
+        "resolver_status": "ACTIVE",
+        "root_status": "ACTIVE",
+        "endpoint_binding_status": "MATCHED",
+        "snapshot_generation": 3
+      },
+      "evidence_levels": [
+        "REGISTRY_BOUND",
+        "AGENT_ATTESTED",
+        "DNSSEC_VALIDATED"
+      ],
+      "accepted": true,
+      "reasons": []
+    },
+    {
+      "identity": {
+        "schema_version": "dns-server-identity-v2",
+        "server_id": "operator/authdns",
+        "operator_id": "operator",
+        "role": "AUTHORITATIVE",
+        "endpoints": [
+          {
+            "ip": "10.206.16.13",
+            "port": 53,
+            "transport": "udp"
+          },
+          {
+            "ip": "10.206.16.13",
+            "port": 53,
+            "transport": "tcp"
+          }
+        ],
+        "anycast": false,
+        "agent": {
+          "key_id": "agent-key-authdns",
+          "algorithm": "ed25519",
+          "public_key": "3UZeLFIO6ZhLZ0zimvgmtMNR/wcltiTjFz/mWK6N4cI=",
+          "service_url": "https://10.206.16.13:8443"
+        },
+        "valid_from": 1786089127,
+        "valid_until": 1786693987,
+        "object_version": 1,
+        "status": "ACTIVE",
+        "issuer": "field-identity-authority",
+        "key_id": "identity-key-1",
+        "signature": "base64:ed25519://EjhXTHbc0PLUPpvk0Q3x1HTn0uryl2YJiF+8KhOTflTxAyW1iRi78npwac55p9NzpNUGpv0dX58wD6CI7PCw=="
+      },
+      "registry": {
+        "chain_adapter": "norn",
+        "chain_identity": "norn-genesis:0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+        "registry_locator": "norn:0x1000000000000000000000000000000000000001#resolver-identity-registry-v2",
+        "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+        "adapter_metadata": {
+          "adapter_type": "norn",
+          "genesis_block_hash": "0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+          "registry_address": "0x1000000000000000000000000000000000000001",
+          "registry_key": "resolver-identity-registry-v2",
+          "snapshot_signer_issuer": "norn-registry",
+          "snapshot_signer_key_id": "snapshot-key-1"
+        },
+        "checkpoint_height": 141199,
+        "checkpoint_hash": "0xe0041ac205630e3d9ed571062415818e2cf8bbbbad199f244c74c24bd559449f",
+        "finality_type": "norn-dual-node-confirmations",
+        "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+        "object_hash": "0xd5f1e16865a050e7bb73c875718a65c43d44a485d969408ac0e975549e7c526f",
+        "object_version": 1,
+        "resolver_status": "ACTIVE",
+        "root_status": "ACTIVE",
+        "endpoint_binding_status": "MATCHED",
+        "snapshot_generation": 3
+      },
+      "evidence_levels": [
+        "REGISTRY_BOUND",
+        "AGENT_ATTESTED",
+        "DNSSEC_VALIDATED"
+      ],
+      "accepted": true,
+      "reasons": []
+    }
+  ],
+  "edges": [
+    {
+      "schema_version": "dns-server-hop-evidence-v2",
+      "edge_id": "3e570b54ff0af0ff848892bb83dc17ce:0x31e9c2d6b7dbba395ea090c34b847e96845abfab002c4aeeec4b27c46b24bd13",
+      "trace_id": "3e570b54ff0af0ff848892bb83dc17ce",
+      "target_correlation_id": "0xef9378615bcbd5e41d652ed76767a92a53e97f5d10bf4e9242d3026a96bd0188",
+      "challenge": "b667b144ee4b5d47edf74b113063550f17ce0aec98df7f1c65967267acdb5df3",
+      "from_server_id": "operator/L01/r1",
+      "to_server_id": "operator/L01/r2",
+      "from_endpoint": {
+        "ip": "10.206.16.14",
+        "port": 53,
+        "transport": "udp"
+      },
+      "to_endpoint": {
+        "ip": "10.206.16.17",
+        "port": 53,
+        "transport": "udp"
+      },
+      "query_digest": "0xa51fab273e827f2d82f5beb4d50bb72d807ca1695097bb3a1051b6e2527caf20",
+      "response_digest": "0x87cbdd020aca7595a80c1a8d9ab6784113d86111359f7d0319a6bc109918697e",
+      "observed_at": 1786198855,
+      "issued_at": 1786198855,
+      "expires_at": 1786198885,
+      "accepted": true,
+      "reasons": [],
+      "registry": {
+        "chain_adapter": "norn",
+        "chain_identity": "norn-genesis:0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+        "registry_locator": "norn:0x1000000000000000000000000000000000000001#resolver-identity-registry-v2",
+        "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+        "adapter_metadata": {
+          "adapter_type": "norn",
+          "genesis_block_hash": "0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+          "registry_address": "0x1000000000000000000000000000000000000001",
+          "registry_key": "resolver-identity-registry-v2",
+          "snapshot_signer_issuer": "norn-registry",
+          "snapshot_signer_key_id": "snapshot-key-1"
+        },
+        "checkpoint_height": 141199,
+        "checkpoint_hash": "0xe0041ac205630e3d9ed571062415818e2cf8bbbbad199f244c74c24bd559449f",
+        "finality_type": "norn-dual-node-confirmations",
+        "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+        "object_hash": "0xc7bae043abfa6937badbaebc009f4097adb535e38845be80d67decdf668daf37",
+        "object_version": 1,
+        "resolver_status": "ACTIVE",
+        "root_status": "ACTIVE",
+        "endpoint_binding_status": "MATCHED",
+        "snapshot_generation": 3
+      },
+      "target_attestation": {
+        "schema_version": "dns-target-response-attestation-v2",
+        "target_server_id": "operator/L01/r2",
+        "trace_id": "3e570b54ff0af0ff848892bb83dc17ce",
+        "correlation_id": "0xef9378615bcbd5e41d652ed76767a92a53e97f5d10bf4e9242d3026a96bd0188",
+        "challenge": "b667b144ee4b5d47edf74b113063550f17ce0aec98df7f1c65967267acdb5df3",
+        "query_digest": "0xa51fab273e827f2d82f5beb4d50bb72d807ca1695097bb3a1051b6e2527caf20",
+        "response_digest": "0x87cbdd020aca7595a80c1a8d9ab6784113d86111359f7d0319a6bc109918697e",
+        "endpoint": {
+          "ip": "10.206.16.17",
+          "port": 53,
+          "transport": "udp"
+        },
+        "observed_at": 1786198855,
+        "issued_at": 1786198855,
+        "expires_at": 1786198885,
+        "key_id": "agent-key-L01-r2",
+        "signature": "base64:ed25519:d0Jrpqla/v1ZqtRPXqQ9Rd8VEgK6+v9ZsJOTAmBs6AmuINixiospzGsF+Gjse7jTHmiZl7EgGm8nSt+Hh03ICQ=="
+      },
+      "key_id": "agent-key-L01-r1",
+      "signature": "base64:ed25519:oCyeCYU4DTioaZRsY/U0+nbbNxdrgHT2aw1rtNNOq89duw+W3nOdRfeCDIUZSCy5Iu+v3zyJXHo7LXzJ/h2zDw=="
+    },
+    {
+      "schema_version": "dns-server-hop-evidence-v2",
+      "edge_id": "3e570b54ff0af0ff848892bb83dc17ce:0x4e896ca40b26eb1eb1ee1e5439ef1e9083f165bdce7a40a086a2c0cd2d56de71",
+      "trace_id": "3e570b54ff0af0ff848892bb83dc17ce",
+      "target_correlation_id": "0xb9322592c1dd847c32f6d826293489b77ae5b71a6a54d3d6df64a33df383cfc7",
+      "challenge": "b667b144ee4b5d47edf74b113063550f17ce0aec98df7f1c65967267acdb5df3",
+      "from_server_id": "operator/L01/r2",
+      "to_server_id": "operator/L01/r3",
+      "from_endpoint": {
+        "ip": "10.206.16.17",
+        "port": 53,
+        "transport": "udp"
+      },
+      "to_endpoint": {
+        "ip": "10.206.16.7",
+        "port": 53,
+        "transport": "udp"
+      },
+      "query_digest": "0xf0e6253056bf8aae8cc6ed2914b394b4dee968d92cd2a632b0b28a84bc78ad7b",
+      "response_digest": "0xb6c2da1becba4ff70af71f86ed65a101d7a98d4feecf414727422c2f77710f36",
+      "observed_at": 1786198855,
+      "issued_at": 1786198855,
+      "expires_at": 1786198885,
+      "accepted": true,
+      "reasons": [],
+      "registry": {
+        "chain_adapter": "norn",
+        "chain_identity": "norn-genesis:0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+        "registry_locator": "norn:0x1000000000000000000000000000000000000001#resolver-identity-registry-v2",
+        "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+        "adapter_metadata": {
+          "adapter_type": "norn",
+          "genesis_block_hash": "0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+          "registry_address": "0x1000000000000000000000000000000000000001",
+          "registry_key": "resolver-identity-registry-v2",
+          "snapshot_signer_issuer": "norn-registry",
+          "snapshot_signer_key_id": "snapshot-key-1"
+        },
+        "checkpoint_height": 141200,
+        "checkpoint_hash": "0x0093f6f109d210020223c232467158c892f06307f73707d8d5ef4b327fb7004a",
+        "finality_type": "norn-dual-node-confirmations",
+        "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+        "object_hash": "0x1bae9ff4604409bbd95a6c692af26b3cffc56b32a58efbedbaf175b58f7214d0",
+        "object_version": 1,
+        "resolver_status": "ACTIVE",
+        "root_status": "ACTIVE",
+        "endpoint_binding_status": "MATCHED",
+        "snapshot_generation": 3
+      },
+      "target_attestation": {
+        "schema_version": "dns-target-response-attestation-v2",
+        "target_server_id": "operator/L01/r3",
+        "trace_id": "3e570b54ff0af0ff848892bb83dc17ce",
+        "correlation_id": "0xb9322592c1dd847c32f6d826293489b77ae5b71a6a54d3d6df64a33df383cfc7",
+        "challenge": "b667b144ee4b5d47edf74b113063550f17ce0aec98df7f1c65967267acdb5df3",
+        "query_digest": "0xf0e6253056bf8aae8cc6ed2914b394b4dee968d92cd2a632b0b28a84bc78ad7b",
+        "response_digest": "0xb6c2da1becba4ff70af71f86ed65a101d7a98d4feecf414727422c2f77710f36",
+        "endpoint": {
+          "ip": "10.206.16.7",
+          "port": 53,
+          "transport": "udp"
+        },
+        "observed_at": 1786198855,
+        "issued_at": 1786198855,
+        "expires_at": 1786198885,
+        "key_id": "agent-key-L01-r3",
+        "signature": "base64:ed25519:NR/5Hipd6QZUis0ADQu1MU3xmyefViSjC95Mb1aKnxBhHq2xZ/W3qDibMZ4kMZTTKGTRQwjbUDNzlRkhGN/DAg=="
+      },
+      "key_id": "agent-key-L01-r2",
+      "signature": "base64:ed25519:sVKOUR9fqmyw50/3ZzKsgRrm1kQzcpQAOAUhtxd/XNuue2Y83avmIyogFBcXpFHDZ+rUG7a0HwEbJzbid6A1AQ=="
+    },
+    {
+      "schema_version": "dns-server-hop-evidence-v2",
+      "edge_id": "3e570b54ff0af0ff848892bb83dc17ce:0x52a5d86cabe3322ed5414071bec938d6c6b2b5998ab6e133365e635c908e9659",
+      "trace_id": "3e570b54ff0af0ff848892bb83dc17ce",
+      "target_correlation_id": "0xbcb2e40662b047f0e0881b1a7226f32e4dc746c7828dda3cd43bae36eff766e5",
+      "challenge": "b667b144ee4b5d47edf74b113063550f17ce0aec98df7f1c65967267acdb5df3",
+      "from_server_id": "operator/L01/r1",
+      "to_server_id": "operator/L01/r2",
+      "from_endpoint": {
+        "ip": "10.206.16.14",
+        "port": 53,
+        "transport": "udp"
+      },
+      "to_endpoint": {
+        "ip": "10.206.16.17",
+        "port": 53,
+        "transport": "udp"
+      },
+      "query_digest": "0xe35f7563d9b150eeb2779a4c69532ede09e750e82db09f72de63b1a98994f2e7",
+      "response_digest": "0x33172594d980d884e7f3270c4ba10c768ca0e7f277ca00d82c25199d284ecba7",
+      "observed_at": 1786198855,
+      "issued_at": 1786198855,
+      "expires_at": 1786198885,
+      "accepted": true,
+      "reasons": [],
+      "registry": {
+        "chain_adapter": "norn",
+        "chain_identity": "norn-genesis:0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+        "registry_locator": "norn:0x1000000000000000000000000000000000000001#resolver-identity-registry-v2",
+        "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+        "adapter_metadata": {
+          "adapter_type": "norn",
+          "genesis_block_hash": "0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+          "registry_address": "0x1000000000000000000000000000000000000001",
+          "registry_key": "resolver-identity-registry-v2",
+          "snapshot_signer_issuer": "norn-registry",
+          "snapshot_signer_key_id": "snapshot-key-1"
+        },
+        "checkpoint_height": 141199,
+        "checkpoint_hash": "0xe0041ac205630e3d9ed571062415818e2cf8bbbbad199f244c74c24bd559449f",
+        "finality_type": "norn-dual-node-confirmations",
+        "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+        "object_hash": "0xc7bae043abfa6937badbaebc009f4097adb535e38845be80d67decdf668daf37",
+        "object_version": 1,
+        "resolver_status": "ACTIVE",
+        "root_status": "ACTIVE",
+        "endpoint_binding_status": "MATCHED",
+        "snapshot_generation": 3
+      },
+      "target_attestation": {
+        "schema_version": "dns-target-response-attestation-v2",
+        "target_server_id": "operator/L01/r2",
+        "trace_id": "3e570b54ff0af0ff848892bb83dc17ce",
+        "correlation_id": "0xbcb2e40662b047f0e0881b1a7226f32e4dc746c7828dda3cd43bae36eff766e5",
+        "challenge": "b667b144ee4b5d47edf74b113063550f17ce0aec98df7f1c65967267acdb5df3",
+        "query_digest": "0xe35f7563d9b150eeb2779a4c69532ede09e750e82db09f72de63b1a98994f2e7",
+        "response_digest": "0x33172594d980d884e7f3270c4ba10c768ca0e7f277ca00d82c25199d284ecba7",
+        "endpoint": {
+          "ip": "10.206.16.17",
+          "port": 53,
+          "transport": "udp"
+        },
+        "observed_at": 1786198855,
+        "issued_at": 1786198855,
+        "expires_at": 1786198885,
+        "key_id": "agent-key-L01-r2",
+        "signature": "base64:ed25519:vZ2MBXVxAMFQD71KXhDPrLMz/QxT/3rNOexyYxHfO+38Yyij0re0iV220prgv63wY75B/0XZ43TUndO91RZ/DQ=="
+      },
+      "key_id": "agent-key-L01-r1",
+      "signature": "base64:ed25519:GKQcjbILoYBKNhBrc/jFTAoxD49w7EoTLZ/z2lmoG2qyqRns93WgEG+VrvPQcFX+BZ8batZZ6MZVeBxw3w9YAw=="
+    },
+    {
+      "schema_version": "dns-server-hop-evidence-v2",
+      "edge_id": "3e570b54ff0af0ff848892bb83dc17ce:0x60f623e1f96490d9762956d3a44d15419fac0c1f5af767e29b7fc3d6c6fd2130",
+      "trace_id": "3e570b54ff0af0ff848892bb83dc17ce",
+      "target_correlation_id": "0x1df666ef487f8779bee7084fa72b0ab7a1d760f9da07ad43a2317185a53bf3ac",
+      "challenge": "b667b144ee4b5d47edf74b113063550f17ce0aec98df7f1c65967267acdb5df3",
+      "from_server_id": "operator/L01/r2",
+      "to_server_id": "operator/L01/r3",
+      "from_endpoint": {
+        "ip": "10.206.16.17",
+        "port": 53,
+        "transport": "udp"
+      },
+      "to_endpoint": {
+        "ip": "10.206.16.7",
+        "port": 53,
+        "transport": "udp"
+      },
+      "query_digest": "0x584d28c6ee3e6dcb84a9169a792418f4fef22b582658c50e03fb2923da4c75f4",
+      "response_digest": "0x9177d36e9e9a5ad6a02484c43b87d47269317f4d8730fac152e90c68a3859706",
+      "observed_at": 1786198855,
+      "issued_at": 1786198855,
+      "expires_at": 1786198885,
+      "accepted": true,
+      "reasons": [],
+      "registry": {
+        "chain_adapter": "norn",
+        "chain_identity": "norn-genesis:0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+        "registry_locator": "norn:0x1000000000000000000000000000000000000001#resolver-identity-registry-v2",
+        "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+        "adapter_metadata": {
+          "adapter_type": "norn",
+          "genesis_block_hash": "0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+          "registry_address": "0x1000000000000000000000000000000000000001",
+          "registry_key": "resolver-identity-registry-v2",
+          "snapshot_signer_issuer": "norn-registry",
+          "snapshot_signer_key_id": "snapshot-key-1"
+        },
+        "checkpoint_height": 141200,
+        "checkpoint_hash": "0x0093f6f109d210020223c232467158c892f06307f73707d8d5ef4b327fb7004a",
+        "finality_type": "norn-dual-node-confirmations",
+        "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+        "object_hash": "0x1bae9ff4604409bbd95a6c692af26b3cffc56b32a58efbedbaf175b58f7214d0",
+        "object_version": 1,
+        "resolver_status": "ACTIVE",
+        "root_status": "ACTIVE",
+        "endpoint_binding_status": "MATCHED",
+        "snapshot_generation": 3
+      },
+      "target_attestation": {
+        "schema_version": "dns-target-response-attestation-v2",
+        "target_server_id": "operator/L01/r3",
+        "trace_id": "3e570b54ff0af0ff848892bb83dc17ce",
+        "correlation_id": "0x1df666ef487f8779bee7084fa72b0ab7a1d760f9da07ad43a2317185a53bf3ac",
+        "challenge": "b667b144ee4b5d47edf74b113063550f17ce0aec98df7f1c65967267acdb5df3",
+        "query_digest": "0x584d28c6ee3e6dcb84a9169a792418f4fef22b582658c50e03fb2923da4c75f4",
+        "response_digest": "0x9177d36e9e9a5ad6a02484c43b87d47269317f4d8730fac152e90c68a3859706",
+        "endpoint": {
+          "ip": "10.206.16.7",
+          "port": 53,
+          "transport": "udp"
+        },
+        "observed_at": 1786198855,
+        "issued_at": 1786198855,
+        "expires_at": 1786198885,
+        "key_id": "agent-key-L01-r3",
+        "signature": "base64:ed25519:1nZ3lI+RawavWh8o7VZnm/Tmo2bXohvEiEE6GjBTAtsxq6/nUpFOMerIPeNVvrDGNRFMfitfo2VImrBznNfQDg=="
+      },
+      "key_id": "agent-key-L01-r2",
+      "signature": "base64:ed25519:8214jfBEOjzzm2EXleG6/eTg0pY6y3wpQoPlIEeBZg0pv7o+mS8hEE0k8TYrcb2eX8J0YZoETY0EckSjqadECw=="
+    },
+    {
+      "schema_version": "dns-server-hop-evidence-v2",
+      "edge_id": "3e570b54ff0af0ff848892bb83dc17ce:0x8d26d593d2190e5d941ba19ae1fb7772fd854ab8a26f4075ca8419eb93f520c9",
+      "trace_id": "3e570b54ff0af0ff848892bb83dc17ce",
+      "target_correlation_id": "0xeae47293d79daf197d2d1d4a19aa220f4b45991c1a3e3142495de579a4006f08",
+      "challenge": "b667b144ee4b5d47edf74b113063550f17ce0aec98df7f1c65967267acdb5df3",
+      "from_server_id": "operator/L01/r3",
+      "to_server_id": "operator/authdns",
+      "from_endpoint": {
+        "ip": "10.206.16.7",
+        "port": 53,
+        "transport": "udp"
+      },
+      "to_endpoint": {
+        "ip": "10.206.16.13",
+        "port": 53,
+        "transport": "udp"
+      },
+      "query_digest": "0x117479e8e8b435b22e36e795f8a2ea8b58b74bf08e00db3d181b186d86b4692f",
+      "response_digest": "0x064c85ccbbfdf27c7e3e55ccd1356bb968c66ab44902d357cbc9b8ecbffde982",
+      "observed_at": 1786198855,
+      "issued_at": 1786198855,
+      "expires_at": 1786198885,
+      "accepted": true,
+      "reasons": [],
+      "registry": {
+        "chain_adapter": "norn",
+        "chain_identity": "norn-genesis:0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+        "registry_locator": "norn:0x1000000000000000000000000000000000000001#resolver-identity-registry-v2",
+        "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+        "adapter_metadata": {
+          "adapter_type": "norn",
+          "genesis_block_hash": "0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+          "registry_address": "0x1000000000000000000000000000000000000001",
+          "registry_key": "resolver-identity-registry-v2",
+          "snapshot_signer_issuer": "norn-registry",
+          "snapshot_signer_key_id": "snapshot-key-1"
+        },
+        "checkpoint_height": 141199,
+        "checkpoint_hash": "0xe0041ac205630e3d9ed571062415818e2cf8bbbbad199f244c74c24bd559449f",
+        "finality_type": "norn-dual-node-confirmations",
+        "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+        "object_hash": "0xd5f1e16865a050e7bb73c875718a65c43d44a485d969408ac0e975549e7c526f",
+        "object_version": 1,
+        "resolver_status": "ACTIVE",
+        "root_status": "ACTIVE",
+        "endpoint_binding_status": "MATCHED",
+        "snapshot_generation": 3
+      },
+      "target_attestation": {
+        "schema_version": "dns-target-response-attestation-v2",
+        "target_server_id": "operator/authdns",
+        "trace_id": "3e570b54ff0af0ff848892bb83dc17ce",
+        "correlation_id": "0xeae47293d79daf197d2d1d4a19aa220f4b45991c1a3e3142495de579a4006f08",
+        "challenge": "b667b144ee4b5d47edf74b113063550f17ce0aec98df7f1c65967267acdb5df3",
+        "query_digest": "0x117479e8e8b435b22e36e795f8a2ea8b58b74bf08e00db3d181b186d86b4692f",
+        "response_digest": "0x064c85ccbbfdf27c7e3e55ccd1356bb968c66ab44902d357cbc9b8ecbffde982",
+        "endpoint": {
+          "ip": "10.206.16.13",
+          "port": 53,
+          "transport": "udp"
+        },
+        "observed_at": 1786198855,
+        "issued_at": 1786198855,
+        "expires_at": 1786198885,
+        "key_id": "agent-key-authdns",
+        "signature": "base64:ed25519:t7afmhZ8pfSlCFXE0ZEIzddEmOOwsxL85Foi8XcXZokbuemCZxwIfwZuuYE5o4Ljl1mvCW7Sj92CInvjbb/ODg=="
+      },
+      "key_id": "agent-key-L01-r3",
+      "signature": "base64:ed25519:aAR7ZJopaOQLqlPLzKGftn/SSadQzPi+L0hxw/d5Kf0690kOT42BxOyvvobBm6Gge1aMkLVxLKYNUFbBTmVgBQ=="
+    },
+    {
+      "schema_version": "dns-server-hop-evidence-v2",
+      "edge_id": "3e570b54ff0af0ff848892bb83dc17ce:0xe2ffb394b24f2f3368e0cf24876898a1c6b73595ffe46e328aa0b1a9f53d47e1",
+      "trace_id": "3e570b54ff0af0ff848892bb83dc17ce",
+      "target_correlation_id": "0x6dc7a3c5e7b3e4120fb6bf959cb0907afe7d771841d97034959f26196df95a95",
+      "challenge": "b667b144ee4b5d47edf74b113063550f17ce0aec98df7f1c65967267acdb5df3",
+      "from_server_id": "operator/L01/r3",
+      "to_server_id": "operator/authdns",
+      "from_endpoint": {
+        "ip": "10.206.16.7",
+        "port": 53,
+        "transport": "udp"
+      },
+      "to_endpoint": {
+        "ip": "10.206.16.13",
+        "port": 53,
+        "transport": "udp"
+      },
+      "query_digest": "0x7849463442631d9a9b3edffa661d31017a2ff7e78e5098398b64f8c2ca553a3e",
+      "response_digest": "0x9273259e49574d82f3c956fdaa1e3184ccc87dba5e27af0bf2f97925df4f2c63",
+      "observed_at": 1786198855,
+      "issued_at": 1786198855,
+      "expires_at": 1786198885,
+      "accepted": true,
+      "reasons": [],
+      "registry": {
+        "chain_adapter": "norn",
+        "chain_identity": "norn-genesis:0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+        "registry_locator": "norn:0x1000000000000000000000000000000000000001#resolver-identity-registry-v2",
+        "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+        "adapter_metadata": {
+          "adapter_type": "norn",
+          "genesis_block_hash": "0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+          "registry_address": "0x1000000000000000000000000000000000000001",
+          "registry_key": "resolver-identity-registry-v2",
+          "snapshot_signer_issuer": "norn-registry",
+          "snapshot_signer_key_id": "snapshot-key-1"
+        },
+        "checkpoint_height": 141199,
+        "checkpoint_hash": "0xe0041ac205630e3d9ed571062415818e2cf8bbbbad199f244c74c24bd559449f",
+        "finality_type": "norn-dual-node-confirmations",
+        "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+        "object_hash": "0xd5f1e16865a050e7bb73c875718a65c43d44a485d969408ac0e975549e7c526f",
+        "object_version": 1,
+        "resolver_status": "ACTIVE",
+        "root_status": "ACTIVE",
+        "endpoint_binding_status": "MATCHED",
+        "snapshot_generation": 3
+      },
+      "target_attestation": {
+        "schema_version": "dns-target-response-attestation-v2",
+        "target_server_id": "operator/authdns",
+        "trace_id": "3e570b54ff0af0ff848892bb83dc17ce",
+        "correlation_id": "0x6dc7a3c5e7b3e4120fb6bf959cb0907afe7d771841d97034959f26196df95a95",
+        "challenge": "b667b144ee4b5d47edf74b113063550f17ce0aec98df7f1c65967267acdb5df3",
+        "query_digest": "0x7849463442631d9a9b3edffa661d31017a2ff7e78e5098398b64f8c2ca553a3e",
+        "response_digest": "0x9273259e49574d82f3c956fdaa1e3184ccc87dba5e27af0bf2f97925df4f2c63",
+        "endpoint": {
+          "ip": "10.206.16.13",
+          "port": 53,
+          "transport": "udp"
+        },
+        "observed_at": 1786198855,
+        "issued_at": 1786198855,
+        "expires_at": 1786198885,
+        "key_id": "agent-key-authdns",
+        "signature": "base64:ed25519:dxSWBSl4Ns23ziAuAKfbZVv0XvvalI/JRakKzl82D+Nytd+UzzFZv2CKLwGCIPpMfj8AnbKAZK9NvIfgzr4IAw=="
+      },
+      "key_id": "agent-key-L01-r3",
+      "signature": "base64:ed25519:P02Ls/rdkNEVoG29unQg0WTR8Rhs01nBmNv+NE0MYugMm+SdY92HBwd17LjEeTMYphSmNgxJcBMRWWXhbgUICQ=="
+    }
+  ],
+  "terminal_node_ids": [
+    "operator/authdns"
+  ],
+  "final_result": true,
+  "graph_errors": [],
+  "key_id": "agent-key-L01-r1",
+  "signature": "base64:ed25519:DcPItuxAgFhOV6SCdzMMVGFC+I2P1CqHA737fzPGWDvwFeGo2qr1nCpP9RvdMNoIIz7TJvtwOyyeMN7GCPxFDA=="
+}

@@ -1,0 +1,8 @@
+verification_mode=controlled-strict
+identity_verification_result=true
+graph_final_result=true
+graph_errors=[]
+dns_response_digest=0xedf0875b1eab20b8bdfd5decdcbd32a2b3eadb52b322d9d203153988e57e7779
+evidence_response_digest=0xedf0875b1eab20b8bdfd5decdcbd32a2b3eadb52b322d9d203153988e57e7779
+dns_response_released=true
+release_code_path=rust/crates/ri-wrapper/src/lib.rs:256-264
