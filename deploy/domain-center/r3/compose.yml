@@ -1,8 +1,7 @@
 name: ${RI_FIELD_COMPOSE_PROJECT:-ri-r3}
 
 x-runtime: &runtime
-  image: ${RI_IMAGE:?pin unified RC15 stable Rust image digest including Producer reconnect}
-  user: "${RI_RUNTIME_UID:-10002}:${RI_RUNTIME_GID:-10002}"
+  user: ${RI_RUNTIME_USER:-resolver-rust}
   restart: unless-stopped
   read_only: true
   cap_drop: [ALL]
@@ -30,7 +29,7 @@ services:
     volumes:
       - ${RI_RESOLVER_CONFIG_FILE:?required}:/run/config/kresd.conf:ro
       - ${RI_TRACE_SOCKET_HOST_DIR:?required}:/run/resolver-identity/trace
-      - ${RI_FIELD_DATA_DIR:?required}/knot-cache:/var/cache/knot-resolver
+      - ${RI_KNOT_CACHE_HOST_DIR:?required}:/var/cache/knot-resolver
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=16m
     ports:
@@ -45,6 +44,7 @@ services:
 
   trace-producer:
     <<: *runtime
+    image: ${RI_TRACE_PRODUCER_IMAGE:?pin reconnect Producer image}
     command: ["/usr/local/bin/ri-knot-trace-producer"]
     environment:
       RI_KNOT_TRACE_HOOK_SOCKET: /run/resolver-identity/trace/knot-hook.sock
@@ -60,6 +60,7 @@ services:
 
   registry-sync:
     <<: *runtime
+    image: ${RI_REGISTRY_SYNC_IMAGE:?pin Registry Sync image}
     command: ["/usr/local/bin/ri-registry-sync"]
     environment:
       RI_ENVIRONMENT: production
@@ -96,6 +97,7 @@ services:
 
   agent:
     <<: *runtime
+    image: ${RI_AGENT_IMAGE:?pin Agent image}
     command: ["/usr/local/bin/ri-agent"]
     environment:
       RI_ENVIRONMENT: production
@@ -110,7 +112,7 @@ services:
       RI_AGENT_PEER_CREDENTIALS_FILE: /run/secrets/agent_peer_credentials.json
       RI_DATABASE: /var/lib/resolver-identity/evidence-v2.db
       RI_REGISTRY_MAX_STALENESS_SECONDS: "45"
-      RI_TRACE_WAIT_MILLIS: ${RI_TRACE_WAIT_MILLIS:-5000}
+      RI_TRACE_WAIT_MILLIS: ${RI_TRACE_WAIT_MILLIS:-30000}
       RI_AGENT_TLS_CERT_FILE: /run/agent-tls/agent.crt
       RI_AGENT_TLS_KEY_FILE: /run/agent-tls/agent.key
       RI_AGENT_TLS_CLIENT_CA_FILE: /run/agent-tls/client-ca.crt
@@ -131,6 +133,7 @@ services:
 
   trace-adapter:
     <<: *runtime
+    image: ${RI_TRACE_ADAPTER_IMAGE:?pin Trace Adapter image}
     command: ["/usr/local/bin/ri-trace-adapter"]
     environment:
       RI_ENVIRONMENT: production
@@ -141,7 +144,7 @@ services:
       RI_TRACE_AGENT_URL: https://agent:8443
       RI_TRACE_INGEST_TOKEN_FILE: /run/secrets/trace_ingest_token
       RI_TRACE_MONITORING_BIND: 0.0.0.0:9110
-      RI_TRACE_CACHE_PROVENANCE_WAIT_MS: ${RI_TRACE_CACHE_PROVENANCE_WAIT_MS:-2000}
+      RI_TRACE_CACHE_PROVENANCE_WAIT_MS: ${RI_TRACE_CACHE_PROVENANCE_WAIT_MS:-30000}
       RI_TRACE_TLS_CLIENT_CERT_FILE: /run/agent-tls/trace-client.crt
       RI_TRACE_TLS_CLIENT_KEY_FILE: /run/agent-tls/trace-client.key
       RI_TRACE_TLS_CA_FILE: /run/agent-tls/agent-ca.crt
@@ -153,7 +156,7 @@ services:
       - ${RI_AGENT_TLS_DIR:?required}:/run/agent-tls:ro
     ports:
       - "${RI_MANAGEMENT_BIND_ADDRESS:?required}:9110:9110/tcp"
-    networks: [link-control]
+    networks: [link-control, agent-egress]
     depends_on:
       agent:
         condition: service_started

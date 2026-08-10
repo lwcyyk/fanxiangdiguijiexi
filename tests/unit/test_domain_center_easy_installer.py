@@ -315,9 +315,10 @@ def test_host_archives_are_standalone_with_exact_entry_points(tmp_path: Path):
         assert required <= {name[len(prefix):] for name in files}
         assert files[prefix + "product-kit/common/load_images.py"] == IMAGE_LOADER_PATH.read_bytes()
         lock = json.loads(files[prefix + "images/image-lock.json"])
-        assert lock["schema_version"] == generator.LOCK_SCHEMA
+        assert lock["schema_version"] == "resolver-identity-role-image-lock-v2"
+        archives = {entry["id"]: entry["archive"] for entry in lock["archives"]}
         for image in lock["images"]:
-            assert prefix + "images/" + image["archive"] in files
+            assert prefix + "images/" + archives[image["archive_id"]] in files
             assert image["import_reference"] == generator._import_reference(
                 image["reference"].split("@", 1)[0], image["digest"]
             )
@@ -328,6 +329,11 @@ def test_host_archives_are_standalone_with_exact_entry_points(tmp_path: Path):
         assert f"RI_FIELD_DATA_DIR=/var/lib/resolver-identity/{metadata['hostname']}" in inventory_env
         for image in lock["images"]:
             assert image["import_reference"] in inventory_env
+        for binding in lock["services"]:
+            variable = binding["compose_variable"]
+            image_id = binding["image_id"]
+            expected_reference = next(entry["import_reference"] for entry in lock["images"] if entry["id"] == image_id)
+            assert f"{variable}={expected_reference}" in inventory_env
         assert files[prefix + f"product-kit/{metadata['role']}/PACKAGE-VERSION"] == b"0.3.0-test\n"
     assert roles == set(generator.ROLE_COUNTS)
 
@@ -355,13 +361,20 @@ def test_image_lock_parser_and_full_repo_digest_check(tmp_path: Path, monkeypatc
     import_reference = "registry.internal/domain-center/rust:ri-" + "4" * 16
     config_digest = "sha256:" + "5" * 64
     lock = {
-        "schema_version": generator.LOCK_SCHEMA,
+        "schema_version": "resolver-identity-role-image-lock-v1",
         "hostname": "dc-r1-01",
         "role": "r1",
         "images": [{"key": "rust", "reference": reference, "import_reference": import_reference, "digest": "sha256:" + "4" * 64, "config_digest": config_digest, "archive": archive.name, "archive_sha256": hashlib.sha256(archive.read_bytes()).hexdigest()}],
     }
     _write_json(tmp_path / "image-lock.json", lock)
-    assert image_loader.parse_manifest(tmp_path / "image-lock.json") == [(archive, lock["images"][0]["archive_sha256"], reference, import_reference, config_digest)]
+    assert image_loader.parse_manifest(tmp_path / "image-lock.json") == [(
+        archive,
+        lock["images"][0]["archive_sha256"],
+        reference,
+        import_reference,
+        lock["images"][0]["digest"],
+        config_digest,
+    )]
 
     calls: list[list[str]] = []
     loaded = False
@@ -369,7 +382,7 @@ def test_image_lock_parser_and_full_repo_digest_check(tmp_path: Path, monkeypatc
         nonlocal loaded
         calls.append(command)
         if command[:4] == ["docker", "image", "ls", "--no-trunc"]:
-            output = ""
+            output = f"{config_digest}\n" if loaded else ""
         elif command[:3] == ["docker", "image", "inspect"] and not loaded:
             return subprocess.CompletedProcess(command, 1, "", "missing")
         elif command[:2] == ["docker", "load"]:
@@ -399,7 +412,7 @@ def test_image_loader_removes_only_new_imports_on_failure(tmp_path: Path, monkey
     import_reference = "registry.internal/rust:ri-" + "7" * 16
     config_digest = "sha256:" + "2" * 64
     _write_json(tmp_path / "image-lock.json", {
-        "schema_version": generator.LOCK_SCHEMA,
+        "schema_version": "resolver-identity-role-image-lock-v1",
         "hostname": "dc-r1-01",
         "role": "r1",
         "images": [{"key": "rust", "archive": archive.name, "archive_sha256": hashlib.sha256(archive.read_bytes()).hexdigest(), "reference": reference, "import_reference": import_reference, "digest": "sha256:" + "7" * 64, "config_digest": config_digest}],
@@ -417,7 +430,7 @@ def test_image_loader_removes_only_new_imports_on_failure(tmp_path: Path, monkey
 
 def test_image_lock_rejects_path_traversal(tmp_path: Path):
     _write_json(tmp_path / "image-lock.json", {
-        "schema_version": generator.LOCK_SCHEMA,
+        "schema_version": "resolver-identity-role-image-lock-v1",
         "hostname": "dc-r1-01",
         "role": "r1",
         "images": [{"key": "rust", "archive": "../outside.tar", "archive_sha256": "b" * 64, "reference": "registry.internal/rust@sha256:" + "4" * 64, "import_reference": "registry.internal/rust:ri-" + "4" * 16, "digest": "sha256:" + "4" * 64, "config_digest": "sha256:" + "5" * 64}],
@@ -489,7 +502,7 @@ def test_show_mismatch_reports_but_never_bypasses(capsys: pytest.CaptureFixture[
 def test_authdns_is_formal_seventh_role_with_host_managed_bind_backend():
     assert "authdns" in wizard.ROLES
     assert generator.ROLE_COUNTS["authdns"] == 1
-    assert generator.ROLE_IMAGES["authdns"] == ("rust",)
+    assert generator.ROLE_IMAGES["authdns"] == ("registry-sync", "agent", "authority-proxy")
     assert lifecycle.ROLE_KIND["authdns"] == "authoritative-dns"
     assert lifecycle.AUTHDNS_TLS_FILES == ("authority-client.crt", "authority-client.key")
     compose = (PRODUCT_KIT / "authdns" / "docker-compose.yml").read_text(encoding="utf-8")
@@ -1048,11 +1061,16 @@ def test_required_release_tree_sbom_and_pdf_state_are_verified(tmp_path: Path):
     assert not list((delivery / "05-PDF手册").glob("*.pdf"))
 
 
-def test_r2_r3_have_no_wrapper_but_use_shared_rust_image():
+def test_r2_r3_have_no_wrapper_but_use_service_specific_images():
     for role in ("r2", "r3"):
         text = (PRODUCT_KIT / role / "docker-compose.yml").read_text(encoding="utf-8")
         assert "wrapper:" not in text
-        assert "image: ${RI_IMAGE:?pin Rust image digest}" in text
+        assert "RI_IMAGE" not in text
+        for variable in (
+            "RI_KNOT_IMAGE", "RI_TRACE_PRODUCER_IMAGE", "RI_REGISTRY_SYNC_IMAGE",
+            "RI_AGENT_IMAGE", "RI_TRACE_ADAPTER_IMAGE",
+        ):
+            assert f"image: ${{{variable}:" in text
 
 
 def test_cli_exposes_unambiguous_output_parent_alias():

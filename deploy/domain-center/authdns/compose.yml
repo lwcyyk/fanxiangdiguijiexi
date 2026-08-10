@@ -1,8 +1,7 @@
 name: ${RI_FIELD_COMPOSE_PROJECT:-ri-authdns}
 
 x-runtime: &runtime
-  image: ${RI_IMAGE:-offline/resolver-identity/rust@sha256:1e4409aaffcbb38c2d13d91b3e8fb6b004f677d7ddb566ae8007aa5ae8ebe23f}
-  user: "${RI_RUNTIME_UID:-10002}:${RI_RUNTIME_GID:-10002}"
+  user: ${RI_RUNTIME_USER:-resolver-rust}
   restart: unless-stopped
   read_only: true
   cap_drop: [ALL]
@@ -22,6 +21,7 @@ x-runtime: &runtime
 services:
   registry-sync:
     <<: *runtime
+    image: ${RI_REGISTRY_SYNC_IMAGE:?pin Registry Sync image}
     command: ["/usr/local/bin/ri-registry-sync"]
     environment:
       RI_ENVIRONMENT: production
@@ -56,6 +56,7 @@ services:
 
   agent:
     <<: *runtime
+    image: ${RI_AGENT_IMAGE:?pin Agent image}
     command: ["/usr/local/bin/ri-agent"]
     environment:
       RI_ENVIRONMENT: production
@@ -70,7 +71,7 @@ services:
       RI_AGENT_WRAPPER_TOKEN_FILE: /run/secrets/agent_wrapper_token
       RI_AGENT_PEER_CREDENTIALS_FILE: /run/secrets/agent_peer_credentials.json
       RI_REGISTRY_MAX_STALENESS_SECONDS: "45"
-      RI_TRACE_WAIT_MILLIS: ${RI_TRACE_WAIT_MILLIS:-5000}
+      RI_TRACE_WAIT_MILLIS: ${RI_TRACE_WAIT_MILLIS:-30000}
       RI_AGENT_TLS_CERT_FILE: /run/agent-tls/agent.crt
       RI_AGENT_TLS_KEY_FILE: /run/agent-tls/agent.key
       RI_AGENT_TLS_CLIENT_CA_FILE: /run/agent-tls/client-ca.crt
@@ -89,6 +90,7 @@ services:
 
   authority-proxy:
     <<: *runtime
+    image: ${RI_AUTHORITY_PROXY_IMAGE:?pin Authority Proxy image}
     user: "0:0"
     entrypoint:
       - /usr/bin/setpriv

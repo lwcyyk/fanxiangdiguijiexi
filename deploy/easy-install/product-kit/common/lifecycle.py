@@ -178,11 +178,15 @@ def load_env(path: Path) -> dict[str, str]:
 
 
 def validate_images(env: dict[str, str], role: str) -> None:
+    resolver_keys = (
+        "RI_KNOT_IMAGE", "RI_TRACE_PRODUCER_IMAGE", "RI_REGISTRY_SYNC_IMAGE",
+        "RI_AGENT_IMAGE", "RI_TRACE_ADAPTER_IMAGE",
+    )
     keys = {
         "management": ("RI_MANAGEMENT_IMAGE", "RI_NORN_IMAGE"),
         "norn-a": ("RI_NORN_IMAGE", "RI_NGINX_IMAGE"), "norn-b": ("RI_NORN_IMAGE", "RI_NGINX_IMAGE"),
-        "authdns": ("RI_IMAGE",),
-        "r1": ("RI_IMAGE", "RI_KNOT_IMAGE"), "r2": ("RI_IMAGE", "RI_KNOT_IMAGE"), "r3": ("RI_IMAGE", "RI_KNOT_IMAGE"),
+        "authdns": ("RI_REGISTRY_SYNC_IMAGE", "RI_AGENT_IMAGE", "RI_AUTHORITY_PROXY_IMAGE"),
+        "r1": (*resolver_keys, "RI_WRAPPER_IMAGE"), "r2": resolver_keys, "r3": resolver_keys,
     }[role]
     for key in keys:
         value = env.get(key, "")
@@ -243,6 +247,9 @@ def validate_invariants(env: dict[str, str], role: str) -> None:
             die("SEC103", "解析节点角色错误", "R1 使用 first-hop；R2/R3 使用 upstream。")
         if env.get("RI_TRACE_PRODUCER_UID") == env.get("RI_KNOT_RESOLVER_UID"):
             die("SEC107", "Trace Producer 与 Resolver UID 必须隔离", "分配不同的固定非特权 UID。")
+        cache_dir = Path(env.get("RI_KNOT_CACHE_HOST_DIR", ""))
+        if not cache_dir.is_absolute() or cache_dir == Path("/"):
+            die("SEC113", "Resolver cache 必须配置为独立安全绝对路径", "设置 RI_KNOT_CACHE_HOST_DIR；迁移时精确指向现有 cache 目录。")
     if role == "authdns":
         if env.get("RI_VERIFICATION_MODE", "controlled-strict") != "controlled-strict":
             die("SEC109", "Auth DNS Agent 必须使用 controlled-strict", "保持稳定 RC15 验证模式。")

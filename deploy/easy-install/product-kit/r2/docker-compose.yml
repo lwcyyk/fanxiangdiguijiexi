@@ -1,5 +1,4 @@
 x-runtime: &runtime
-  image: ${RI_IMAGE:?pin Rust image digest}
   restart: unless-stopped
   read_only: true
   cap_drop: [ALL]
@@ -27,7 +26,7 @@ services:
     volumes:
       - ./config/kresd.conf:/run/config/kresd.conf:ro
       - ${RI_TRACE_SOCKET_HOST_DIR:?required}:/run/resolver-identity/trace
-      - ${RI_FIELD_DATA_DIR:?required}/knot-cache:/var/cache/knot-resolver
+      - ${RI_KNOT_CACHE_HOST_DIR:?required}:/var/cache/knot-resolver
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=16m
     ports:
@@ -42,6 +41,7 @@ services:
 
   trace-producer:
     <<: *runtime
+    image: ${RI_TRACE_PRODUCER_IMAGE:?pin reconnect Producer image}
     command: ["/usr/local/bin/ri-knot-trace-producer"]
     environment:
       RI_KNOT_TRACE_HOOK_SOCKET: /run/resolver-identity/trace/knot-hook.sock
@@ -57,6 +57,7 @@ services:
 
   registry-sync:
     <<: *runtime
+    image: ${RI_REGISTRY_SYNC_IMAGE:?pin Registry Sync image}
     command: ["/usr/local/bin/ri-registry-sync"]
     environment:
       RI_ENVIRONMENT: production
@@ -93,6 +94,7 @@ services:
 
   agent:
     <<: *runtime
+    image: ${RI_AGENT_IMAGE:?pin Agent image}
     command: ["/usr/local/bin/ri-agent"]
     environment:
       RI_ENVIRONMENT: production
@@ -125,6 +127,7 @@ services:
 
   trace-adapter:
     <<: *runtime
+    image: ${RI_TRACE_ADAPTER_IMAGE:?pin Trace Adapter image}
     command: ["/usr/local/bin/ri-trace-adapter"]
     environment:
       RI_ENVIRONMENT: production
@@ -135,7 +138,7 @@ services:
       RI_TRACE_AGENT_URL: https://agent:8443
       RI_TRACE_INGEST_TOKEN_FILE: /run/secrets/trace_ingest_token
       RI_TRACE_MONITORING_BIND: 0.0.0.0:9110
-      RI_TRACE_CACHE_PROVENANCE_WAIT_MS: ${RI_TRACE_CACHE_PROVENANCE_WAIT_MS:-2000}
+      RI_TRACE_CACHE_PROVENANCE_WAIT_MS: ${RI_TRACE_CACHE_PROVENANCE_WAIT_MS:-30000}
       RI_TRACE_TLS_CLIENT_CERT_FILE: /run/agent-tls/trace-client.crt
       RI_TRACE_TLS_CLIENT_KEY_FILE: /run/agent-tls/trace-client.key
       RI_TRACE_TLS_CA_FILE: /run/agent-tls/agent-ca.crt

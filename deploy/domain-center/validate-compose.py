@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 
@@ -12,6 +11,18 @@ import yaml
 ROOT = Path(__file__).resolve().parent
 ROLES = ("management", "norn-a", "norn-b", "authdns", "r3", "r2", "r1")
 RESOLVERS = ("r3", "r2", "r1")
+RESOLVER_SERVICE_IMAGES = {
+    "resolver": "RI_KNOT_IMAGE",
+    "trace-producer": "RI_TRACE_PRODUCER_IMAGE",
+    "registry-sync": "RI_REGISTRY_SYNC_IMAGE",
+    "agent": "RI_AGENT_IMAGE",
+    "trace-adapter": "RI_TRACE_ADAPTER_IMAGE",
+}
+AUTHDNS_SERVICE_IMAGES = {
+    "registry-sync": "RI_REGISTRY_SYNC_IMAGE",
+    "agent": "RI_AGENT_IMAGE",
+    "authority-proxy": "RI_AUTHORITY_PROXY_IMAGE",
+}
 RC16_MARKERS = (
     "RI_ROOT_REQUEST_CONTEXT",
     "RI_HOP_CONTEXT",
@@ -72,6 +83,9 @@ def main() -> int:
         expected = {"resolver", "trace-producer", "registry-sync", "agent", "trace-adapter"}
         if not expected.issubset(services):
             fail(f"{role}: missing resolver services {sorted(expected - services.keys())}")
+        resolver_volumes = [str(volume) for volume in services["resolver"].get("volumes", [])]
+        if not any("RI_KNOT_CACHE_HOST_DIR" in volume and volume.endswith(":/var/cache/knot-resolver") for volume in resolver_volumes):
+            fail(f"{role}: resolver cache must use an explicit adoptable host path")
         producer = services["trace-producer"]
         if producer.get("network_mode") != "none" or "networks" in producer:
             fail(f"{role}: trace-producer must use network_mode none")
@@ -99,15 +113,27 @@ def main() -> int:
         adapter_env = service_environment(services["trace-adapter"])
         if "RI_TRACE_CACHE_PROVENANCE_WAIT_MS" not in adapter_env:
             fail(f"{role}: cache provenance wait configuration missing")
-        rust_image = str(services["agent"].get("image", ""))
-        if not re.search(r"\$\{RI_IMAGE:\?", rust_image):
-            fail(f"{role}: unified post-reconnect Rust image must be explicitly pinned")
+        if str(agent_env.get("RI_TRACE_WAIT_MILLIS")) != "${RI_TRACE_WAIT_MILLIS:-30000}":
+            fail(f"{role}: Agent trace wait differs from the stable RC15 value")
+        if str(adapter_env.get("RI_TRACE_CACHE_PROVENANCE_WAIT_MS")) != "${RI_TRACE_CACHE_PROVENANCE_WAIT_MS:-30000}":
+            fail(f"{role}: cache provenance wait differs from the stable RC15 value")
+        expected_images = dict(RESOLVER_SERVICE_IMAGES)
+        if role == "r1":
+            expected_images["wrapper"] = "RI_WRAPPER_IMAGE"
+        for service_name, variable in expected_images.items():
+            image = str(services[service_name].get("image", ""))
+            if not image.startswith(f"${{{variable}:"):
+                fail(f"{role}/{service_name}: image must be pinned through {variable}")
 
     r1_wrapper_env = service_environment(documents["r1"]["services"]["wrapper"])
     if r1_wrapper_env.get("RI_VERIFICATION_MODE") != "controlled-strict":
         fail("r1: wrapper is not controlled-strict")
     if str(r1_wrapper_env.get("RI_REGISTRY_MAX_STALENESS_SECONDS")) != "45":
         fail("r1: wrapper freshness is not fixed at 45")
+    if str(r1_wrapper_env.get("RI_WRAPPER_UPSTREAM_TIMEOUT_MS")) != "${RI_WRAPPER_UPSTREAM_TIMEOUT_MS:-12000}":
+        fail("r1: Wrapper upstream timeout does not include the stable cold-MISS budget")
+    if str(r1_wrapper_env.get("RI_WRAPPER_AGENT_TIMEOUT_MS")) != "${RI_WRAPPER_AGENT_TIMEOUT_MS:-120000}":
+        fail("r1: Wrapper Agent timeout differs from the stable RC15 value")
 
     auth_services = documents["authdns"]["services"]
     if set(auth_services) != {"registry-sync", "agent", "authority-proxy"}:
@@ -118,11 +144,17 @@ def main() -> int:
     authority_env = service_environment(auth_services["authority-proxy"])
     if authority_env.get("RI_AUTHORITY_BACKEND") != "127.0.0.1:5353":
         fail("authdns: authority backend must remain host BIND on loopback:5353")
+    for service_name, variable in AUTHDNS_SERVICE_IMAGES.items():
+        image = str(auth_services[service_name].get("image", ""))
+        if not image.startswith(f"${{{variable}:"):
+            fail(f"authdns/{service_name}: image must be pinned through {variable}")
     auth_agent_env = service_environment(auth_services["agent"])
     if auth_agent_env.get("RI_VERIFICATION_MODE") != "controlled-strict":
         fail("authdns: agent is not controlled-strict")
     if str(auth_agent_env.get("RI_REGISTRY_MAX_STALENESS_SECONDS")) != "45":
         fail("authdns: freshness is not fixed at 45")
+    if str(auth_agent_env.get("RI_TRACE_WAIT_MILLIS")) != "${RI_TRACE_WAIT_MILLIS:-30000}":
+        fail("authdns: Agent trace wait differs from the stable RC15 value")
     if auth_agent_env.get("RI_AGENT_PEER_CREDENTIALS_FILE") != "/run/secrets/agent_peer_credentials.json":
         fail("authdns: directional peer credentials file missing")
 
@@ -139,8 +171,8 @@ def main() -> int:
             image = str(service.get("image", ""))
             if not image:
                 fail(f"{role}/{service_name}: image missing")
-            if "@sha256:" not in image and not image.startswith("${RI_IMAGE:?"):
-                fail(f"{role}/{service_name}: image is not digest-pinned or required unified Rust image")
+            if "@sha256:" not in image and not image.startswith("${"):
+                fail(f"{role}/{service_name}: image is not digest-pinned or required by an image variable")
 
     print("validated 7 clean domain-center Compose files")
     return 0

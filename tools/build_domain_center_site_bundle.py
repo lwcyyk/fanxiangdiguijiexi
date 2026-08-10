@@ -77,17 +77,31 @@ ROLE_IMAGES = {
     "management": ("management", "norn"),
     "norn-a": ("norn", "nginx"),
     "norn-b": ("norn", "nginx"),
-    "authdns": ("rust",),
-    "r1": ("rust", "knot"),
-    "r2": ("rust", "knot"),
-    "r3": ("rust", "knot"),
+    "authdns": ("registry-sync", "agent", "authority-proxy"),
+    "r1": ("resolver", "trace-producer", "registry-sync", "agent", "trace-adapter", "wrapper"),
+    "r2": ("resolver", "trace-producer", "registry-sync", "agent", "trace-adapter"),
+    "r3": ("resolver", "trace-producer", "registry-sync", "agent", "trace-adapter"),
 }
 COMPOSE_IMAGE_VARIABLES = {
     "management": "RI_MANAGEMENT_IMAGE",
     "norn": "RI_NORN_IMAGE",
     "nginx": "RI_NGINX_IMAGE",
-    "rust": "RI_IMAGE",
-    "knot": "RI_KNOT_IMAGE",
+    "resolver": "RI_KNOT_IMAGE",
+    "trace-producer": "RI_TRACE_PRODUCER_IMAGE",
+    "registry-sync": "RI_REGISTRY_SYNC_IMAGE",
+    "agent": "RI_AGENT_IMAGE",
+    "trace-adapter": "RI_TRACE_ADAPTER_IMAGE",
+    "wrapper": "RI_WRAPPER_IMAGE",
+    "authority-proxy": "RI_AUTHORITY_PROXY_IMAGE",
+}
+ROLE_SERVICES = {
+    "management": {"management-tools": "management", "norn-publisher": "norn"},
+    "norn-a": {"norn-node": "norn", "norn-read-proxy": "nginx"},
+    "norn-b": {"norn-node": "norn", "norn-read-proxy": "nginx"},
+    "authdns": {"registry-sync": "registry-sync", "agent": "agent", "authority-proxy": "authority-proxy"},
+    "r3": {"resolver": "resolver", "trace-producer": "trace-producer", "registry-sync": "registry-sync", "agent": "agent", "trace-adapter": "trace-adapter"},
+    "r2": {"resolver": "resolver", "trace-producer": "trace-producer", "registry-sync": "registry-sync", "agent": "agent", "trace-adapter": "trace-adapter"},
+    "r1": {"resolver": "resolver", "trace-producer": "trace-producer", "registry-sync": "registry-sync", "agent": "agent", "trace-adapter": "trace-adapter", "wrapper": "wrapper"},
 }
 CHINESE_ENTRY_POINTS = {
     "开始安装.sh": "install",
@@ -107,7 +121,12 @@ ASCII_ENTRY_POINTS = {
     "rollback": "rollback",
     "uninstall": "uninstall",
 }
-EXPECTED_IMAGE_KEYS = frozenset({"management", "rust", "knot", "norn", "nginx"})
+EXPECTED_IMAGE_KEYS = frozenset(
+    {
+        "management", "norn", "nginx",
+        "resolver", "trace-producer", "registry-sync", "agent", "trace-adapter", "wrapper", "authority-proxy",
+    }
+)
 OCI_MANIFEST = "application/vnd.oci.image.manifest.v1+json"
 OCI_CONFIG = "application/vnd.oci.image.config.v1+json"
 OCI_LAYER_TYPES = frozenset(
@@ -598,7 +617,7 @@ def validate_inputs(site_path: Path, release_path: Path) -> dict[str, Any]:
         raise BundleError("site version/source commit does not exactly match source release manifest")
     source_images = _object(release.get("images"), "source release images")
     if set(source_images) != EXPECTED_IMAGE_KEYS:
-        raise BundleError("source release manifest must contain exactly the five approved images")
+        raise BundleError("source release manifest must contain exactly the approved service-level images")
 
     platform = _object(site["platform"], "platform")
     _exact_keys(platform, {"os", "architecture"}, {"variant"}, "platform")
@@ -613,7 +632,7 @@ def validate_inputs(site_path: Path, release_path: Path) -> dict[str, Any]:
 
     images = _object(site["images"], "images")
     if set(images) != EXPECTED_IMAGE_KEYS:
-        raise BundleError("images must contain exactly management, rust, knot, norn, and nginx")
+        raise BundleError("images must contain exactly the approved service-level image set")
     clean_images: dict[str, Any] = {}
     for key in sorted(images):
         item = _object(images[key], f"images.{key}")
@@ -1256,6 +1275,10 @@ def _scan_output(root: Path) -> None:
         PurePosixPath("product-kit/management/registry-tool.sh"),
         PurePosixPath("product-kit/norn-a/docker-compose.yml"),
         PurePosixPath("product-kit/norn-b/docker-compose.yml"),
+        PurePosixPath("product-kit/authdns/docker-compose.yml"),
+        PurePosixPath("product-kit/r1/docker-compose.yml"),
+        PurePosixPath("product-kit/r2/docker-compose.yml"),
+        PurePosixPath("product-kit/r3/docker-compose.yml"),
     }
     for path in root.rglob("*"):
         if path.is_symlink():
@@ -1597,7 +1620,7 @@ def verify_delivery(
                 if metadata.get("hostname") != hostname or metadata.get("role") != role or metadata.get("expected_host") not in {hostname, metadata.get("fqdn")}:
                     raise BundleError(f"host archive metadata mismatch: {hostname}")
                 lock = _object(load_json_bytes(files.get(lock_name, b""), lock_name), lock_name)
-                if lock.get("schema_version") != LOCK_SCHEMA or lock.get("hostname") != hostname or lock.get("role") != role:
+                if lock.get("schema_version") != "resolver-identity-role-image-lock-v2" or lock.get("hostname") != hostname or lock.get("role") != role:
                     raise BundleError(f"host archive image lock metadata mismatch: {hostname}")
                 required_members = {
                     prefix + "README-请先阅读.txt",
@@ -1637,10 +1660,12 @@ def verify_delivery(
                     raise BundleError(f"host archive has the wrong role-local image count: {hostname}")
                 lock_keys: list[str] = []
                 lock_digests: list[str] = []
+                lock_archives: dict[str, str] = {}
                 for lock_index, raw_image in enumerate(lock_images):
                     image = _object(raw_image, f"{hostname} image lock[{lock_index}]")
-                    _exact_keys(image, {"key", "reference", "import_reference", "digest", "config_digest", "archive", "archive_sha256"}, set(), f"{hostname} image lock[{lock_index}]")
-                    key = _text(image["key"], f"{hostname} image key")
+                    _exact_keys(image, {"id", "archive_id", "reference", "import_reference", "digest", "config_digest"}, set(), f"{hostname} image lock[{lock_index}]")
+                    key = _text(image["id"], f"{hostname} image key")
+                    archive_id = _text(image["archive_id"], f"{hostname} image archive id")
                     reference = _text(image["reference"], f"{hostname} image reference")
                     import_reference = _text(image["import_reference"], f"{hostname} image import reference")
                     digest = _text(image["digest"], f"{hostname} image digest")
@@ -1649,14 +1674,38 @@ def verify_delivery(
                         raise BundleError(f"host archive has an invalid image lock: {hostname}")
                     if import_reference != _import_reference(reference.split("@", 1)[0], digest):
                         raise BundleError(f"host archive has invalid OCI import reference metadata: {hostname}")
-                    archive_member = prefix + "images/" + _safe_relative(_text(image["archive"], "image archive path"), "image archive path").as_posix()
-                    image_data = files.get(archive_member)
-                    if image_data is None or hashlib.sha256(image_data).hexdigest() != image["archive_sha256"]:
-                        raise BundleError(f"host archive image tar digest mismatch: {hostname}/{key}")
+                    lock_archives[archive_id] = archive_id
                     lock_keys.append(key)
                     lock_digests.append(digest)
                 if tuple(lock_keys) != ROLE_IMAGES[role] or lock_digests != expected_image_digests:
                     raise BundleError(f"host archive role-local image lock is inconsistent: {hostname}")
+                lock_archives_list = _array(lock.get("archives"), f"{hostname} image lock archives")
+                if {_text(_object(entry, "image archive entry").get("id"), "image archive id") for entry in lock_archives_list} != set(lock_archives):
+                    raise BundleError(f"host archive image lock archive ids do not match images: {hostname}")
+                for entry in lock_archives_list:
+                    entry_obj = _object(entry, "image archive entry")
+                    _exact_keys(entry_obj, {"id", "archive", "archive_sha256"}, set(), f"{hostname} image archive entry")
+                    archive_id = _text(entry_obj["id"], "image archive id")
+                    archive_name = _text(entry_obj["archive"], "image archive name")
+                    archive_checksum = _text(entry_obj["archive_sha256"], "image archive checksum")
+                    if archive_id != lock_archives.get(archive_id) or Path(archive_name).name != archive_name:
+                        raise BundleError(f"host archive has an invalid archive entry: {hostname}")
+                    archive_member = prefix + "images/" + archive_name
+                    image_data = files.get(archive_member)
+                    if image_data is None or hashlib.sha256(image_data).hexdigest() != archive_checksum:
+                        raise BundleError(f"host archive image tar digest mismatch: {hostname}/{archive_name}")
+                lock_services = _array(lock.get("services"), f"{hostname} image lock services")
+                expected_services = ROLE_SERVICES[role]
+                if {_text(_object(entry, "image service binding").get("service"), "image service name") for entry in lock_services} != set(expected_services):
+                    raise BundleError(f"host archive image lock service set mismatch: {hostname}")
+                for entry in lock_services:
+                    entry_obj = _object(entry, "image service binding")
+                    _exact_keys(entry_obj, {"service", "compose_variable", "image_id"}, set(), f"{hostname} image service binding")
+                    service = _text(entry_obj["service"], "image service name")
+                    variable = _text(entry_obj["compose_variable"], "image compose variable")
+                    image_id = _text(entry_obj["image_id"], "image service image id")
+                    if expected_services.get(service) != image_id or variable != COMPOSE_IMAGE_VARIABLES.get(image_id):
+                        raise BundleError(f"host archive image lock service binding mismatch: {hostname}/{service}")
                 listed: dict[str, str] = {}
                 for line in files[checksum_names[0]].decode("utf-8").splitlines():
                     if not re.fullmatch(r"[0-9a-f]{64}  [^\r\n]+", line):
@@ -1780,9 +1829,10 @@ def build_delivery(
                     f"RI_FIELD_HOST_ID={hostname}",
                     f"RI_FIELD_ROLE={role}",
                     f"RI_FIELD_COMPOSE_PROJECT=ri-{hostname}",
-                    "RI_FIELD_NETWORK=ri-field-network",
+                    "RI_FIELD_NETWORK=ri-norn-field",
                     f"RI_FIELD_DATA_DIR=/var/lib/resolver-identity/{hostname}",
                     f"RI_TRACE_SOCKET_HOST_DIR=/var/lib/resolver-identity/{hostname}/trace",
+                    f"RI_KNOT_CACHE_HOST_DIR=/var/lib/resolver-identity/{hostname}/knot-cache",
                     "RI_TRACE_PRODUCER_UID=10002",
                     "RI_TRACE_PRODUCER_GID=10002",
                     "RI_KNOT_RESOLVER_UID=10003",
@@ -1819,7 +1869,24 @@ def build_delivery(
                 for image in lock_images:
                     shutil.copyfile(validated["images"][image["key"]]["archive"], image_dir / image["archive"])
                     (image_dir / image["archive"]).chmod(0o644)
-                lock = {"schema_version": LOCK_SCHEMA, "hostname": hostname, "role": role, "images": lock_images}
+                lock_images_v2 = [
+                    {"id": image["key"], "archive_id": image["key"], "reference": image["reference"], "import_reference": image["import_reference"], "digest": image["digest"], "config_digest": image["config_digest"]}
+                    for image in lock_images
+                ]
+                lock = {
+                    "schema_version": "resolver-identity-role-image-lock-v2",
+                    "hostname": hostname,
+                    "role": role,
+                    "archives": [
+                        {"id": image["key"], "archive": f"{image['key']}.oci.tar", "archive_sha256": validated["images"][image["key"]]["archive_sha256"]}
+                        for image in lock_images
+                    ],
+                    "images": lock_images_v2,
+                    "services": [
+                        {"service": service, "compose_variable": COMPOSE_IMAGE_VARIABLES[image_id], "image_id": image_id}
+                        for service, image_id in ROLE_SERVICES[role].items()
+                    ],
+                }
                 _write_json(image_dir / "image-lock.json", lock)
                 metadata = host_root / "metadata"
                 _mkdir(metadata)
@@ -1945,7 +2012,7 @@ def self_test() -> None:
         release = {"version": "test-1", "git_commit": "a" * 40, "images": {key: f"127.0.0.1:5000/example/{key}@sha256:{digest['digest']}" for key in EXPECTED_IMAGE_KEYS}}
         release_path = root / "release.json"
         _write_json(release_path, release)
-        site = {"schema_version": SCHEMA, "release": {"version": "test-1", "source_commit": "a" * 40, "manifest_sha256": _sha256(release_path)}, "platform": {"os": "linux", "architecture": "amd64"}, "hosts": [{"hostname": "mgmt-01", "role": "management"}, {"hostname": "node-a-01", "role": "norn-a"}, {"hostname": "node-b-01", "role": "norn-b"}, {"hostname": "resolver-r1", "role": "r1"}, {"hostname": "resolver-r2", "role": "r2"}, {"hostname": "resolver-r3", "role": "r3"}], "images": {key: {"archive": str(oci), "repository": "registry.internal/example/test"} for key in EXPECTED_IMAGE_KEYS}, "external_requirements": {requirement_id: {"status": "not_run", "status_zh": "未运行", "blocked_by": "external_approval"} for requirement_id in REQUIRED_EXTERNAL_ACCEPTANCE_IDS}}
+        site = {"schema_version": SCHEMA, "release": {"version": "test-1", "source_commit": "a" * 40, "manifest_sha256": _sha256(release_path)}, "platform": {"os": "linux", "architecture": "amd64"}, "hosts": [{"hostname": "mgmt-01", "role": "management"}, {"hostname": "node-a-01", "role": "norn-a"}, {"hostname": "node-b-01", "role": "norn-b"}, {"hostname": "resolver-r1", "role": "r1"}, {"hostname": "resolver-r2", "role": "r2"}, {"hostname": "resolver-r3", "role": "r3"}, {"hostname": "authority-01", "role": "authdns"}], "images": {key: {"archive": str(oci), "repository": "registry.internal/example/test"} for key in EXPECTED_IMAGE_KEYS}, "external_requirements": {requirement_id: {"status": "not_run", "status_zh": "未运行", "blocked_by": "external_approval"} for requirement_id in REQUIRED_EXTERNAL_ACCEPTANCE_IDS}}
         site_path = root / "site.json"
         _write_json(site_path, site)
         kit = root / "product-kit"

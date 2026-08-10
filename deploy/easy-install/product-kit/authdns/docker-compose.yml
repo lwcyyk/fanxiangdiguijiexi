@@ -1,5 +1,4 @@
 x-runtime: &runtime
-  image: ${RI_IMAGE:?pin the approved RC15 resolver-identity Rust image}
   restart: unless-stopped
   read_only: true
   cap_drop: [ALL]
@@ -19,6 +18,7 @@ x-runtime: &runtime
 services:
   registry-sync:
     <<: *runtime
+    image: ${RI_REGISTRY_SYNC_IMAGE:?pin Registry Sync image}
     command: ["/usr/local/bin/ri-registry-sync"]
     environment:
       RI_ENVIRONMENT: production
@@ -53,6 +53,7 @@ services:
 
   agent:
     <<: *runtime
+    image: ${RI_AGENT_IMAGE:?pin Agent image}
     command: ["/usr/local/bin/ri-agent"]
     environment:
       RI_ENVIRONMENT: production
@@ -67,7 +68,7 @@ services:
       RI_AGENT_WRAPPER_TOKEN_FILE: /run/secrets/agent_wrapper_token
       RI_AGENT_PEER_CREDENTIALS_FILE: /run/secrets/agent_peer_credentials.json
       RI_REGISTRY_MAX_STALENESS_SECONDS: ${RI_REGISTRY_MAX_STALENESS_SECONDS:-45}
-      RI_TRACE_WAIT_MILLIS: ${RI_TRACE_WAIT_MILLIS:-5000}
+      RI_TRACE_WAIT_MILLIS: ${RI_TRACE_WAIT_MILLIS:-30000}
       RI_AGENT_TLS_CERT_FILE: /run/agent-tls/agent.crt
       RI_AGENT_TLS_KEY_FILE: /run/agent-tls/agent.key
       RI_AGENT_TLS_CLIENT_CA_FILE: /run/agent-tls/client-ca.crt
@@ -86,6 +87,7 @@ services:
 
   authority-proxy:
     <<: *runtime
+    image: ${RI_AUTHORITY_PROXY_IMAGE:?pin Authority Proxy image}
     user: "0:0"
     entrypoint:
       - /usr/bin/setpriv
