@@ -1,0 +1,32 @@
+{
+  "schema_version": "resolver-identity-registry-publication-recovery-v1",
+  "remediation": "same-value freshness renewal republish",
+  "old_value_digest": "4b69472a41b0d780a36d0fb3a0b2a6ee6c38d806ce097a8b8efa0665a1dd8e1a",
+  "new_value_digest": "4b69472a41b0d780a36d0fb3a0b2a6ee6c38d806ce097a8b8efa0665a1dd8e1a",
+  "old_value_equals_new_value": true,
+  "identity_set_unchanged": true,
+  "endpoints_unchanged": true,
+  "keys_unchanged": true,
+  "status_unchanged": "ACTIVE",
+  "publication_mechanism": "existing formal norn-local-publisher via Management ssh-tunnel to Norn A native RPC",
+  "new_publication": {
+    "transaction_hash": "872863fdf7b2e40341dc32e056d887fb95e6a9c5494f5c4d82ae28f2e65dd181",
+    "block_height": 215564,
+    "finalized_height_after": 215700,
+    "utc": "2026-08-10T07:39:00Z"
+  },
+  "fresh_registry_sync_probe": {
+    "method": "independent temporary registry-sync container on ri-r1 (throwaway data dir, no old cache, reconnect OCI binary c14f79f1)",
+    "startup": true,
+    "full_initial_sync": true,
+    "publication_verified": true,
+    "dual_norn_consistency": true,
+    "registry_records": 4,
+    "registry_freshness_seconds": 2.0,
+    "registry_freshness_lt_45": true,
+    "reconcile_continuous": true,
+    "observed_heartbeat_cycles": "multiple consecutive 2s cycles",
+    "fresh_registry_sync_passed": true
+  },
+  "post_state": "registry publication verifiable by fresh sync; warm-cache nodes untouched (r2/r3/authdns registry-sync not restarted)"
+}

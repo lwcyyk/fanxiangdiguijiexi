@@ -1,0 +1,35 @@
+{
+  "schema_version": "resolver-identity-registry-publication-root-cause-v1",
+  "recorded_at_utc": "2026-08-10T07:32:00Z",
+  "registry_root_cause": "A",
+  "root_cause_description": "The current Registry set publication exists only beyond the 100000-block verifiable window. The chain serves the same valid registry value since 2026-08-07, but its last on-chain 'set' transaction is at block 86641; the finalized head is now ~215250, so a fresh registry-sync's full-inclusion scan window [finalized-99999, finalized] no longer contains the publication.",
+  "diagnostics": {
+    "registry_current_value_digest": "4b69472a41b0d780a36d0fb3a0b2a6ee6c38d806ce097a8b8efa0665a1dd8e1a",
+    "registry_value_identical_a_b": true,
+    "registry_last_publication_block": 86641,
+    "registry_last_publication_tx_hash": "b2e9076ad0b7745c4cca0bca978f31b21faffcbaac7238d1015ea95bf24adfe7",
+    "registry_last_publication_block_hash": "0xbc3d7d833774bdc140a8a4a0b82ef1e4cda966756ad0a7da4435f93eff...",
+    "registry_last_publication_height_field": 86641,
+    "registry_last_publication_age_blocks": 128609,
+    "norn_a_finalized": 215250,
+    "norn_b_finalized": 215256,
+    "dual_node_consistent": true,
+    "block_hash_agreement_sampled": [86613, 86641, 215240, 215241],
+    "publisher_healthy": false,
+    "publisher_last_activity_utc": "2026-08-07T18:00:00Z",
+    "recent_blocks_tx_count": 0,
+    "registry_value_still_valid": true,
+    "registry_valid_until_utc": "2026-08-13T08:00:57Z",
+    "entries_valid_until_utc": "2026-08-13T13:13:07Z",
+    "identity_set": ["operator/L01/r1", "operator/L01/r2", "operator/L01/r3", "operator/authdns"],
+    "identity_status": "ACTIVE",
+    "registry_value_matches_management_snapshot": true,
+    "management_snapshot_digest": "4b69472a41b0d780a36d0fb3a0b2a6ee6c38d806ce097a8b8efa0665a1dd8e1a"
+  },
+  "fresh_registry_sync_behavior": {
+    "error": "Norn Registry publication was not found in finalized blocks <finalized-100000>..=<finalized>",
+    "scan_window_excludes_publication": true
+  },
+  "planned_remediation": "same-value freshness renewal republish of the exact current registry value (old_value_digest == new_value_digest), forming a new verifiable publication inside the scan window.",
+  "forbidden_actions_taken": []
+}

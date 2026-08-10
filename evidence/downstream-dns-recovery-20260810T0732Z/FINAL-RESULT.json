@@ -1,0 +1,53 @@
+{
+  "schema_version": "domain-center-downstream-dns-recovery-v1",
+  "recorded_at_utc": "2026-08-10T08:40:00Z",
+  "authdns_backend_passed": true,
+  "authdns_evidence": {
+    "bind_backend": "127.0.0.1:5353 (named, active)",
+    "authority_proxy": "10.206.16.13:53 (UDP+TCP)",
+    "A": "192.0.2.10",
+    "AAAA": "2001:db8::10",
+    "TXT": "\"resolver-identity-lab-test\"",
+    "dnssec": "RRSIG present (algorithm 13), DNSKEY x2",
+    "tcp_udp": "A/AAAA/TXT both UDP and TCP return expected answers"
+  },
+  "r3_to_auth_dns_passed": true,
+  "r3_evidence": {
+    "forward_target": "10.206.16.13@53 (AuthDNS)",
+    "A/AAAA/TXT": "final answers on UDP+TCP, AD flag set"
+  },
+  "r2_to_r3_dns_passed": true,
+  "r2_evidence": {
+    "forward_target": "10.206.16.7@53 (R3)",
+    "A/AAAA/TXT": "final answers on UDP+TCP, AD flag set",
+    "forward_transport": "kresd falls back to TCP; UDP 53 cross-host is security-group blocked but TCP works"
+  },
+  "r1_resolver_passed": true,
+  "r1_resolver_evidence": {
+    "cache_serve": "www/txt serve from cache",
+    "miss_forward": "ns1.ri-test.invalid forwards R1->R2->R3->AuthDNS and resolves NOERROR",
+    "full_trace_chain": "CLIENT_QUERY->UPSTREAM_QUERY->UPSTREAM_RESPONSE->CLIENT_RESPONSE events ingested"
+  },
+  "r1_wrapper_gate": {
+    "passed": false,
+    "blocked_at": "controlled_strict_wrapper_verification",
+    "error": "Agent returned 503 Service Unavailable: identity evidence unavailable: no matching final resolver response event",
+    "observed": {
+      "resolver_events_present": true,
+      "correlation_ids_match": true,
+      "query_digests_match": true,
+      "lineage_complete": true,
+      "event_ingest_delay": "CACHE_HIT/CLIENT_RESPONSE arrive ~60s after query (adapter cycle)",
+      "resolver_pipeline_consistent": "direct queries produce events whose query/response digests match computed values",
+      "wrapper_response_digest_mismatch": "most likely remaining cause; wrapper's computed response digest differs from resolver event response digest"
+    },
+    "config_changes_applied": {
+      "wrapper_upstream": "udp+tcp://172.28.0.10:1053 (pinned local resolver)",
+      "resolver_ip_pinned": "172.28.0.10 on resolver-egress (172.28.0.0/24)",
+      "RI_TRACE_WAIT_MILLIS": 90000,
+      "RI_TRACE_CACHE_PROVENANCE_WAIT_MS": 90000
+    }
+  },
+  "conclusion": "Registry and downstream DNS preconditions are restored. R1 resolver serves and forwards correctly. The R1 wrapper ControlledStrict verification remains blocked by a wrapper-vs-resolver trace-matching failure (response digest/claim path) that is a package-level behavior requiring source-level resolution.",
+  "next_step": "Resolve the R1 wrapper verification trace-match (package-level) before re-running the R1 clean Compose release gate."
+}

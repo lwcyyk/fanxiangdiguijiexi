@@ -1,0 +1,68 @@
+{
+  "schema_version": "resolver-identity-norn-registry-snapshot-v1",
+  "chain_id": 20001,
+  "genesis_block_hash": "0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+  "registry_address": "0x1000000000000000000000000000000000000001",
+  "registry_key": "resolver-identity-registry-v2",
+  "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+  "snapshot_version": 3,
+  "checkpoint_height": 86613,
+  "checkpoint_hash": "0x7c111bad9ab26293d65f83ad2019b74fa6e2fca96f731ca9e003c16845a3e156",
+  "state_root": "0x43d79c30546d28af891965e81162bb6c471d4a01b95fb16b2469226a548b042a",
+  "root_status": "ACTIVE",
+  "published_at": 1786089658,
+  "valid_until": 1786608057,
+  "issuer": "norn-registry",
+  "key_id": "snapshot-key-1",
+  "entries": [
+    {
+      "server_id": "operator/L01/r1",
+      "resolver_id_key": "0x9db6107c67e1e908251f9d4eb3847b133ae2e41b690b633c330618fdbe9f5732",
+      "object_hash": "0x9183d3d4ff6f0378567a4c30f273eac7bca6bc09a5918f175d22ddc4f70c3151",
+      "object_version": 1,
+      "valid_until": 1786693987,
+      "status": "ACTIVE",
+      "endpoint_keys": [
+        "0x56bc20f1830d364c9ae2699143ad1079b69ff5e6c818d295d076a13f38e82712",
+        "0xad50f571424a1c179ae56a1faba16378e95967b01e5b669ccd7fa05aede717ff"
+      ]
+    },
+    {
+      "server_id": "operator/L01/r2",
+      "resolver_id_key": "0x7888b61b424029aef20dd225a95d61399dfb042a717d59efe2f00968fd30e742",
+      "object_hash": "0xc7bae043abfa6937badbaebc009f4097adb535e38845be80d67decdf668daf37",
+      "object_version": 1,
+      "valid_until": 1786693987,
+      "status": "ACTIVE",
+      "endpoint_keys": [
+        "0x26eaec6fef74e93a75419699fb372354027acf1551d91f7a99e7457649d43e98",
+        "0xa049f519ab384d29764a248efc8f0ff473f790f584aba8852211775be8618f45"
+      ]
+    },
+    {
+      "server_id": "operator/L01/r3",
+      "resolver_id_key": "0x638bf13385392e6fd2b34c9d3e81e7ab764e0a4214040c2ef82d8311d82a7a13",
+      "object_hash": "0x1bae9ff4604409bbd95a6c692af26b3cffc56b32a58efbedbaf175b58f7214d0",
+      "object_version": 1,
+      "valid_until": 1786693987,
+      "status": "ACTIVE",
+      "endpoint_keys": [
+        "0x3c3d58135ad4113b9d3c36583a066966368303c0d7c27a46b14ac7af62dbeca9",
+        "0x1e80cf21fd9cc02c76f7aca7b03913e27369f9fd0f2252dc9960635927e9c4c3"
+      ]
+    },
+    {
+      "server_id": "operator/authdns",
+      "resolver_id_key": "0x761d6f2de29cc6bdf97ab956d3962b605f296777c9b87108628b49decd31b3d6",
+      "object_hash": "0xd5f1e16865a050e7bb73c875718a65c43d44a485d969408ac0e975549e7c526f",
+      "object_version": 1,
+      "valid_until": 1786693987,
+      "status": "ACTIVE",
+      "endpoint_keys": [
+        "0x1248f42faee466c7169e248cac634f1875a5d8fd78503221377740345914a132",
+        "0xa56cb7ab5da7df667db0141983b80486b185c20a5e71a207027254da1f2daaa7"
+      ]
+    }
+  ],
+  "signature": "base64:ed25519:xlSUUuKgbkyJFzm/7QsHgZ1LBqfajXq4WWH+Q2+9f1WBZcKXDKnXeZ9u1S/fiFdyW8pJKAkQ5Xhgg68/rM4KAQ=="
+}

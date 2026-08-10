@@ -35,7 +35,9 @@ services:
     ports:
       - "${RI_RESOLVER_BIND_ADDRESS:?required}:53:1053/udp"
       - "${RI_RESOLVER_BIND_ADDRESS:?required}:53:1053/tcp"
-    networks: [resolver-egress]
+    networks:
+      resolver-egress:
+        ipv4_address: 172.28.0.10
     logging:
       driver: json-file
       options:
@@ -204,6 +206,9 @@ networks:
   link-control:
     internal: true
   resolver-egress:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
   agent-egress:
   registry-egress:
     external: true
