@@ -126,11 +126,11 @@ IMAGE_SPECS = {
         "archive_sha256": None,
     },
     "wrapper": {
-        "archive": "rust-data-plane-wrapper-stable.oci.tar",
+        "archive": "rust-data-plane-oci-rc15-service.tar",
         "repository": "offline/resolver-identity/wrapper",
-        "reference_digest": "sha256:373ac52a774f8ffd9f92bf26d4aff2132e54287b2d21bb2d6e30d924365b13b6",
-        "config_digest": "sha256:72eaeae03ee42a6b7375989f29ae285d64fb510415dfe0b6f2a77b0c57725ca5",
-        "archive_sha256": None,
+        "reference_digest": "sha256:1e4409aaffcbb38c2d13d91b3e8fb6b004f677d7ddb566ae8007aa5ae8ebe23f",
+        "config_digest": "sha256:82fdaaffee47a55ab3b31e6f05367a7777184e9a1a6d6e93eb1289815993d754",
+        "archive_sha256": "634eaf6078d449ea23de803313a9cbfc4871c289e426d0deb24a94a98bd09713",
     },
     "authority-proxy": {
         "archive": "rust-data-plane-rc15-reconnect-strict.oci.tar",
