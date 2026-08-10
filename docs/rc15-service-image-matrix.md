@@ -49,6 +49,10 @@ service_image_matrix_frozen=true
 producer_reconnect_present=true
 wrapper_binary_provenance_known=false
 complete_effective_oci_binding=false
+r1_migration_passed=true
+existing_cloud_migration_passed=true
+dns_resolution_chain_passed=true
+cache_hit_path_passed=true
 ```
 
-`wrapper_binary_provenance_known=false` 表示现场 hotfix Wrapper binary 无法绑定到任何已提交源码；冻结的正式 Wrapper 交付物为 RC11 OCI 内嵌 binary，仍满足“不以运行容器复制品冒充正式 release”的规则。行为等价性通过 R1 门禁功能回归验证后才可标记 `r1_migration_passed=true`。
+`wrapper_binary_provenance_known=false` 表示现场 hotfix Wrapper binary 无法绑定到任何已提交源码；冻结的正式 Wrapper 交付物为 RC11 OCI 内嵌 binary，仍满足“不以运行容器复制品冒充正式 release”的规则。行为等价性已通过 R1 门禁功能回归验证（2026-08-10T12:29:25Z，`evidence/domain-center-r1-gate-20260810T1233Z/`），故 `r1_migration_passed=true`；AuthDNS/R3/R2 已按矩阵 adopt（`evidence/cloud-migration-to-frozen-matrix-20260810T1246Z/`），全节点运行 binary 与矩阵一致，`existing_cloud_migration_passed=true`。`trace_binding_passed=false`、`production_deployed=false` 等 RC16/容量字段保持不变。

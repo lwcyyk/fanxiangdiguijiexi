@@ -1,0 +1,384 @@
+{
+  "contains_database": false,
+  "contains_runtime_state": false,
+  "contains_secrets": false,
+  "files": [
+    {
+      "path": "01-management/README.md",
+      "sha256": "a8243c223e064bc4971514068399709c22294561c968820e8992ff12dbd21240",
+      "size": 577
+    },
+    {
+      "path": "01-management/check.sh",
+      "sha256": "e2deb33a8f223ce27ac4de93106164c74ee40c7d29244d50ce35be6b15d6ac9c",
+      "size": 235
+    },
+    {
+      "path": "01-management/diagnose.sh",
+      "sha256": "1f97ccfb2cc9cb482339d4bdde57e3530ca788a469204d9861b2d3696ed79afd",
+      "size": 238
+    },
+    {
+      "path": "01-management/images/go-norn.oci.tar",
+      "sha256": "989893a7ee550f5fb1260e000084e182a634d8ecf5b45969c5f9fe31b6a29b06",
+      "size": 46743552
+    },
+    {
+      "path": "01-management/images/image-lock.json",
+      "sha256": "11c494c89bb48ac18a23ee82f83ac909e6920f4a706ad3d1e8d14fed10b168f8",
+      "size": 1695
+    },
+    {
+      "path": "01-management/images/management.oci.tar",
+      "sha256": "be05dbdbf872ec5f863684cac100aadcfee616b6b4e00cb98f40ef4723f128cc",
+      "size": 72597504
+    },
+    {
+      "path": "01-management/install.sh",
+      "sha256": "a035b5177625e2af2f4f978ec0f9ce9f774deb124035f37fc054eb7c08bc278e",
+      "size": 237
+    },
+    {
+      "path": "02-norn-a/README.md",
+      "sha256": "0770828486afbd4c159c01038da12c8eb6c6831e3845161ae1d490ed73293f12",
+      "size": 561
+    },
+    {
+      "path": "02-norn-a/check.sh",
+      "sha256": "ec065151ce7931e83a5b75abcd953ef75a433f75382d19ff769ee083a35a89a2",
+      "size": 231
+    },
+    {
+      "path": "02-norn-a/diagnose.sh",
+      "sha256": "ff5f2cbbd03c66d0bccd5c26fb88b16b6cb22a8a12ee08a22967aa1729c5b4f5",
+      "size": 234
+    },
+    {
+      "path": "02-norn-a/images/go-norn.oci.tar",
+      "sha256": "989893a7ee550f5fb1260e000084e182a634d8ecf5b45969c5f9fe31b6a29b06",
+      "size": 46743552
+    },
+    {
+      "path": "02-norn-a/images/image-lock.json",
+      "sha256": "6f458d8898f0f4f76cf39f282883da973f9f51a455fa372a931170a5270060b7",
+      "size": 1651
+    },
+    {
+      "path": "02-norn-a/images/mtls-read-proxy.oci.tar",
+      "sha256": "b296a0d49b2d4f87054808e7ccda7cf1263f9c549b53c0199427990d8ad270c0",
+      "size": 72411648
+    },
+    {
+      "path": "02-norn-a/install.sh",
+      "sha256": "26463565779c2d411b9352261b269769f92485edd02f5d05c667a5ff6f8e331a",
+      "size": 233
+    },
+    {
+      "path": "03-norn-b/README.md",
+      "sha256": "12caf1982db543dd17f61614675c4cce51e0b44339c7725001df33678ae6b031",
+      "size": 561
+    },
+    {
+      "path": "03-norn-b/check.sh",
+      "sha256": "8501044c00985f036b92effa9429c55dbcb11859144010fe8171fee7719fc25a",
+      "size": 231
+    },
+    {
+      "path": "03-norn-b/diagnose.sh",
+      "sha256": "e750867719b86549127392d271144e51ca7078dbcbbaa0e21fe96181021e03d6",
+      "size": 234
+    },
+    {
+      "path": "03-norn-b/images/go-norn.oci.tar",
+      "sha256": "989893a7ee550f5fb1260e000084e182a634d8ecf5b45969c5f9fe31b6a29b06",
+      "size": 46743552
+    },
+    {
+      "path": "03-norn-b/images/image-lock.json",
+      "sha256": "fb8ae99a6b1fc978a9e727a7b6243ad2f1909e46ac7927ee39bededa15f45183",
+      "size": 1651
+    },
+    {
+      "path": "03-norn-b/images/mtls-read-proxy.oci.tar",
+      "sha256": "b296a0d49b2d4f87054808e7ccda7cf1263f9c549b53c0199427990d8ad270c0",
+      "size": 72411648
+    },
+    {
+      "path": "03-norn-b/install.sh",
+      "sha256": "09080a95a5a79c2a9675af290d92fcb72b7fa424fea508f5c09b9d18d4b69d52",
+      "size": 233
+    },
+    {
+      "path": "04-authdns/README.md",
+      "sha256": "489072ca396fd79911cc140aaf3f11e5fcd67fdcd7ce857fefed931f28379b65",
+      "size": 573
+    },
+    {
+      "path": "04-authdns/check.sh",
+      "sha256": "f2bdbe382b20ea0f3628424233fd79ca6a170ecce7da379be09715178eb036da",
+      "size": 232
+    },
+    {
+      "path": "04-authdns/diagnose.sh",
+      "sha256": "5fb09beef4ca5090a860424ba25f9d6f1fffee0ce2b9977a9a447b87e4d20959",
+      "size": 235
+    },
+    {
+      "path": "04-authdns/images/image-lock.json",
+      "sha256": "e9dd3cac349969a864d015902c3e789fb61efb9f3043c6dfd44030e184997971",
+      "size": 2574
+    },
+    {
+      "path": "04-authdns/images/rust-data-plane-agent-stable.oci.tar",
+      "sha256": "634eaf6078d449ea23de803313a9cbfc4871c289e426d0deb24a94a98bd09713",
+      "size": 212336640
+    },
+    {
+      "path": "04-authdns/images/rust-data-plane-oci-rc14.tar",
+      "sha256": "95dc54ec9bcda0bb9f206fb24ddd23007cdba9ea490e7dda080a51584ee19f5f",
+      "size": 184156160
+    },
+    {
+      "path": "04-authdns/images/rust-data-plane-rc15-reconnect-strict.oci.tar",
+      "sha256": "07d5898e8879e49f9d065bfd979676e13f845c26ee8d7f4c6f117c27b96fe6bd",
+      "size": 213278720
+    },
+    {
+      "path": "04-authdns/install.sh",
+      "sha256": "a6fe982496a1043e010752de5743f2d751239fece21a9c3ae954b5131302005a",
+      "size": 234
+    },
+    {
+      "path": "05-r3/README.md",
+      "sha256": "88e2f6be4031b8209e29957244b2cbbfd30887ad8d7ca95b79f4d9bc869336d9",
+      "size": 555
+    },
+    {
+      "path": "05-r3/check.sh",
+      "sha256": "a5be1519190d2add4d73864f77dd7f3cb6f6dee32034640f23a7097967a9fa95",
+      "size": 227
+    },
+    {
+      "path": "05-r3/diagnose.sh",
+      "sha256": "817f0d292f109fb4fd4ad2dd2da27adac09664ae5d95a99b03ce506330a58cbe",
+      "size": 230
+    },
+    {
+      "path": "05-r3/images/image-lock.json",
+      "sha256": "7a826573752aca7cbe9e54f73a2f42106a9d564058049485d75404ef9e75c1b7",
+      "size": 4120
+    },
+    {
+      "path": "05-r3/images/knot-trace.oci.tar",
+      "sha256": "dd4348db986a629c8f9bf6874e38a75baad96e1e6c0c6545d1082118a0434fa9",
+      "size": 36273152
+    },
+    {
+      "path": "05-r3/images/rust-data-plane-agent-stable.oci.tar",
+      "sha256": "634eaf6078d449ea23de803313a9cbfc4871c289e426d0deb24a94a98bd09713",
+      "size": 212336640
+    },
+    {
+      "path": "05-r3/images/rust-data-plane-oci-rc14.tar",
+      "sha256": "95dc54ec9bcda0bb9f206fb24ddd23007cdba9ea490e7dda080a51584ee19f5f",
+      "size": 184156160
+    },
+    {
+      "path": "05-r3/images/rust-data-plane-rc15-reconnect-strict.oci.tar",
+      "sha256": "07d5898e8879e49f9d065bfd979676e13f845c26ee8d7f4c6f117c27b96fe6bd",
+      "size": 213278720
+    },
+    {
+      "path": "05-r3/images/rust-data-plane-trace-adapter-stable.oci.tar",
+      "sha256": "634eaf6078d449ea23de803313a9cbfc4871c289e426d0deb24a94a98bd09713",
+      "size": 212336640
+    },
+    {
+      "path": "05-r3/install.sh",
+      "sha256": "87c82d5cb979a21b8e13583859161e864714139b27adf9befd438a5733eec7a4",
+      "size": 229
+    },
+    {
+      "path": "06-r2/README.md",
+      "sha256": "d19afd2b1820f38b2f62a0b0673308d20ef8c5dca190bd4c44be454c75496a44",
+      "size": 555
+    },
+    {
+      "path": "06-r2/check.sh",
+      "sha256": "5f97769a50f8ab48017e95bd716d8629073b1b61cc392dff7f46816df94197a4",
+      "size": 227
+    },
+    {
+      "path": "06-r2/diagnose.sh",
+      "sha256": "f0cee9bd25f3851a9008ba79b1ef137bd30d9f124e56e5d2852c7d3db8f3d0bc",
+      "size": 230
+    },
+    {
+      "path": "06-r2/images/image-lock.json",
+      "sha256": "b60fa78c3b025773c4a6e3f8ded39eef482aeb88d872fdd2b3bdd24ae0f62073",
+      "size": 4120
+    },
+    {
+      "path": "06-r2/images/knot-trace.oci.tar",
+      "sha256": "dd4348db986a629c8f9bf6874e38a75baad96e1e6c0c6545d1082118a0434fa9",
+      "size": 36273152
+    },
+    {
+      "path": "06-r2/images/rust-data-plane-agent-stable.oci.tar",
+      "sha256": "634eaf6078d449ea23de803313a9cbfc4871c289e426d0deb24a94a98bd09713",
+      "size": 212336640
+    },
+    {
+      "path": "06-r2/images/rust-data-plane-oci-rc14.tar",
+      "sha256": "95dc54ec9bcda0bb9f206fb24ddd23007cdba9ea490e7dda080a51584ee19f5f",
+      "size": 184156160
+    },
+    {
+      "path": "06-r2/images/rust-data-plane-rc15-reconnect-strict.oci.tar",
+      "sha256": "07d5898e8879e49f9d065bfd979676e13f845c26ee8d7f4c6f117c27b96fe6bd",
+      "size": 213278720
+    },
+    {
+      "path": "06-r2/images/rust-data-plane-trace-adapter-stable.oci.tar",
+      "sha256": "634eaf6078d449ea23de803313a9cbfc4871c289e426d0deb24a94a98bd09713",
+      "size": 212336640
+    },
+    {
+      "path": "06-r2/install.sh",
+      "sha256": "78ad50e26e4f99bdd9e359e15342596b6a3dec46a74fe65bd0f24a332c05aa1d",
+      "size": 229
+    },
+    {
+      "path": "07-r1/README.md",
+      "sha256": "16d26a3af29964bf7f64140d16acffdd6bbaa5047df463a92376036bae552e6d",
+      "size": 567
+    },
+    {
+      "path": "07-r1/check.sh",
+      "sha256": "e6b304bf17c49d7e91f7dc9444df7515d5fc761fde3f48f4335894ae7702817e",
+      "size": 227
+    },
+    {
+      "path": "07-r1/diagnose.sh",
+      "sha256": "38711f27b28fe97dfb9c418a4a1a3b5b331489e49818e06633e04547a16d3cd8",
+      "size": 230
+    },
+    {
+      "path": "07-r1/images/image-lock.json",
+      "sha256": "86564882d47685851460b5278062a963f5bfbedc5979f0fdad8a380f6d4a0144",
+      "size": 4885
+    },
+    {
+      "path": "07-r1/images/knot-trace.oci.tar",
+      "sha256": "dd4348db986a629c8f9bf6874e38a75baad96e1e6c0c6545d1082118a0434fa9",
+      "size": 36273152
+    },
+    {
+      "path": "07-r1/images/rust-data-plane-agent-stable.oci.tar",
+      "sha256": "634eaf6078d449ea23de803313a9cbfc4871c289e426d0deb24a94a98bd09713",
+      "size": 212336640
+    },
+    {
+      "path": "07-r1/images/rust-data-plane-oci-rc14.tar",
+      "sha256": "95dc54ec9bcda0bb9f206fb24ddd23007cdba9ea490e7dda080a51584ee19f5f",
+      "size": 184156160
+    },
+    {
+      "path": "07-r1/images/rust-data-plane-oci-rc15-service.tar",
+      "sha256": "634eaf6078d449ea23de803313a9cbfc4871c289e426d0deb24a94a98bd09713",
+      "size": 212336640
+    },
+    {
+      "path": "07-r1/images/rust-data-plane-rc15-reconnect-strict.oci.tar",
+      "sha256": "07d5898e8879e49f9d065bfd979676e13f845c26ee8d7f4c6f117c27b96fe6bd",
+      "size": 213278720
+    },
+    {
+      "path": "07-r1/images/rust-data-plane-trace-adapter-stable.oci.tar",
+      "sha256": "634eaf6078d449ea23de803313a9cbfc4871c289e426d0deb24a94a98bd09713",
+      "size": 212336640
+    },
+    {
+      "path": "07-r1/install.sh",
+      "sha256": "6e8554b168ca43aced60170a67f8c2084b5a153be152ff44af32a4ecdb52510f",
+      "size": 229
+    },
+    {
+      "path": "README.md",
+      "sha256": "d358f5de688cfcd8976d29382f49170dfd94dc8a21306e158bdc57ddf079ec29",
+      "size": 3085
+    },
+    {
+      "path": "VERSION",
+      "sha256": "b6f8acb5e037dde3fe48f46c02d05cc8f56bf4d2664945feaa802245ceaf0ac1",
+      "size": 21
+    },
+    {
+      "path": "check-all.sh",
+      "sha256": "d2012bd72486e65eff5b4a68a007d7c9730c38b2940f4b7f5481ef9654051355",
+      "size": 218
+    },
+    {
+      "path": "common/domain_center_operator.py",
+      "sha256": "142822ded1b4c28cee608ed5638a0ff2cfa09089ffb622147e9218b96a93a276",
+      "size": 27036
+    },
+    {
+      "path": "common/load_images.py",
+      "sha256": "a0d8359ba617ef7d4248657d793f3934ccddc3c0e7e6f1d6de8cd151a589f4ef",
+      "size": 14815
+    }
+  ],
+  "generated_at": "2026-08-09T00:00:00+00:00",
+  "install_order": [
+    "management",
+    "norn-a",
+    "norn-b",
+    "authdns",
+    "r3",
+    "r2",
+    "r1"
+  ],
+  "missing_oci_archives": [],
+  "offline_only": true,
+  "public_payload": true,
+  "roles": [
+    {
+      "description_zh": "管理与全站检查",
+      "directory": "01-management",
+      "role": "management"
+    },
+    {
+      "description_zh": "Norn A 节点",
+      "directory": "02-norn-a",
+      "role": "norn-a"
+    },
+    {
+      "description_zh": "Norn B 节点",
+      "directory": "03-norn-b",
+      "role": "norn-b"
+    },
+    {
+      "description_zh": "权威 DNS 身份节点",
+      "directory": "04-authdns",
+      "role": "authdns"
+    },
+    {
+      "description_zh": "递归解析 R3",
+      "directory": "05-r3",
+      "role": "r3"
+    },
+    {
+      "description_zh": "递归解析 R2",
+      "directory": "06-r2",
+      "role": "r2"
+    },
+    {
+      "description_zh": "递归解析 R1 与 Wrapper",
+      "directory": "07-r1",
+      "role": "r1"
+    }
+  ],
+  "schema_version": "resolver-identity-domain-center-public-operator-package-v1",
+  "version": "0.3.0-norn-knot-rc15"
+}

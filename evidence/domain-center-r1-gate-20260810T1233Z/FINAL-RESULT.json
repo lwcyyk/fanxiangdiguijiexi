@@ -1,0 +1,78 @@
+{
+  "schema_version": "domain-center-r1-service-level-gate-v1",
+  "recorded_at_utc": "2026-08-10T12:29:25Z",
+  "role": "r1",
+  "containers_running": true,
+  "restart_count_zero": true,
+  "registry_freshness_passed": true,
+  "evidence_db_quick_check": "ok",
+  "spool_db_quick_check": "ok",
+  "spool_pending": 0,
+  "dns_matrix": {
+    "www.ri-test.invalid A UDP": {
+      "status": "NOERROR",
+      "answers": 2,
+      "ad": true,
+      "has_rrsig": true,
+      "response_digest": "0x8f8052745f872aa0b189c410d2620787307ad083fb8d5406e0f38d06ab5539a0",
+      "final_event_digest_match": true,
+      "passed": true
+    },
+    "www.ri-test.invalid A TCP": {
+      "status": "NOERROR",
+      "answers": 2,
+      "ad": true,
+      "has_rrsig": true,
+      "response_digest": "0x8f8052745f872aa0b189c410d2620787307ad083fb8d5406e0f38d06ab5539a0",
+      "final_event_digest_match": true,
+      "passed": true
+    },
+    "www.ri-test.invalid AAAA UDP": {
+      "status": "NOERROR",
+      "answers": 2,
+      "ad": true,
+      "has_rrsig": true,
+      "response_digest": "0x807da2ffb4c90f0d7899e2583ede901969f10743d5284e49ec7dbfb163c54978",
+      "final_event_digest_match": true,
+      "passed": true
+    },
+    "www.ri-test.invalid AAAA TCP": {
+      "status": "NOERROR",
+      "answers": 2,
+      "ad": true,
+      "has_rrsig": true,
+      "response_digest": "0x807da2ffb4c90f0d7899e2583ede901969f10743d5284e49ec7dbfb163c54978",
+      "final_event_digest_match": true,
+      "passed": true
+    },
+    "txt.ri-test.invalid TXT UDP": {
+      "status": "NOERROR",
+      "answers": 2,
+      "ad": true,
+      "has_rrsig": true,
+      "response_digest": "0x7a16f9e11e20c614aad3506dff6702782a242662cdfccf9ff4ffe1f203da9b6d",
+      "final_event_digest_match": true,
+      "passed": true
+    },
+    "txt.ri-test.invalid TXT TCP": {
+      "status": "NOERROR",
+      "answers": 2,
+      "ad": true,
+      "has_rrsig": true,
+      "response_digest": "0x7a16f9e11e20c614aad3506dff6702782a242662cdfccf9ff4ffe1f203da9b6d",
+      "final_event_digest_match": true,
+      "passed": true
+    }
+  },
+  "wrapper_response_digest_equals_final_event_digest": true,
+  "controlled_strict_release_passed": true,
+  "r1_migration_passed": true,
+  "containers": {
+    "trace-adapter": "Up 3 hours",
+    "wrapper": "Up 4 hours",
+    "agent": "Up 4 hours",
+    "resolver": "Up 2 hours",
+    "trace-producer": "Up 2 hours",
+    "registry-sync": "Up 5 hours"
+  }
+}

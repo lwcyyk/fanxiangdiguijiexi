@@ -1,0 +1,48 @@
+{
+  "schema_version": "r1-wrapper-wire-diff-root-cause-v1",
+  "recorded_at_utc": "2026-08-10T10:35:00Z",
+  "role": "r1",
+  "controlled_request": {
+    "query": "wire-diff-1786357751.ri-test.invalid A",
+    "transport": "tcp",
+    "correlation_id": "0x7a4d90ad00228e382468ba32542bac2d630aa730fee0fa761fdbefea73e84efe",
+    "wrapper_wire_len": 116,
+    "producer_wire_len": 116,
+    "wrapper_response_digest": "0xa4a1b0176b9356c014ec96eb31daf32c271ab61165d65ba150663b0243ee178f",
+    "producer_client_response_digest": "0xa4a1b0176b9356c014ec96eb31daf32c271ab61165d65ba150663b0243ee178f",
+    "upstream_response_digest": "0x5ba24cfddcccf73d7580d8358ed5728df20595395f65d6ff8e9ae8b99c0bb0e3",
+    "first_different_offset": null,
+    "difference_class": "IDENTICAL",
+    "digest_impl": "ri_core::crypto::dns_wire_digest (txid zeroed sha256) in wrapper/producer/agent paths"
+  },
+  "root_cause": {
+    "digest_mismatch": false,
+    "blocker": "ri_v2_evidence_graphs=0; cache entries for www A/AAAA and txt TXT are orphans without G0 provenance; ControlledStrict fails closed on cache hits without source_graph_digest",
+    "adapter_behavior": "prepare_upload_batch uploads CacheHit without provenance when find_cache_source_graph returns none (30s provenance wait elapsed)",
+    "agent_behavior": "build_unverified_cache_graph returns 503 'controlled-strict mode requires verified cache provenance; cache-hit event has no source graph digest' in ControlledStrict",
+    "fail_closed_is_expected": true
+  },
+  "recovery_proven": {
+    "method": "wait for orphan TTL expiry, then wrapper-verified MISS rebuilds G0",
+    "test_name": "ns1.ri-test.invalid A +dnssec via real wrapper",
+    "miss_result": "NOERROR ad ANSWER:2 query_time_ms=4172",
+    "cache_hit_result": "NOERROR ad ANSWER:2 query_time_ms=43",
+    "udp_cache_hit_result": "NOERROR ad ANSWER:2 query_time_ms=41",
+    "graphs_before": 0,
+    "graphs_after_miss": 1,
+    "graphs_after_cache_hit": 2,
+    "g0_graph_digest": "0xb7207da19adfdfbf4624d0af4f783c7cfe9ae08bf954e211a91f2f5489edd87f",
+    "verified_cache_hit_graphs": [
+      "0xfa5a96f3bc1fd5233a93ed99432e05a9b2b4a724cb38b920c2d3aecf9b09553b",
+      "0xe4d8ae9ffde7ae34440823549b0c8762a1b0590eb540f8de6bc88907229a8d56"
+    ],
+    "cache_hit_event_enriched": true,
+    "source_graph_digest_on_cache_hit_event": "0xb7207da19adfdfbf4624d0af4f783c7cfe9ae08bf954e211a91f2f5489edd87f"
+  },
+  "source_fix_required": false,
+  "ninety_second_wait_review": {
+    "measured_miss_latency_ms": 4172,
+    "measured_cache_hit_latency_ms": 43,
+    "trace_wait_millis_90s": "safety margin; not the bottleneck; no change needed"
+  }
+}

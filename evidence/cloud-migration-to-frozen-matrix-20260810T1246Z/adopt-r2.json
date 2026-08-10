@@ -1,0 +1,831 @@
+{
+  "after": {
+    "captured_at": "2026-08-10T12:45:20+00:00",
+    "containers": [
+      {
+        "id": "0dc7a359e95af991e740649bd22f5ec195779c8f077fc7e3eac7e411a6ed5afe",
+        "image": "sha256:ba61776ddb2eb0948b7c3cf4b1ffb04cac66b3a2e9da773a09c58e9449d0954c",
+        "mounts": [
+          {
+            "Destination": "/run/resolver-identity/trace",
+            "Mode": "rw",
+            "Propagation": "rprivate",
+            "RW": true,
+            "Source": "/var/lib/resolver-identity/ri-r2/trace",
+            "Type": "bind"
+          }
+        ],
+        "name": "ri-r2-trace-producer-1",
+        "network_mode": "none",
+        "networks": {
+          "none": {
+            "Aliases": null,
+            "DNSNames": null,
+            "DriverOpts": null,
+            "EndpointID": "f3edca9668f57e62193244b1e30abeb80687252b4e688093059e68dd61cccfe2",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "",
+            "IPPrefixLen": 0,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "",
+            "NetworkID": "ff63647b9706ff12fdfbb0912ff352c8133fe2c91e5fb9db84221c3525277e99"
+          }
+        },
+        "ports": {},
+        "restart_count": 0,
+        "running": true,
+        "service": "trace-producer"
+      },
+      {
+        "id": "8b78f525a780967cbfe7a9735a07618e8fa231871b7455fd4d4fe9922f555454",
+        "image": "sha256:1e4409aaffcbb38c2d13d91b3e8fb6b004f677d7ddb566ae8007aa5ae8ebe23f",
+        "mounts": [
+          {
+            "Destination": "/run/resolver-identity/trace",
+            "Mode": "rw",
+            "Propagation": "rprivate",
+            "RW": true,
+            "Source": "/var/lib/resolver-identity/ri-r2/trace",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/var/lib/resolver-identity",
+            "Mode": "rw",
+            "Propagation": "rprivate",
+            "RW": true,
+            "Source": "/var/lib/resolver-identity/ri-r2",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/run/secrets",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/secret/secrets",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/run/agent-tls",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls",
+            "Type": "bind"
+          }
+        ],
+        "name": "ri-r2-trace-adapter-1",
+        "network_mode": "ri-r2_agent-egress",
+        "networks": {
+          "ri-r2_agent-egress": {
+            "Aliases": [
+              "ri-r2-trace-adapter-1",
+              "trace-adapter"
+            ],
+            "DNSNames": [
+              "ri-r2-trace-adapter-1",
+              "trace-adapter",
+              "8b78f525a780"
+            ],
+            "DriverOpts": null,
+            "EndpointID": "2e21a3570ccf70801d7cf7aad8f6bbbd6bfb43a3b3f5a01c4218861019f61845",
+            "Gateway": "172.19.0.1",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "172.19.0.3",
+            "IPPrefixLen": 16,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "7e:4b:b2:fe:2d:fb",
+            "NetworkID": "78701f64992ce8ff102f9693bae97acc62d629b2dd0147f1e34cd1f9334acb86"
+          },
+          "ri-r2_link-control": {
+            "Aliases": [
+              "ri-r2-trace-adapter-1",
+              "trace-adapter"
+            ],
+            "DNSNames": [
+              "ri-r2-trace-adapter-1",
+              "trace-adapter",
+              "8b78f525a780"
+            ],
+            "DriverOpts": null,
+            "EndpointID": "5d8cc2dddc587c2d1bd96951ca8eb58ccd59f648c2c3c87697bd03520f7996ae",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "172.20.0.3",
+            "IPPrefixLen": 16,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "4a:66:d4:67:b0:6d",
+            "NetworkID": "3539fc7a9b6df3312ab66871ade86a5be4e34412f5ddd4f7f602b8d8794a2e69"
+          }
+        },
+        "ports": {
+          "9110/tcp": [
+            {
+              "HostIp": "10.206.16.17",
+              "HostPort": "9110"
+            }
+          ]
+        },
+        "restart_count": 0,
+        "running": true,
+        "service": "trace-adapter"
+      },
+      {
+        "id": "991ba7b1c3a0d462354e1e29428f5d24ff101161511e89a932110422882c01ae",
+        "image": "sha256:1e4409aaffcbb38c2d13d91b3e8fb6b004f677d7ddb566ae8007aa5ae8ebe23f",
+        "mounts": [
+          {
+            "Destination": "/var/lib/resolver-identity",
+            "Mode": "rw",
+            "Propagation": "rprivate",
+            "RW": true,
+            "Source": "/var/lib/resolver-identity/ri-r2",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/run/config/issuer-keys.json",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/install/ri-r2/releases/0.3.0-norn-knot-rc2/config/issuer-keys.json",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/run/secrets",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/secret/secrets",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/run/agent-tls",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls",
+            "Type": "bind"
+          }
+        ],
+        "name": "ri-r2-agent-1",
+        "network_mode": "ri-r2_agent-egress",
+        "networks": {
+          "ri-r2_agent-egress": {
+            "Aliases": [
+              "ri-r2-agent-1",
+              "agent"
+            ],
+            "DNSNames": [
+              "ri-r2-agent-1",
+              "agent",
+              "991ba7b1c3a0"
+            ],
+            "DriverOpts": null,
+            "EndpointID": "accef36d7d7d33913d45a4ca3a52c67acee8ea624f1ff8e99a216937552feafc",
+            "Gateway": "172.19.0.1",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "172.19.0.2",
+            "IPPrefixLen": 16,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "5a:ed:52:75:44:c0",
+            "NetworkID": "78701f64992ce8ff102f9693bae97acc62d629b2dd0147f1e34cd1f9334acb86"
+          },
+          "ri-r2_link-control": {
+            "Aliases": [
+              "ri-r2-agent-1",
+              "agent"
+            ],
+            "DNSNames": [
+              "ri-r2-agent-1",
+              "agent",
+              "991ba7b1c3a0"
+            ],
+            "DriverOpts": null,
+            "EndpointID": "62aea8318ca0db9c6d4ad0fc82594bc672bfc444c9caf5bad31c7b39d6ca9673",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "172.20.0.2",
+            "IPPrefixLen": 16,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "aa:32:ee:e1:ec:e2",
+            "NetworkID": "3539fc7a9b6df3312ab66871ade86a5be4e34412f5ddd4f7f602b8d8794a2e69"
+          }
+        },
+        "ports": {
+          "8443/tcp": [
+            {
+              "HostIp": "10.206.16.17",
+              "HostPort": "8443"
+            }
+          ]
+        },
+        "restart_count": 0,
+        "running": true,
+        "service": "agent"
+      },
+      {
+        "id": "49fd32890d048e5e4db51b4258aaee44745f2cd55f0d91dcaad9768c075ca870",
+        "image": "sha256:d6c4f9da0821dd1387906dae499e0f9e3d6cd9e1dc93cfadd5fbbe71ac10cf80",
+        "mounts": [
+          {
+            "Destination": "/var/lib/resolver-identity",
+            "Mode": "rw",
+            "Propagation": "rprivate",
+            "RW": true,
+            "Source": "/var/lib/resolver-identity/ri-r2",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/run/config/identities-v2.json",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/install/ri-r2/releases/0.3.0-norn-knot-rc2/config/identities-v2.json",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/run/config/issuer-keys.json",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/install/ri-r2/releases/0.3.0-norn-knot-rc2/config/issuer-keys.json",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/run/norn-tls",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/secret/norn-tls",
+            "Type": "bind"
+          }
+        ],
+        "name": "ri-r2-registry-sync-1",
+        "network_mode": "ri-norn-field",
+        "networks": {
+          "ri-norn-field": {
+            "Aliases": [
+              "ri-r2-registry-sync-1",
+              "registry-sync"
+            ],
+            "DNSNames": [
+              "ri-r2-registry-sync-1",
+              "registry-sync",
+              "49fd32890d04"
+            ],
+            "DriverOpts": null,
+            "EndpointID": "04a3644865576a26ff4e943f7c7c24b296b19fa87e1b699831f2943f2f65f1c7",
+            "Gateway": "172.18.0.1",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "172.18.0.2",
+            "IPPrefixLen": 16,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "46:bc:52:31:57:48",
+            "NetworkID": "304224c6862387c953820585291af3da5e6917655f4ce7f1927f077694cd2828"
+          }
+        },
+        "ports": {
+          "9109/tcp": [
+            {
+              "HostIp": "10.206.16.17",
+              "HostPort": "9109"
+            }
+          ]
+        },
+        "restart_count": 0,
+        "running": true,
+        "service": "registry-sync"
+      },
+      {
+        "id": "021be9e54f93ed1f0adf5625b17a1183aac17c789ad45fdd3f6267ab8f3efed7",
+        "image": "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8",
+        "mounts": [
+          {
+            "Destination": "/run/config/kresd.conf",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/install/ri-r2/releases/0.3.0-norn-knot-rc2/config/kresd.conf",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/run/resolver-identity/trace",
+            "Mode": "rw",
+            "Propagation": "rprivate",
+            "RW": true,
+            "Source": "/var/lib/resolver-identity/ri-r2/trace",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/var/cache/knot-resolver",
+            "Mode": "rw",
+            "Propagation": "rprivate",
+            "RW": true,
+            "Source": "/var/lib/resolver-identity/ri-r2/knot-cache-rc12-fresh-20260808T045100Z",
+            "Type": "bind"
+          }
+        ],
+        "name": "ri-r2-resolver-1",
+        "network_mode": "ri-r2_resolver-egress",
+        "networks": {
+          "ri-r2_resolver-egress": {
+            "Aliases": [
+              "ri-r2-resolver-1",
+              "resolver"
+            ],
+            "DNSNames": [
+              "ri-r2-resolver-1",
+              "resolver",
+              "021be9e54f93"
+            ],
+            "DriverOpts": null,
+            "EndpointID": "6114e3c5f7b0e4e2b0b06c54ad23f6258a0a4d2a16e6df6f9ca1f33969f1bc64",
+            "Gateway": "172.21.0.1",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "172.21.0.2",
+            "IPPrefixLen": 16,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "a6:b2:4f:c8:9e:0d",
+            "NetworkID": "1636c781d1e81e4d49361f7f0cbfb8e731af36e0860d6b6db57141bcc93ac8bd"
+          }
+        },
+        "ports": {
+          "1053/tcp": [
+            {
+              "HostIp": "10.206.16.17",
+              "HostPort": "53"
+            }
+          ],
+          "1053/udp": [
+            {
+              "HostIp": "10.206.16.17",
+              "HostPort": "53"
+            }
+          ]
+        },
+        "restart_count": 0,
+        "running": true,
+        "service": "resolver"
+      }
+    ],
+    "project": "ri-r2",
+    "services": [
+      "agent",
+      "registry-sync",
+      "resolver",
+      "trace-adapter",
+      "trace-producer"
+    ],
+    "sqlite_quick_check": {
+      "evidence-v2.db": "ok",
+      "trace-spool.db": "ok"
+    }
+  },
+  "before": {
+    "captured_at": "2026-08-10T12:44:38+00:00",
+    "containers": [
+      {
+        "id": "021be9e54f93ed1f0adf5625b17a1183aac17c789ad45fdd3f6267ab8f3efed7",
+        "image": "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8",
+        "mounts": [
+          {
+            "Destination": "/run/resolver-identity/trace",
+            "Mode": "rw",
+            "Propagation": "rprivate",
+            "RW": true,
+            "Source": "/var/lib/resolver-identity/ri-r2/trace",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/var/cache/knot-resolver",
+            "Mode": "rw",
+            "Propagation": "rprivate",
+            "RW": true,
+            "Source": "/var/lib/resolver-identity/ri-r2/knot-cache-rc12-fresh-20260808T045100Z",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/run/config/kresd.conf",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/install/ri-r2/releases/0.3.0-norn-knot-rc2/config/kresd.conf",
+            "Type": "bind"
+          }
+        ],
+        "name": "ri-r2-resolver-1",
+        "network_mode": "ri-r2_resolver-egress",
+        "networks": {
+          "ri-r2_resolver-egress": {
+            "Aliases": [
+              "ri-r2-resolver-1",
+              "resolver"
+            ],
+            "DNSNames": [
+              "ri-r2-resolver-1",
+              "resolver",
+              "021be9e54f93"
+            ],
+            "DriverOpts": null,
+            "EndpointID": "6114e3c5f7b0e4e2b0b06c54ad23f6258a0a4d2a16e6df6f9ca1f33969f1bc64",
+            "Gateway": "172.21.0.1",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "172.21.0.2",
+            "IPPrefixLen": 16,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "a6:b2:4f:c8:9e:0d",
+            "NetworkID": "1636c781d1e81e4d49361f7f0cbfb8e731af36e0860d6b6db57141bcc93ac8bd"
+          }
+        },
+        "ports": {
+          "1053/tcp": [
+            {
+              "HostIp": "10.206.16.17",
+              "HostPort": "53"
+            }
+          ],
+          "1053/udp": [
+            {
+              "HostIp": "10.206.16.17",
+              "HostPort": "53"
+            }
+          ]
+        },
+        "restart_count": 0,
+        "running": true,
+        "service": "resolver"
+      },
+      {
+        "id": "04bba140742a4cf647edc6c6a339183f46b43d60c24334f5776a53bdbd98516f",
+        "image": "sha256:ba61776ddb2eb0948b7c3cf4b1ffb04cac66b3a2e9da773a09c58e9449d0954c",
+        "mounts": [
+          {
+            "Destination": "/run/resolver-identity/trace",
+            "Mode": "rw",
+            "Propagation": "rprivate",
+            "RW": true,
+            "Source": "/var/lib/resolver-identity/ri-r2/trace",
+            "Type": "bind"
+          }
+        ],
+        "name": "ri-r2-trace-producer-1",
+        "network_mode": "none",
+        "networks": {
+          "none": {
+            "Aliases": null,
+            "DNSNames": null,
+            "DriverOpts": null,
+            "EndpointID": "7765418fae9a3bff6dce5d15284bf64e24f2fa136e70e2f746fe7a58f14c0e09",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "",
+            "IPPrefixLen": 0,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "",
+            "NetworkID": "ff63647b9706ff12fdfbb0912ff352c8133fe2c91e5fb9db84221c3525277e99"
+          }
+        },
+        "ports": {},
+        "restart_count": 0,
+        "running": true,
+        "service": "trace-producer"
+      },
+      {
+        "id": "2746d92e5eb705f74cbfcd1c3354bb6563ea241484ef91208bc9b0380b0127ff",
+        "image": "sha256:ba61776ddb2eb0948b7c3cf4b1ffb04cac66b3a2e9da773a09c58e9449d0954c",
+        "mounts": [
+          {
+            "Destination": "/run/resolver-identity/trace",
+            "Mode": "rw",
+            "Propagation": "rprivate",
+            "RW": true,
+            "Source": "/var/lib/resolver-identity/ri-r2/trace",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/var/lib/resolver-identity",
+            "Mode": "rw",
+            "Propagation": "rprivate",
+            "RW": true,
+            "Source": "/var/lib/resolver-identity/ri-r2",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/run/secrets",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/secret/secrets",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/run/agent-tls",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls",
+            "Type": "bind"
+          }
+        ],
+        "name": "ri-r2-trace-adapter-1",
+        "network_mode": "ri-r2_agent-egress",
+        "networks": {
+          "ri-r2_agent-egress": {
+            "Aliases": [
+              "ri-r2-trace-adapter-1",
+              "trace-adapter"
+            ],
+            "DNSNames": [
+              "ri-r2-trace-adapter-1",
+              "trace-adapter",
+              "2746d92e5eb7"
+            ],
+            "DriverOpts": null,
+            "EndpointID": "289c7c7a32a7f204ebd4f1c44e2e7a356b2dbd00071ac704626a22fac35e7c86",
+            "Gateway": "172.19.0.1",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "172.19.0.3",
+            "IPPrefixLen": 16,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "2a:e4:86:a1:71:fd",
+            "NetworkID": "78701f64992ce8ff102f9693bae97acc62d629b2dd0147f1e34cd1f9334acb86"
+          },
+          "ri-r2_link-control": {
+            "Aliases": [
+              "ri-r2-trace-adapter-1",
+              "trace-adapter"
+            ],
+            "DNSNames": [
+              "ri-r2-trace-adapter-1",
+              "trace-adapter",
+              "2746d92e5eb7"
+            ],
+            "DriverOpts": null,
+            "EndpointID": "9b3e78fe29612f18b831ca95bf6c284c2a93576781d9ccae7ac0df2f0ac83551",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "172.20.0.3",
+            "IPPrefixLen": 16,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "d6:f1:d9:d0:f0:79",
+            "NetworkID": "3539fc7a9b6df3312ab66871ade86a5be4e34412f5ddd4f7f602b8d8794a2e69"
+          }
+        },
+        "ports": {
+          "9110/tcp": [
+            {
+              "HostIp": "10.206.16.17",
+              "HostPort": "9110"
+            }
+          ]
+        },
+        "restart_count": 0,
+        "running": true,
+        "service": "trace-adapter"
+      },
+      {
+        "id": "82e9557d2968b97519189006858e38396c54d70a1e4836529d288850b2b03ef6",
+        "image": "sha256:ba61776ddb2eb0948b7c3cf4b1ffb04cac66b3a2e9da773a09c58e9449d0954c",
+        "mounts": [
+          {
+            "Destination": "/run/secrets",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/secret/secrets",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/run/agent-tls",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/var/lib/resolver-identity",
+            "Mode": "rw",
+            "Propagation": "rprivate",
+            "RW": true,
+            "Source": "/var/lib/resolver-identity/ri-r2",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/run/config/issuer-keys.json",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/install/ri-r2/releases/0.3.0-norn-knot-rc2/config/issuer-keys.json",
+            "Type": "bind"
+          }
+        ],
+        "name": "ri-r2-agent-1",
+        "network_mode": "ri-r2_agent-egress",
+        "networks": {
+          "ri-r2_agent-egress": {
+            "Aliases": [
+              "ri-r2-agent-1",
+              "agent"
+            ],
+            "DNSNames": [
+              "ri-r2-agent-1",
+              "agent",
+              "82e9557d2968"
+            ],
+            "DriverOpts": null,
+            "EndpointID": "cf637bfffc4fd101c72512c397a50a655c3dba302562d75fd28b7cd6123315b3",
+            "Gateway": "172.19.0.1",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "172.19.0.2",
+            "IPPrefixLen": 16,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "8a:a3:1d:9d:85:65",
+            "NetworkID": "78701f64992ce8ff102f9693bae97acc62d629b2dd0147f1e34cd1f9334acb86"
+          },
+          "ri-r2_link-control": {
+            "Aliases": [
+              "ri-r2-agent-1",
+              "agent"
+            ],
+            "DNSNames": [
+              "ri-r2-agent-1",
+              "agent",
+              "82e9557d2968"
+            ],
+            "DriverOpts": null,
+            "EndpointID": "163e77ecdc49156c19e49e3f7fd2f549e589dfc85fa961f51dd617b606281eff",
+            "Gateway": "",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "172.20.0.2",
+            "IPPrefixLen": 16,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "7e:fe:45:41:6a:6d",
+            "NetworkID": "3539fc7a9b6df3312ab66871ade86a5be4e34412f5ddd4f7f602b8d8794a2e69"
+          }
+        },
+        "ports": {
+          "8443/tcp": [
+            {
+              "HostIp": "10.206.16.17",
+              "HostPort": "8443"
+            }
+          ]
+        },
+        "restart_count": 0,
+        "running": true,
+        "service": "agent"
+      },
+      {
+        "id": "deb4b1371823b257d64f21785423bdc001ce54f7d1e514294fc9342bac44ff74",
+        "image": "sha256:ba61776ddb2eb0948b7c3cf4b1ffb04cac66b3a2e9da773a09c58e9449d0954c",
+        "mounts": [
+          {
+            "Destination": "/var/lib/resolver-identity",
+            "Mode": "rw",
+            "Propagation": "rprivate",
+            "RW": true,
+            "Source": "/var/lib/resolver-identity/ri-r2",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/run/config/identities-v2.json",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/install/ri-r2/releases/0.3.0-norn-knot-rc2/config/identities-v2.json",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/run/config/issuer-keys.json",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/install/ri-r2/releases/0.3.0-norn-knot-rc2/config/issuer-keys.json",
+            "Type": "bind"
+          },
+          {
+            "Destination": "/run/norn-tls",
+            "Mode": "ro",
+            "Propagation": "rprivate",
+            "RW": false,
+            "Source": "/opt/domain-center-install/cloud-928ed0e/secret/norn-tls",
+            "Type": "bind"
+          }
+        ],
+        "name": "ri-r2-registry-sync-1",
+        "network_mode": "ri-norn-field",
+        "networks": {
+          "ri-norn-field": {
+            "Aliases": [
+              "ri-r2-registry-sync-1",
+              "registry-sync"
+            ],
+            "DNSNames": [
+              "ri-r2-registry-sync-1",
+              "registry-sync",
+              "deb4b1371823"
+            ],
+            "DriverOpts": null,
+            "EndpointID": "469ab71fd97cc7711d26082addc44471602653bfbc6d6f0f2c3370919b320dcb",
+            "Gateway": "172.18.0.1",
+            "GlobalIPv6Address": "",
+            "GlobalIPv6PrefixLen": 0,
+            "GwPriority": 0,
+            "IPAMConfig": null,
+            "IPAddress": "172.18.0.2",
+            "IPPrefixLen": 16,
+            "IPv6Gateway": "",
+            "Links": null,
+            "MacAddress": "8a:b4:99:95:bb:b5",
+            "NetworkID": "304224c6862387c953820585291af3da5e6917655f4ce7f1927f077694cd2828"
+          }
+        },
+        "ports": {
+          "9109/tcp": [
+            {
+              "HostIp": "10.206.16.17",
+              "HostPort": "9109"
+            }
+          ]
+        },
+        "restart_count": 0,
+        "running": true,
+        "service": "registry-sync"
+      }
+    ],
+    "project": "ri-r2",
+    "services": [
+      "agent",
+      "registry-sync",
+      "resolver",
+      "trace-adapter",
+      "trace-producer"
+    ],
+    "sqlite_quick_check": {
+      "evidence-v2.db": "ok",
+      "trace-spool.db": "ok"
+    }
+  },
+  "cache_cleared": false,
+  "data_dir": "/var/lib/resolver-identity/ri-r2",
+  "hotfix_binary_binds_removed": [],
+  "project": "ri-r2",
+  "result": "passed",
+  "role": "r2",
+  "schema_version": "resolver-identity-domain-center-adopt-existing-v1",
+  "state_deleted": false,
+  "volumes_removed": false
+}

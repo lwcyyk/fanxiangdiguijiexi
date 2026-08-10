@@ -1,0 +1,94 @@
+{
+  "binary_sha256_matrix": {
+    "agent": "1c7a3348062b14ab172449378336c13d789c31e3b8e7db6aaf64d8134b1e02fd",
+    "authority-proxy": "2702a59f9b99dc88e9299f18aad82e5e950594c9c01e54b47b7e0fd7a69dbc78",
+    "management": "ri-8a6d7aeb15009967-embedded",
+    "nginx": "ri-8d9da9cfb339e414-embedded",
+    "norn": "ri-ad8b495d892c35b1-embedded",
+    "registry-sync": "7be62dc1b6a7c71fc975481036be3a2ac548dda67b4e10f037afdfc0d0352545",
+    "resolver": "122767e45f2de8d6760659dbcb424bb2506168bbca0b23e2390cd6319a667f7b",
+    "trace-adapter": "5c3d0c1e36b3b811bc71d1be50c820640762f180bc4e0569db258416746b2f54",
+    "trace-producer": "d1eba1c7780926fc6d3f6c868c496ff335f88a2feb5f9ef84391334ce604c752",
+    "wrapper": "6c5537f450773aee49a4db668ec3ec5875c46ca937adec07464b9c27285b53ac"
+  },
+  "frozen_flags": {
+    "domain_center_package_ready": false,
+    "existing_cloud_migration_passed": true,
+    "production_capacity_validated": false,
+    "production_deployed": false,
+    "r1_migration_passed": true,
+    "service_image_matrix_frozen": true,
+    "trace_binding_known_p0": true,
+    "trace_binding_passed": false
+  },
+  "package": {
+    "artifact": "dist/resolver-identity-domain-center-0.3.0-norn-knot-rc15.tar",
+    "generated_at": "2026-08-09T00:00:00+00:00",
+    "missing_oci_archives": [],
+    "sha256": "05d79e6bea07b87c225bf2287146b36f78b5beb5a446f0038b836a8b3f48eb72",
+    "size_bytes": 3755059200,
+    "source_date_epoch": "1786233600",
+    "version": "0.3.0-norn-knot-rc15"
+  },
+  "recorded_at_utc": "2026-08-10T13:45:38Z",
+  "schema_version": "resolver-identity-domain-center-release-candidate-v1",
+  "service_image_matrix": {
+    "authdns": {
+      "agent": "agent",
+      "authority-proxy": "authority-proxy",
+      "registry-sync": "registry-sync"
+    },
+    "management": {
+      "management-tools": "management",
+      "norn-publisher": "norn"
+    },
+    "norn-a": {
+      "norn-node": "norn",
+      "norn-read-proxy": "nginx"
+    },
+    "norn-b": {
+      "norn-node": "norn",
+      "norn-read-proxy": "nginx"
+    },
+    "r1": {
+      "agent": "agent",
+      "registry-sync": "registry-sync",
+      "resolver": "resolver",
+      "trace-adapter": "trace-adapter",
+      "trace-producer": "trace-producer",
+      "wrapper": "wrapper"
+    },
+    "r2": {
+      "agent": "agent",
+      "registry-sync": "registry-sync",
+      "resolver": "resolver",
+      "trace-adapter": "trace-adapter",
+      "trace-producer": "trace-producer"
+    },
+    "r3": {
+      "agent": "agent",
+      "registry-sync": "registry-sync",
+      "resolver": "resolver",
+      "trace-adapter": "trace-adapter",
+      "trace-producer": "trace-producer"
+    }
+  },
+  "verifications": {
+    "exact_file_set": {
+      "count": 67,
+      "passed": true
+    },
+    "oci_archives_present": true,
+    "secret_scan": {
+      "forbidden_names": 0,
+      "passed": true,
+      "private_key_markers": 0
+    },
+    "service_image_lock_matched_frozen_matrix": true,
+    "sha256sums": {
+      "passed": true,
+      "total": 66,
+      "verified": 66
+    }
+  }
+}
