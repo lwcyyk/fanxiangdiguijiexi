@@ -1,0 +1,36 @@
+===CONTAINERS
+ri-r1-agent-1 Up 4 hours
+ri-r1-registry-sync-1 Up 4 hours
+ri-r1-resolver-1 Up 4 hours
+ri-r1-trace-adapter-1 Up 4 hours
+ri-r1-trace-producer-1 Up 4 hours
+ri-r1-wrapper-1 Up 4 hours
+===IMAGES
+ri-r1-agent-1 -> sha256:1e4409aaffcbb38c2d13d91b3e8fb6b004f677d7ddb566ae8007aa5ae8ebe23f restarts=0 running=true
+ri-r1-registry-sync-1 -> sha256:d6c4f9da0821dd1387906dae499e0f9e3d6cd9e1dc93cfadd5fbbe71ac10cf80 restarts=0 running=true
+ri-r1-trace-adapter-1 -> sha256:1e4409aaffcbb38c2d13d91b3e8fb6b004f677d7ddb566ae8007aa5ae8ebe23f restarts=0 running=true
+ri-r1-trace-producer-1 -> sha256:ba61776ddb2eb0948b7c3cf4b1ffb04cac66b3a2e9da773a09c58e9449d0954c restarts=0 running=true
+ri-r1-wrapper-1 -> sha256:373ac52a774f8ffd9f92bf26d4aff2132e54287b2d21bb2d6e30d924365b13b6 restarts=0 running=true
+ri-r1-resolver-1 -> sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8 restarts=0 running=true
+===TAGS
+offline/resolver-identity/knot:ri-61e01beae33fd414 61e01beae33f
+offline/resolver-identity/rust:ri-02034f740200fb52 02034f740200
+offline/resolver-identity/rust:ri-326c4f1e6da5940b 326c4f1e6da5
+offline/resolver-identity/rust:ri-392ad9a031bc4a1e 392ad9a031bc
+offline/resolver-identity/rust:ri-68ec104256119bd3 68ec10425611
+offline/resolver-identity/rust:ri-aca8ab5059b7906ba5 aca8ab5059b7
+offline/resolver-identity/rust:ri-ba61776ddb2eb094 ba61776ddb2e
+offline/resolver-identity/rust:ri-e268b76c159f002c e268b76c159f
+offline/resolver-identity/rust:ri-rc11 373ac52a774f
+offline/resolver-identity/rust:ri-rc5-trace-adapter 1bb70c48bc0f
+resolver-identity/knot-trace:0.3.0-norn-knot-rc1 61e01beae33f
+resolver-identity/rust-data-plane:0.3.0-norn-knot-rc1 68ec10425611
+resolver-identity/rust-data-plane:0.3.0-norn-knot-rc11 373ac52a774f
+resolver-identity/rust-data-plane:0.3.0-norn-knot-rc12 326c4f1e6da5
+resolver-identity/rust-data-plane:0.3.0-norn-knot-rc13 e268b76c159f
+resolver-identity/rust-data-plane:0.3.0-norn-knot-rc14 d6c4f9da0821
+resolver-identity/rust-data-plane:0.3.0-norn-knot-rc15 1e4409aaffcb
+resolver-identity/rust-data-plane:0.3.0-norn-knot-rc15-reconnect ba61776ddb2e
+resolver-identity/rust-data-plane:0.3.0-norn-knot-rc2 02034f740200
+resolver-identity/rust-data-plane:0.3.0-norn-knot-rc3 aca8ab5059b7
+resolver-identity/rust-data-plane:0.3.0-norn-knot-rc4 392ad9a031bc

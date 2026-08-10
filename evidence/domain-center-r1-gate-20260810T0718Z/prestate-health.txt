@@ -1,0 +1,8 @@
+===DB
+/var/lib/resolver-identity/ri-r1/evidence-v2.db: ok
+/var/lib/resolver-identity/ri-r1/trace-spool.db: ok
+===SPOOL
+(0, 0)
+===READINESS
+agent=000 adapter=000 wrapper=000
+===REGISTRY

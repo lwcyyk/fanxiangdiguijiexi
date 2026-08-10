@@ -1,0 +1,11 @@
+===PRODUCER_BIN
+d1eba1c7780926fc6d3f6c868c496ff335f88a2feb5f9ef84391334ce604c752
+===BINDBINDS
+none
+===READINESS
+agent=000
+adapter=404
+wrapper=404
+===REGISTRY
+# TYPE resolver_identity_registry_records gauge
+resolver_identity_registry_records 0

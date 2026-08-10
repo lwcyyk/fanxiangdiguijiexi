@@ -192,7 +192,7 @@ services:
       - "${DNS_BIND_ADDRESS:?required}:1053:1053/udp"
       - "${DNS_BIND_ADDRESS:?required}:1053:1053/tcp"
       - "${RI_MANAGEMENT_BIND_ADDRESS:?required}:9108:9108/tcp"
-    networks: [dns-ingress, link-control, resolver-egress, agent-egress]
+    networks: [dns-ingress, link-control, resolver-egress]
     depends_on:
       resolver:
         condition: service_started

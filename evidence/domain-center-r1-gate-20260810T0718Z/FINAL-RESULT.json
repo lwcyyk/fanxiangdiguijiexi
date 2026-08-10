@@ -1,0 +1,56 @@
+{
+  "schema_version": "domain-center-r1-service-level-gate-v1",
+  "recorded_at_utc": "2026-08-10T07:18:00Z",
+  "role": "r1",
+  "compose_project": "ri-r1",
+  "frozen_matrix_applied": true,
+  "adopt_existing": {
+    "result": "passed",
+    "services": ["agent", "registry-sync", "resolver", "trace-adapter", "trace-producer", "wrapper"],
+    "all_containers_running": true,
+    "all_restart_counts_zero": true,
+    "evidence_db_quick_check": "ok",
+    "spool_db_quick_check": "ok",
+    "spool_pending": 0,
+    "state_deleted": false,
+    "cache_cleared": false,
+    "volumes_removed": false,
+    "database_deleted": false,
+    "pki_replaced": false,
+    "norn_state_modified": false,
+    "hotfix_binary_binds_removed": [
+      {"service": "agent", "source": "/opt/resolver-identity-hotfix/rc12-source-fix/ri-agent", "destination": "/usr/local/bin/ri-agent"},
+      {"service": "trace-adapter", "source": "/opt/resolver-identity-hotfix/rc12-source-fix/ri-trace-adapter", "destination": "/usr/local/bin/ri-trace-adapter"},
+      {"service": "wrapper", "source": "/opt/resolver-identity-hotfix/rc12-source-fix/ri-wrapper", "destination": "/usr/local/bin/ri-wrapper"}
+    ],
+    "evidence": "adopt-evidence.json"
+  },
+  "running_binaries_after_adopt": {
+    "agent": "1c7a3348062b14ab172449378336c13d789c31e3b8e7db6aaf64d8134b1e02fd",
+    "trace-adapter": "5c3d0c1e36b3b811bc71d1be50c820640762f180bc4e0569db258416746b2f54",
+    "wrapper": "6c5537f450773aee49a4db668ec3ec5875c46ca937adec07464b9c27285b53ac",
+    "registry-sync": "c14f79f1fef798a36e005de87b328367f44aaf33a3f62315ee1b337ea2c42481",
+    "trace-producer": "d1eba1c7780926fc6d3f6c868c496ff335f88a2feb5f9ef84391334ce604c752"
+  },
+  "r1_migration_passed": false,
+  "blocked_at": "controlled_strict_dns_release",
+  "blocked_reason": "R1 DNS release gate cannot pass while (a) R1 registry freshness is unrecoverable by any fresh registry-sync instance against the current Norn chain, and (b) the downstream AuthDNS->R3->R2 chain is not serving ri-test.invalid end-to-end.",
+  "registry_freshness_passed": false,
+  "registry_freshness_root_cause": "Norn Registry publication was not found in finalized blocks <finalized-100000>..=<finalized> on every poll after recreation. A fresh registry-sync (any image: RC14 or reconnect OCI) cannot bootstrap full-inclusion verification because the norn nodes serve a current registry value whose on-chain 'set' publication is not verifiable within the recent 100k-block window. r2/r3/authdns (running continuously since before this chain condition) keep serving via warm in-memory cache; any recreated registry-sync loses that cache and fails. This is a Norn chain/read-proxy condition on Management-side endpoints (10.206.16.3:8443, 10.206.16.5:8443), outside the four authorized hosts, and Norn chain modification is forbidden.",
+  "registry_last_success_epoch": 0,
+  "registry_records": 0,
+  "downstream_chain_passed": false,
+  "downstream_chain_evidence": "Pre-adopt probe from R1: AAAA ri-test.invalid via wrapper 1053 -> SERVFAIL; via resolver 53 -> SERVFAIL EDE 22 (No Reachable Authority). R2 (10.206.16.17:53) UDP timeout, TCP referral (NOERROR, ANSWER:0, AUTHORITY:1). R3 (10.206.16.7:53) unresponsive from R1. AuthDNS BIND active but not listening on 127.0.0.1:53. Matches prior evidence FINAL-RESULT (dns_resolution_chain_passed=false, authdns_migration_passed=false).",
+  "rollback": {
+    "performed": true,
+    "recovered": true,
+    "method": "restored original compose stack (docker-compose.yml + compose.rc11.yml + compose.rc11-fresh-cache.yml + compose.rc12-source-fix.yml + compose.rc13-chain.yml + compose.rc13-wrapper-timeout.yml + compose.rc13-trace-wait.yml + compose.rc13-provenance.yml + compose.rc14.yml + compose.rc15.yml + compose.rc15-reconnect.yml + /tmp/r1-rollback-credentials.yml) with original env /opt/domain-center-install/cloud-928ed0e/config/r1/.env; per-service up -d --pull never --no-deps",
+    "containers_running": true,
+    "restart_count_zero": true,
+    "hotfix_binary_binds_restored": ["agent", "trace-adapter", "wrapper"],
+    "evidence_db_quick_check": "ok",
+    "spool_db_quick_check": "ok",
+    "spool_pending": 0
+  },
+  "next_step_blocked_by": "Norn chain registry publication verification (Management/Norn side, not authorized) and downstream chain restore (AuthDNS->R3->R2, gated by r1_migration_passed per plan section 7)."
+}
