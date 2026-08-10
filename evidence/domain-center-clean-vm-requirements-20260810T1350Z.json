@@ -1,0 +1,75 @@
+{
+  "schema_version": "domain-center-clean-vm-requirements-v1",
+  "recorded_at_utc": "2026-08-10T13:50:00Z",
+  "blocked_at": "clean_vm_provisioning_authorization",
+  "block_reason": "No clean acceptance VMs exist; provisioning new cloud instances is a new external resource change requiring authorization (console/CLI/credentials not available in this session).",
+  "package_to_install": {
+    "artifact": "dist/resolver-identity-domain-center-0.3.0-norn-knot-rc15.tar",
+    "sha256": "05d79e6bea07b87c225bf2287146b36f78b5beb5a446f0038b836a8b3f48eb72",
+    "evidence": "evidence/domain-center-release-candidate-20260810T134538Z/"
+  },
+  "per_node_private_bundle": "built via tools/build_domain_center_private_bundle.py (compose.yml + node.env + secrets), delivered out-of-band",
+  "clean_vm_requirements": {
+    "roles_and_order": ["Management", "Norn A", "Norn B", "AuthDNS", "R3", "R2", "R1"],
+    "per_role": {
+      "management":   {"vCPU": 2, "ram_gib": 2, "disk_gib": 40, "ports_inbound": ["9109/tcp", "9110/tcp", "8443/tcp"]},
+      "norn-a":       {"vCPU": 2, "ram_gib": 2, "disk_gib": 40, "ports_inbound": ["8443/tcp", "31258/tcp"]},
+      "norn-b":       {"vCPU": 2, "ram_gib": 2, "disk_gib": 40, "ports_inbound": ["8443/tcp", "31258/tcp"]},
+      "authdns":      {"vCPU": 2, "ram_gib": 2, "disk_gib": 40, "ports_inbound": ["53/udp", "53/tcp"]},
+      "r3":           {"vCPU": 2, "ram_gib": 2, "disk_gib": 40, "ports_inbound": ["53/udp", "53/tcp", "8443/tcp", "9109/tcp", "9110/tcp"]},
+      "r2":           {"vCPU": 2, "ram_gib": 2, "disk_gib": 40, "ports_inbound": ["53/udp", "53/tcp", "8443/tcp", "9109/tcp", "9110/tcp"]},
+      "r1":           {"vCPU": 2, "ram_gib": 2, "disk_gib": 40, "ports_inbound": ["53/udp", "53/tcp", "1053/udp", "1053/tcp", "8443/tcp", "9109/tcp", "9110/tcp", "9108/tcp"]}
+    },
+    "os": "Ubuntu 24.04 LTS (lab baseline 24.04.4)",
+    "docker": "Docker 29.x + Docker Compose v2 (lab baseline Docker 29.1.3, Compose 2.40.3)",
+    "network": {
+      "private_subnet": "fresh isolated subnet (e.g. 10.206.16.0/20 or dedicated VLAN) — must NOT share the existing lab VMs",
+      "public_ip": "per node for SSH only (or jump host); service traffic on private subnet",
+      "cross_host_dns": "open 53/udp+tcp between resolver nodes so the chain works without the current security-group TCP-fallback workaround"
+    },
+    "pre_existing_allowed": ["Linux", "Docker", "Docker Compose v2"],
+    "forbidden_preexisting": [
+      "RC11/RC12/RC13/RC14/RC15 historical dirs",
+      "old Compose/containers/Docker volumes/Evidence DB/trace spool/Resolver cache/PKI/Norn runtime state",
+      "/opt/domain-center-install historical dirs",
+      "stable worktree source (git repo must NOT be copied to clean VMs)",
+      "cargo/rustc/git clone/docker pull/online project downloads"
+    ],
+    "admin_operations_only": [
+      "tar xf resolver-identity-domain-center-0.3.0-norn-knot-rc15.tar",
+      "cd <role-dir>; sudo ./install.sh; sudo ./check.sh",
+      "sudo ./check-all.sh (management, after all 7 roles)"
+    ],
+    "manual_patch_forbidden": ["docker run", "docker compose up", "chmod", "chown", "edit env/compose", "modify DB", "fix mounts", "fix networks", "copy binaries"]
+  },
+  "acceptance_gates_after_install": [
+    "fresh registry-sync initial sync, Norn dual-node consistent, publication verified, records=4, freshness<45s, continuous reconcile (fresh_environment_registry_sync_passed=true)",
+    "6/6 DNS: A/AAAA/TXT × UDP/TCP NOERROR+answers+AD+RRSIG via wrapper (fresh_environment_dns_chain_passed=true)",
+    "out-of-band identity chain Wrapper→R1→R2→R3→AuthDNS (fresh_environment_identity_chain_passed=true)",
+    "dual chain end-to-end (fresh_environment_dual_chain_passed=true, controlled_strict_release_passed=true)",
+    "MISS→G0→full evidence→cache object; then CACHE HIT→source_graph_digest→canonical G0→NOERROR (fresh_environment_cache_hit_passed=true); all queries through wrapper only",
+    "cache recovery: stop R1 agent → same query SERVFAIL → restore agent (no cache clear / TTL wait / resolver restart) → immediate NOERROR (identity_failure_blocks_dns_release=true, fresh_environment_cache_recovery_passed=true)",
+    "install.sh idempotency re-run ×7: identity/PKI/DB/evidence/cache/Norn state unchanged, no duplicate containers/volumes, image lock unchanged (install_idempotent=true, one_command_install_verified=true)",
+    "check-all.sh overall PASS on all 7 roles",
+    "evidence/domain-center-clean-install-<UTC>/ with per-node install/check result JSON + registry/dns/identity/cache-provenance/cache-recovery/idempotency results + FINAL-RESULT.json + SHA256SUMS"
+  ],
+  "final_flags_when_clean_vm_evidence_holds": {
+    "clean_host_install_passed": "true",
+    "one_command_install_verified": "true",
+    "fresh_environment_registry_sync_passed": "true",
+    "fresh_environment_dns_chain_passed": "true",
+    "fresh_environment_identity_chain_passed": "true",
+    "fresh_environment_dual_chain_passed": "true",
+    "fresh_environment_cache_hit_passed": "true",
+    "fresh_environment_cache_recovery_passed": "true",
+    "install_idempotent": "true",
+    "domain_center_package_ready": "true"
+  },
+  "unchanged_flags": {
+    "trace_binding_passed": false,
+    "trace_binding_known_p0": true,
+    "production_capacity_validated": false,
+    "production_deployed": false,
+    "detached_signature_supported": false
+  }
+}
