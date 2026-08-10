@@ -116,6 +116,7 @@ PYTHONPATH=src python3 tools/manage_v2_registry.py --help
 - [Rust V2 实施状态](docs/rust_v2_implementation_plan.md)
 - [星形域名中心部署](docs/star_topology_field_deployment.md)
 - [星型多服务器完整现场手册](docs/runbooks/domain-center-star-multiserver-deployment.md)
+- [RC15 七角色离线操作包](docs/domain-center-offline-operator-package.md)
 - [星型多服务器部署规格](specs/domain-center-star-deployment/requirements.md)
 - [真实服务器部署手册](docs/runbooks/real-server-deployment.md)
 - [运行部署手册](docs/runbooks/production-deployment.md)

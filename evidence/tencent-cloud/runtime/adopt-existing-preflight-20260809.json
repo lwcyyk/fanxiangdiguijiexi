@@ -1,0 +1,82 @@
+{
+  "schema_version": "resolver-identity-domain-center-adopt-preflight-v1",
+  "captured_at_utc": "2026-08-09T15:30:00Z",
+  "environment": "authorized Tencent Cloud research deployment",
+  "mutation_performed": false,
+  "hosts": {
+    "management": {
+      "hostname": "ri-management",
+      "running_containers": 0
+    },
+    "norn-a": {
+      "hostname": "ri-norn-a",
+      "compose_project": "ri-norn-a",
+      "running_containers": 2,
+      "data_dir": "/var/lib/resolver-identity/ri-norn-a",
+      "config_dir": "/opt/domain-center-install/cloud-928ed0e/secret/node",
+      "tls_dir": "/opt/domain-center-install/cloud-928ed0e/secret/tls"
+    },
+    "norn-b": {
+      "hostname": "ri-norn-b",
+      "compose_project": "ri-norn-b",
+      "running_containers": 2,
+      "data_dir": "/var/lib/resolver-identity/ri-norn-b",
+      "config_dir": "/opt/domain-center-install/cloud-928ed0e/secret/node",
+      "tls_dir": "/opt/domain-center-install/cloud-928ed0e/secret/tls"
+    },
+    "authdns": {
+      "hostname": "ri-authdns",
+      "compose_project": "ri-authdns",
+      "running_containers": 3,
+      "data_dir": "/var/lib/resolver-identity/ri-authdns",
+      "sqlite_quick_check": {
+        "evidence-v2.db": "ok",
+        "trace-spool.db": "absent"
+      }
+    },
+    "r3": {
+      "hostname": "ri-r3",
+      "compose_project": "ri-r3",
+      "running_containers": 5,
+      "data_dir": "/var/lib/resolver-identity/ri-r3",
+      "cache_dir": "/var/lib/resolver-identity/ri-r3/knot-cache-rc12-fresh-20260808T045100Z",
+      "trace_dir": "/var/lib/resolver-identity/ri-r3/trace",
+      "sqlite_quick_check": {
+        "evidence-v2.db": "ok",
+        "trace-spool.db": "ok"
+      }
+    },
+    "r2": {
+      "hostname": "ri-r2",
+      "compose_project": "ri-r2",
+      "running_containers": 5,
+      "data_dir": "/var/lib/resolver-identity/ri-r2",
+      "cache_dir": "/var/lib/resolver-identity/ri-r2/knot-cache-rc12-fresh-20260808T045100Z",
+      "trace_dir": "/var/lib/resolver-identity/ri-r2/trace",
+      "sqlite_quick_check": {
+        "evidence-v2.db": "ok",
+        "trace-spool.db": "ok"
+      }
+    },
+    "r1": {
+      "hostname": "ri-r1",
+      "compose_project": "ri-r1",
+      "running_containers": 6,
+      "data_dir": "/var/lib/resolver-identity/ri-r1",
+      "cache_dir": "/var/lib/resolver-identity/ri-r1/knot-cache-rc12-fresh-20260808T045100Z",
+      "trace_dir": "/var/lib/resolver-identity/ri-r1/trace",
+      "sqlite_quick_check": {
+        "evidence-v2.db": "ok",
+        "trace-spool.db": "ok"
+      }
+    }
+  },
+  "required_install_order": ["management", "norn-a", "norn-b", "authdns", "r3", "r2", "r1"],
+  "required_data_plane_mutation_order": ["authdns", "r3", "r2", "r1"],
+  "adopt_tool": "tools/adopt_domain_center_existing.py",
+  "state_deleted": false,
+  "cache_cleared": false,
+  "volumes_removed": false,
+  "adoption_completed": false,
+  "reason_not_completed": "The live Compose reconciliation is an outward-facing cloud mutation and has not yet been separately approved for this change window."
+}

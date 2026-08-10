@@ -1,0 +1,935 @@
+[
+    {
+        "Id": "a7732cc7d7898d9d03cf37259b4e6252fc7523a38e280c3510c05b7ab3ae9fed",
+        "Created": "2026-08-09T13:09:49.332386421Z",
+        "Path": "/usr/local/bin/ri-registry-sync",
+        "Args": [],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 412676,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-08-09T13:09:49.406666806Z",
+            "FinishedAt": "0001-01-01T00:00:00Z"
+        },
+        "Image": "sha256:d6c4f9da0821dd1387906dae499e0f9e3d6cd9e1dc93cfadd5fbbe71ac10cf80",
+        "ResolvConfPath": "/var/lib/docker/containers/a7732cc7d7898d9d03cf37259b4e6252fc7523a38e280c3510c05b7ab3ae9fed/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/a7732cc7d7898d9d03cf37259b4e6252fc7523a38e280c3510c05b7ab3ae9fed/hostname",
+        "HostsPath": "/var/lib/docker/containers/a7732cc7d7898d9d03cf37259b4e6252fc7523a38e280c3510c05b7ab3ae9fed/hosts",
+        "LogPath": "/var/lib/docker/containers/a7732cc7d7898d9d03cf37259b4e6252fc7523a38e280c3510c05b7ab3ae9fed/a7732cc7d7898d9d03cf37259b4e6252fc7523a38e280c3510c05b7ab3ae9fed-json.log",
+        "Name": "/ri-authdns-registry-sync-1",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "docker-default",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "/opt/domain-center-install/cloud-928ed0e/secret/norn-tls/client.crt:/run/norn-tls/client.crt:ro",
+                "/opt/domain-center-install/cloud-928ed0e/secret/norn-tls/client.key:/run/norn-tls/client.key:ro",
+                "/var/lib/resolver-identity/ri-authdns:/var/lib/resolver-identity:rw",
+                "/opt/domain-center-install/cloud-928ed0e/config/authdns/identities-v2.json:/run/config/identities-v2.json:ro",
+                "/opt/domain-center-install/cloud-928ed0e/config/authdns/issuer-keys.json:/run/config/issuer-keys.json:ro",
+                "/opt/domain-center-install/cloud-928ed0e/secret/norn-tls/ca.crt:/run/norn-tls/ca.crt:ro"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {
+                    "max-file": "3",
+                    "max-size": "20m"
+                }
+            },
+            "NetworkMode": "host",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "unless-stopped",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": [
+                "ALL"
+            ],
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": null,
+            "DnsSearch": null,
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": true,
+            "SecurityOpt": [
+                "no-new-privileges:true"
+            ],
+            "Tmpfs": {
+                "/tmp": "rw,noexec,nosuid,nodev,size=16m"
+            },
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 536870912,
+            "NanoCpus": 2000000000,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 1073741824,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": 256,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/config/authdns/issuer-keys.json",
+                "Destination": "/run/config/issuer-keys.json",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/secret/norn-tls/ca.crt",
+                "Destination": "/run/norn-tls/ca.crt",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/secret/norn-tls/client.crt",
+                "Destination": "/run/norn-tls/client.crt",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/secret/norn-tls/client.key",
+                "Destination": "/run/norn-tls/client.key",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/var/lib/resolver-identity/ri-authdns",
+                "Destination": "/var/lib/resolver-identity",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/config/authdns/identities-v2.json",
+                "Destination": "/run/config/identities-v2.json",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "ri-authdns",
+            "Domainname": "",
+            "User": "resolver-rust",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "RI_CHAIN_RPC_URLS=https://10.206.16.3:8443,https://10.206.16.5:8443",
+                "RI_NORN_SIGNER_ISSUER=norn-registry",
+                "RI_NORN_REGISTRY_START_HEIGHT=0",
+                "RI_NORN_REGISTRY_KEY=resolver-identity-registry-v2",
+                "RI_CHAIN_ID=20001",
+                "RI_CHAIN_ADAPTER=norn",
+                "RI_NORN_TLS_CA_FILE=/run/norn-tls/ca.crt",
+                "RI_CHAIN_REGISTRY_ADDRESS=0x1000000000000000000000000000000000000001",
+                "RI_REGISTRY_POLL_INTERVAL_MS=2000",
+                "RI_NORN_TLS_CLIENT_KEY_FILE=/run/norn-tls/client.key",
+                "RI_CHAIN_CONFIRMATIONS=12",
+                "RI_NORN_GENESIS_BLOCK_HASH=0xce696ab6f10a16f1a56bfab12c51771e107b57f4c75422abea2231a3fac8c70c",
+                "RI_NORN_TLS_CLIENT_CERT_FILE=/run/norn-tls/client.crt",
+                "RI_RPC_MAX_RESPONSE_BYTES=4194304",
+                "RI_REGISTRY_SYNC_ONCE=false",
+                "RI_CHAIN_REGISTRY_SCHEMA_HASH=0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+                "RI_REGISTRY_MONITORING_BIND=0.0.0.0:9109",
+                "RI_ENVIRONMENT=production",
+                "RI_NORN_MAX_SCAN_BLOCKS=100000",
+                "RI_IDENTITIES_FILE=/run/config/identities-v2.json",
+                "RI_DATABASE=/var/lib/resolver-identity/evidence-v2.db",
+                "RI_NORN_SIGNER_KEY_ID=snapshot-key-1",
+                "RI_ISSUER_KEYS_FILE=/run/config/issuer-keys.json",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "Cmd": [
+                "/usr/local/bin/ri-registry-sync"
+            ],
+            "Image": "resolver-identity/rust-data-plane:0.3.0-norn-knot-rc14",
+            "Volumes": null,
+            "WorkingDir": "/var/lib/resolver-identity",
+            "Entrypoint": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "313f1a78d21c4b331ff0c9aed0e8aad04a39efcfaaa8867bc23cfd2881df5f5c",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "",
+                "com.docker.compose.image": "sha256:d6c4f9da0821dd1387906dae499e0f9e3d6cd9e1dc93cfadd5fbbe71ac10cf80",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "ri-authdns",
+                "com.docker.compose.project.config_files": "/opt/domain-center-install/cloud-928ed0e/release/ri-authdns/docker-compose.yml,/opt/domain-center-install/cloud-928ed0e/release/ri-authdns/compose.rc14.yml",
+                "com.docker.compose.project.environment_file": "/opt/domain-center-install/cloud-928ed0e/release/ri-authdns/compose.env",
+                "com.docker.compose.project.working_dir": "/opt/domain-center-install/cloud-928ed0e/release/ri-authdns",
+                "com.docker.compose.replace": "registry-sync-1",
+                "com.docker.compose.service": "registry-sync",
+                "com.docker.compose.version": "2.40.3"
+            },
+            "StopTimeout": 30
+        },
+        "NetworkSettings": {
+            "SandboxID": "4995b62156fe18409628c7d0753b2cb2f1abf6c1831f384b5faefba2cb9b6878",
+            "SandboxKey": "/var/run/docker/netns/default",
+            "Ports": {},
+            "Networks": {
+                "host": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "ce1f9c0c41d5753b9f59047de44b99b3bc0edecb7a77656f716afdd6420422ee",
+                    "EndpointID": "966b78212ad5f45fedc082cd6c298cad8e50a669a0fe7877bdfa62ac2d0da411",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": null
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:d6c4f9da0821dd1387906dae499e0f9e3d6cd9e1dc93cfadd5fbbe71ac10cf80",
+            "size": 2972,
+            "annotations": {
+                "io.containerd.image.name": "docker.io/resolver-identity/rust-data-plane:0.3.0-norn-knot-rc14",
+                "org.opencontainers.image.created": "2026-08-08T00:00:00Z",
+                "org.opencontainers.image.ref.name": "0.3.0-norn-knot-rc14"
+            },
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    },
+    {
+        "Id": "200243824a066acf0f8de8931df69d3297fae2b0fe0cf2462d419f7fa7723dc7",
+        "Created": "2026-08-08T18:31:01.522767774Z",
+        "Path": "/usr/local/bin/ri-agent",
+        "Args": [],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 155046,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-08-08T18:31:32.205063803Z",
+            "FinishedAt": "0001-01-01T00:00:00Z"
+        },
+        "Image": "sha256:1e4409aaffcbb38c2d13d91b3e8fb6b004f677d7ddb566ae8007aa5ae8ebe23f",
+        "ResolvConfPath": "/var/lib/docker/containers/200243824a066acf0f8de8931df69d3297fae2b0fe0cf2462d419f7fa7723dc7/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/200243824a066acf0f8de8931df69d3297fae2b0fe0cf2462d419f7fa7723dc7/hostname",
+        "HostsPath": "/var/lib/docker/containers/200243824a066acf0f8de8931df69d3297fae2b0fe0cf2462d419f7fa7723dc7/hosts",
+        "LogPath": "/var/lib/docker/containers/200243824a066acf0f8de8931df69d3297fae2b0fe0cf2462d419f7fa7723dc7/200243824a066acf0f8de8931df69d3297fae2b0fe0cf2462d419f7fa7723dc7-json.log",
+        "Name": "/ri-authdns-agent-1",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "docker-default",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/client-ca.crt:/run/agent-tls/client-ca.crt:ro",
+                "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/agent-client.key:/run/agent-tls/agent-client.key:ro",
+                "/var/lib/resolver-identity/ri-authdns:/var/lib/resolver-identity:rw",
+                "/opt/domain-center-install/cloud-928ed0e/config/authdns/issuer-keys.json:/run/config/issuer-keys.json:ro",
+                "/opt/domain-center-install/cloud-928ed0e/secret/secrets/agent_private_key:/run/secrets/agent_private_key:ro",
+                "/opt/domain-center-install/cloud-928ed0e/secret/secrets/agent_wrapper_token:/run/secrets/agent_wrapper_token:ro",
+                "/opt/domain-center-install/cloud-928ed0e/secret/secrets/agent_peer_credentials.json:/run/secrets/agent_peer_credentials.json:ro",
+                "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/agent-client.crt:/run/agent-tls/agent-client.crt:ro",
+                "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/agent-ca.crt:/run/agent-tls/agent-ca.crt:ro",
+                "/opt/domain-center-install/cloud-928ed0e/secret/secrets/trace_ingest_token:/run/secrets/trace_ingest_token:ro",
+                "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/agent.crt:/run/agent-tls/agent.crt:ro",
+                "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/agent.key:/run/agent-tls/agent.key:ro"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {
+                    "max-file": "3",
+                    "max-size": "20m"
+                }
+            },
+            "NetworkMode": "host",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "unless-stopped",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": [
+                "ALL"
+            ],
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": null,
+            "DnsSearch": null,
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": true,
+            "SecurityOpt": [
+                "no-new-privileges:true"
+            ],
+            "Tmpfs": {
+                "/tmp": "rw,noexec,nosuid,nodev,size=16m"
+            },
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 536870912,
+            "NanoCpus": 2000000000,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 1073741824,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": 256,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/secret/secrets/trace_ingest_token",
+                "Destination": "/run/secrets/trace_ingest_token",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/agent.crt",
+                "Destination": "/run/agent-tls/agent.crt",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/agent.key",
+                "Destination": "/run/agent-tls/agent.key",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/client-ca.crt",
+                "Destination": "/run/agent-tls/client-ca.crt",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/agent-client.key",
+                "Destination": "/run/agent-tls/agent-client.key",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/var/lib/resolver-identity/ri-authdns",
+                "Destination": "/var/lib/resolver-identity",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/secret/secrets/agent_wrapper_token",
+                "Destination": "/run/secrets/agent_wrapper_token",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/agent-ca.crt",
+                "Destination": "/run/agent-tls/agent-ca.crt",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/config/authdns/issuer-keys.json",
+                "Destination": "/run/config/issuer-keys.json",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/secret/secrets/agent_private_key",
+                "Destination": "/run/secrets/agent_private_key",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/secret/secrets/agent_peer_credentials.json",
+                "Destination": "/run/secrets/agent_peer_credentials.json",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/agent-client.crt",
+                "Destination": "/run/agent-tls/agent-client.crt",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "ri-authdns",
+            "Domainname": "",
+            "User": "resolver-rust",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "RI_TRACE_WAIT_MILLIS=30000",
+                "RI_AGENT_WRAPPER_TOKEN_FILE=/run/secrets/agent_wrapper_token",
+                "RI_AGENT_TLS_CLIENT_CA_FILE=/run/agent-tls/client-ca.crt",
+                "RI_AGENT_PRIVATE_KEY_FILE=/run/secrets/agent_private_key",
+                "RI_VERIFICATION_MODE=controlled-strict",
+                "RI_AGENT_BIND=10.206.16.13:8443",
+                "RI_AGENT_TLS_CLIENT_CERT_FILE=/run/agent-tls/agent-client.crt",
+                "RI_DATABASE=/var/lib/resolver-identity/evidence-v2.db",
+                "RI_ENVIRONMENT=production",
+                "RI_AGENT_TLS_KEY_FILE=/run/agent-tls/agent.key",
+                "RI_REGISTRY_MAX_STALENESS_SECONDS=45",
+                "RI_AGENT_SERVER_ID=operator/authdns",
+                "RI_ISSUER_KEYS_FILE=/run/config/issuer-keys.json",
+                "RI_AGENT_KEY_ID=agent-key-authdns",
+                "RI_AGENT_TLS_CERT_FILE=/run/agent-tls/agent.crt",
+                "RI_AGENT_PEER_CREDENTIALS_FILE=/run/secrets/agent_peer_credentials.json",
+                "RI_AGENT_TLS_CA_FILE=/run/agent-tls/agent-ca.crt",
+                "RI_AGENT_TLS_CLIENT_KEY_FILE=/run/agent-tls/agent-client.key",
+                "RI_TRACE_INGEST_TOKEN_FILE=/run/secrets/trace_ingest_token",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "Cmd": [
+                "/usr/local/bin/ri-agent"
+            ],
+            "Image": "resolver-identity/rust-data-plane:0.3.0-norn-knot-rc15",
+            "Volumes": null,
+            "WorkingDir": "/var/lib/resolver-identity",
+            "Entrypoint": null,
+            "Labels": {
+                "com.docker.compose.config-hash": "8c5514e1186f895014c20e199735c7fcbe72c1dd1e5afb6046ac590cedae1e4c",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "",
+                "com.docker.compose.image": "sha256:1e4409aaffcbb38c2d13d91b3e8fb6b004f677d7ddb566ae8007aa5ae8ebe23f",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "ri-authdns",
+                "com.docker.compose.project.config_files": "/opt/domain-center-install/cloud-928ed0e/release/ri-authdns/docker-compose.yml,/opt/domain-center-install/cloud-928ed0e/release/ri-authdns/compose.rc13.yml,/opt/domain-center-install/cloud-928ed0e/release/ri-authdns/compose.rc13-trace-wait.yml,/opt/domain-center-install/cloud-928ed0e/release/ri-authdns/compose.rc15.yml",
+                "com.docker.compose.project.environment_file": "/opt/domain-center-install/cloud-928ed0e/release/ri-authdns/compose.env",
+                "com.docker.compose.project.working_dir": "/opt/domain-center-install/cloud-928ed0e/release/ri-authdns",
+                "com.docker.compose.replace": "agent-1",
+                "com.docker.compose.service": "agent",
+                "com.docker.compose.version": "2.40.3"
+            },
+            "StopTimeout": 30
+        },
+        "NetworkSettings": {
+            "SandboxID": "65258faf8b6f304f2b13d2c2e4102b88860bc83c201fb0aa6f78814d8204eece",
+            "SandboxKey": "/var/run/docker/netns/default",
+            "Ports": {},
+            "Networks": {
+                "host": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "ce1f9c0c41d5753b9f59047de44b99b3bc0edecb7a77656f716afdd6420422ee",
+                    "EndpointID": "8856e4f3cf8cb9b45cee4d054b94d9c6bf4a35ada9d2d2c66b156d1b6bedab30",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": null
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:1e4409aaffcbb38c2d13d91b3e8fb6b004f677d7ddb566ae8007aa5ae8ebe23f",
+            "size": 3165,
+            "annotations": {
+                "io.containerd.image.name": "docker.io/resolver-identity/rust-data-plane:0.3.0-norn-knot-rc15",
+                "org.opencontainers.image.created": "2026-08-09T00:00:00Z",
+                "org.opencontainers.image.ref.name": "0.3.0-norn-knot-rc15"
+            },
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    },
+    {
+        "Id": "c9eea5ab02cdecd3d73fbad96524abfed080f8b99af5d8cd7c1f7d001e1359d2",
+        "Created": "2026-08-08T10:31:34.956021586Z",
+        "Path": "/usr/bin/setpriv",
+        "Args": [
+            "--reuid=10002",
+            "--regid=10002",
+            "--clear-groups",
+            "--inh-caps=+net_bind_service",
+            "--ambient-caps=+net_bind_service",
+            "--bounding-set=-setuid,-setgid,-setpcap",
+            "/usr/local/bin/ri-authority-proxy"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 13872,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-08-08T10:32:05.220630932Z",
+            "FinishedAt": "0001-01-01T00:00:00Z"
+        },
+        "Image": "sha256:e268b76c159f002c4198e3bf3743e2cea41a3a22297190488b249dfdf1ae5fed",
+        "ResolvConfPath": "/var/lib/docker/containers/c9eea5ab02cdecd3d73fbad96524abfed080f8b99af5d8cd7c1f7d001e1359d2/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/c9eea5ab02cdecd3d73fbad96524abfed080f8b99af5d8cd7c1f7d001e1359d2/hostname",
+        "HostsPath": "/var/lib/docker/containers/c9eea5ab02cdecd3d73fbad96524abfed080f8b99af5d8cd7c1f7d001e1359d2/hosts",
+        "LogPath": "/var/lib/docker/containers/c9eea5ab02cdecd3d73fbad96524abfed080f8b99af5d8cd7c1f7d001e1359d2/c9eea5ab02cdecd3d73fbad96524abfed080f8b99af5d8cd7c1f7d001e1359d2-json.log",
+        "Name": "/ri-authdns-authority-proxy-1",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "docker-default",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/agent-ca.crt:/run/agent-tls/agent-ca.crt:ro",
+                "/opt/domain-center-install/cloud-928ed0e/secret/secrets/trace_ingest_token:/run/secrets/trace_ingest_token:ro",
+                "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/authority-client.crt:/run/agent-tls/authority-client.crt:ro",
+                "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/authority-client.key:/run/agent-tls/authority-client.key:ro"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {
+                    "max-file": "3",
+                    "max-size": "20m"
+                }
+            },
+            "NetworkMode": "host",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "unless-stopped",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": [
+                "CAP_NET_BIND_SERVICE",
+                "CAP_SETGID",
+                "CAP_SETPCAP",
+                "CAP_SETUID"
+            ],
+            "CapDrop": [
+                "ALL"
+            ],
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": null,
+            "DnsSearch": null,
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": true,
+            "SecurityOpt": [
+                "no-new-privileges:true"
+            ],
+            "Tmpfs": {
+                "/tmp": "rw,noexec,nosuid,nodev,size=16m"
+            },
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 536870912,
+            "NanoCpus": 2000000000,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 1073741824,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": 256,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/secret/secrets/trace_ingest_token",
+                "Destination": "/run/secrets/trace_ingest_token",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/authority-client.crt",
+                "Destination": "/run/agent-tls/authority-client.crt",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/authority-client.key",
+                "Destination": "/run/agent-tls/authority-client.key",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/opt/domain-center-install/cloud-928ed0e/secret/agent-tls/agent-ca.crt",
+                "Destination": "/run/agent-tls/agent-ca.crt",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "ri-authdns",
+            "Domainname": "",
+            "User": "0:0",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "RI_AUTHORITY_TLS_CLIENT_CERT_FILE=/run/agent-tls/authority-client.crt",
+                "RI_AUTHORITY_PUBLIC_BIND=10.206.16.13:53",
+                "RI_AUTHORITY_MONITORING_BIND=127.0.0.1:9111",
+                "RI_AUTHORITY_BACKEND=127.0.0.1:5353",
+                "RI_AUTHORITY_AGENT_URL=https://10.206.16.13:8443",
+                "RI_AUTHORITY_AGENT_TIMEOUT_MS=750",
+                "RI_AUTHORITY_IO_TIMEOUT_MS=2000",
+                "RI_AUTHORITY_MAX_AGENT_RESPONSE_BYTES=1048576",
+                "RI_AUTHORITY_TLS_CLIENT_KEY_FILE=/run/agent-tls/authority-client.key",
+                "RI_TRACE_INGEST_TOKEN_FILE=/run/secrets/trace_ingest_token",
+                "RI_AUTHORITY_BACKEND_TIMEOUT_MS=750",
+                "RI_AUTHORITY_MAX_TCP_CONNECTIONS=1024",
+                "RI_AUTHORITY_SERVER_ID=operator/authdns",
+                "RI_AUTHORITY_MAX_UDP_QUERIES=4096",
+                "RI_AUTHORITY_TLS_CA_FILE=/run/agent-tls/agent-ca.crt",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "Cmd": [
+                "/usr/local/bin/ri-authority-proxy"
+            ],
+            "Image": "resolver-identity/rust-data-plane:0.3.0-norn-knot-rc13",
+            "Volumes": null,
+            "WorkingDir": "/var/lib/resolver-identity",
+            "Entrypoint": [
+                "/usr/bin/setpriv",
+                "--reuid=10002",
+                "--regid=10002",
+                "--clear-groups",
+                "--inh-caps=+net_bind_service",
+                "--ambient-caps=+net_bind_service",
+                "--bounding-set=-setuid,-setgid,-setpcap"
+            ],
+            "Labels": {
+                "com.docker.compose.config-hash": "0511db08271fbc839d1f5a36276b247f843b75d99675f1026dbb87f463fbd183",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "agent:service_started:false",
+                "com.docker.compose.image": "sha256:e268b76c159f002c4198e3bf3743e2cea41a3a22297190488b249dfdf1ae5fed",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "ri-authdns",
+                "com.docker.compose.project.config_files": "/opt/domain-center-install/cloud-928ed0e/release/ri-authdns/docker-compose.yml,/opt/domain-center-install/cloud-928ed0e/release/ri-authdns/compose.rc13.yml",
+                "com.docker.compose.project.environment_file": "/opt/domain-center-install/cloud-928ed0e/release/ri-authdns/compose.env",
+                "com.docker.compose.project.working_dir": "/opt/domain-center-install/cloud-928ed0e/release/ri-authdns",
+                "com.docker.compose.replace": "authority-proxy-1",
+                "com.docker.compose.service": "authority-proxy",
+                "com.docker.compose.version": "2.40.3"
+            },
+            "StopTimeout": 30
+        },
+        "NetworkSettings": {
+            "SandboxID": "2d058c2b3bad6b9817e8c52315bccd4118c4683fdf77c5082bac2ff42b21fe4f",
+            "SandboxKey": "/var/run/docker/netns/default",
+            "Ports": {},
+            "Networks": {
+                "host": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "ce1f9c0c41d5753b9f59047de44b99b3bc0edecb7a77656f716afdd6420422ee",
+                    "EndpointID": "acb0740696a8b3207f8cb6f8788c25a1ad667d73a54101d6fe7bcca3fbcd7b48",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": null
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:e268b76c159f002c4198e3bf3743e2cea41a3a22297190488b249dfdf1ae5fed",
+            "size": 2779,
+            "annotations": {
+                "io.containerd.image.name": "docker.io/resolver-identity/rust-data-plane:0.3.0-norn-knot-rc13",
+                "org.opencontainers.image.created": "2026-08-08T00:00:00Z",
+                "org.opencontainers.image.ref.name": "0.3.0-norn-knot-rc13"
+            },
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    }
+]

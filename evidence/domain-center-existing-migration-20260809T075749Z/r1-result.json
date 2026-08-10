@@ -1,0 +1,40 @@
+{
+  "schema_version": "domain-center-existing-migration-r1-result-v1",
+  "role": "r1",
+  "compose_project": "ri-r1",
+  "migration_passed": false,
+  "rolled_back": true,
+  "rollback_recovered": true,
+  "failure_gate": "controlled_strict_dns_release",
+  "root_cause": "The clean Compose used the unified reconnect Rust image for every Rust service, while the proven RC15 runtime used a mixed service image set. Under the clean unified image the Wrapper could reach both Resolver and Agent, but Agent returned no matching final resolver response event and no accepted graph was created.",
+  "stable_runtime_images": {
+    "registry-sync": "sha256:d6c4f9da0821dd1387906dae499e0f9e3d6cd9e1dc93cfadd5fbbe71ac10cf80",
+    "agent": "sha256:1e4409aaffcbb38c2d13d91b3e8fb6b004f677d7ddb566ae8007aa5ae8ebe23f",
+    "trace-adapter": "sha256:1e4409aaffcbb38c2d13d91b3e8fb6b004f677d7ddb566ae8007aa5ae8ebe23f",
+    "trace-producer": "sha256:ba61776ddb2eb0948b7c3cf4b1ffb04cac66b3a2e9da773a09c58e9449d0954c",
+    "resolver": "sha256:61e01beae33fd4140acdad907617e59da366a211c1ff6c116433fd2031bbdcc8",
+    "wrapper": "sha256:373ac52a774f8ffd9f92bf26d4aff2132e54287b2d21bb2d6e30d924365b13b6"
+  },
+  "rollback_checks": {
+    "containers_running": true,
+    "restart_count_zero": true,
+    "evidence_db_quick_check": "ok",
+    "spool_db_quick_check": "ok",
+    "registry_records": 4,
+    "registry_freshness_recovered": true,
+    "agent_readiness_http": 200,
+    "wrapper_readiness_http": 204,
+    "aaaa_udp_noerror": true,
+    "aaaa_tcp_noerror": true,
+    "ad": true,
+    "rrsig": true
+  },
+  "manual_probe_context_recorded": true,
+  "manual_probe_context_cleaned": true,
+  "state_deleted": false,
+  "cache_cleared": false,
+  "volumes_removed": false,
+  "database_deleted": false,
+  "pki_replaced": false,
+  "norn_state_modified": false
+}

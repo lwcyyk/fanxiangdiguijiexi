@@ -68,5 +68,14 @@
     "release_ready": false,
     "production_capacity_validated": false,
     "production_deployed": false
+  },
+  "operator_package_unified_oci": {
+    "archive": "rust-data-plane-oci-rc15-unified.tar",
+    "archive_sha256": "7bb56334bb9625fcdc9b2f136cc4c704e257788ef00ad1725a022d7a43c126b0",
+    "manifest_digest": "sha256:de9f91baab3afc88cda6c8691e1671cb8da93873cdcb1fd4e4bdf71f429fb10f",
+    "config_digest": "sha256:729daa43f771dbefa49462c32ee4d505674e69b9c681060bdb74afff73c2582d",
+    "binary_ab_identical": true,
+    "secret_scan_passed": true,
+    "source_commit": "3181db37799f18f4af6f0fef4df7dd87364721af"
   }
 }

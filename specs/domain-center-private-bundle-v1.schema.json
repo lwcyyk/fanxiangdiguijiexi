@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://resolver-identity.invalid/schemas/domain-center-private-bundle-v1.schema.json",
+  "title": "Resolver Identity Domain Center Private Bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "role",
+    "expected_host",
+    "compose_project",
+    "compose",
+    "environment",
+    "secrets"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "resolver-identity-domain-center-private-bundle-v1"
+    },
+    "role": {
+      "enum": ["management", "norn-a", "norn-b", "authdns", "r3", "r2", "r1"]
+    },
+    "expected_host": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$"
+    },
+    "compose_project": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,62}$"
+    },
+    "compose": {
+      "$ref": "#/$defs/fileRecord"
+    },
+    "environment": {
+      "$ref": "#/$defs/fileRecord"
+    },
+    "secrets": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$"
+    }
+  },
+  "$defs": {
+    "fileRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

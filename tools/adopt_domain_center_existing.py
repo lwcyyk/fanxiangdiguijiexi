@@ -210,7 +210,12 @@ def adopt(args: argparse.Namespace) -> dict[str, object]:
         if previous is None:
             raise AdoptError(f"unexpected post-adoption service: {service}")
         if not mounts_equivalent(previous.get("mounts"), item.get("mounts")) or item["ports"] != previous["ports"] or item["network_mode"] != previous["network_mode"]:
-            raise AdoptError(f"mount/port/network drift after adopting service {service}")
+            raise AdoptError(
+                "mount/port/network drift after adopting service "
+                f"{service}: mounts={mounts_equivalent(previous.get('mounts'), item.get('mounts'))} "
+                f"ports_before={previous.get('ports')} ports_after={item.get('ports')} "
+                f"network_before={previous.get('network_mode')} network_after={item.get('network_mode')}"
+            )
         if item.get("running") is not True:
             raise AdoptError(f"service is not running after adoption: {service}")
     hotfix_binds_removed: list[dict[str, str]] = []

@@ -1,0 +1,54 @@
+{
+  "existing_cloud_migration_passed": false,
+  "facts": {
+    "clean_timeouts_initial": {
+      "RI_TRACE_CACHE_PROVENANCE_WAIT_MS": 30000,
+      "RI_TRACE_WAIT_MILLIS": 30000,
+      "RI_WRAPPER_AGENT_TIMEOUT_MS": 7500
+    },
+    "clean_unified_agent_binary_sha256": "1c7a3348062b14ab172449378336c13d789c31e3b8e7db6aaf64d8134b1e02fd",
+    "clean_unified_trace_adapter_binary_sha256": "5c3d0c1e36b3b811bc71d1be50c820640762f180bc4e0569db258416746b2f54",
+    "clean_unified_wrapper_binary_sha256": "6c5537f450773aee49a4db668ec3ec5875c46ca937adec07464b9c27285b53ac",
+    "evidence_db_quick_check": "ok",
+    "manual_probe_context_cleaned": true,
+    "producer_reconnect_binary_sha256": "d1eba1c7780926fc6d3f6c868c496ff335f88a2feb5f9ef84391334ce604c752",
+    "spool_db_quick_check": "ok",
+    "stable_agent_effective_binary_sha256": "e172d8ad7dd90b7407f605d7da52b2b7030fe29a645e148ce6948cea69d2a90a",
+    "stable_success_evidence": "evidence/final-dual-chain-acceptance-20260808T142055Z/FINAL-RESULT.json",
+    "stable_timeouts": {
+      "RI_TRACE_CACHE_PROVENANCE_WAIT_MS": 30000,
+      "RI_TRACE_WAIT_MILLIS": 30000,
+      "RI_WRAPPER_AGENT_TIMEOUT_MS": 120000
+    },
+    "stable_trace_adapter_effective_binary_sha256": "d1fc059a5017642009e3c12c6728186f3452ba267d52817a33e2a799a1918b60",
+    "stable_wrapper_effective_binary_sha256": "3393abf4d78aa951928be2f58b8fc05f4df6ac04a9df8b6e4f619df75f1ddf78",
+    "wrapper_agent_mtls_connectivity": true,
+    "wrapper_resolver_tcp_connectivity": true
+  },
+  "migration_result": "failed_and_rolled_back",
+  "minimum_root_cause_set": [
+    "The unified OCI changed ri-agent, ri-wrapper, and ri-trace-adapter binaries instead of changing only the proven RC15 Producer reconnect binary.",
+    "The stable runtime additionally depended on the rc12-source-fix bind-mounted binaries; those exact binaries were omitted from the unified OCI.",
+    "The clean migration therefore did not reproduce the successful RC15 executable set. Wrapper-to-Agent mTLS and Wrapper-to-Resolver TCP both pass, but the unified executable set fails to produce/claim the final ControlledStrict evidence graph."
+  ],
+  "observed_failure": "Agent returned 503: no matching final resolver response event; cache hits without an available canonical source graph are rejected in controlled-strict mode.",
+  "production_deployed": false,
+  "recorded_at_utc": "2026-08-10T02:56:53+00:00",
+  "rollback": {
+    "agent_ready_http": 200,
+    "cache_cleared": false,
+    "containers_running": true,
+    "database_deleted": false,
+    "dns_aaaa_udp_noerror": true,
+    "norn_state_modified": false,
+    "performed": true,
+    "pki_replaced": false,
+    "registry_freshness_recovered": true,
+    "restart_counts_zero_after_recreation": true,
+    "state_deleted": false,
+    "wrapper_ready_http": 204
+  },
+  "schema_version": "domain-center-r1-stable-vs-clean-root-cause-v1",
+  "trace_binding_known_p0": true,
+  "trace_binding_passed": false
+}

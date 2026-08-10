@@ -1,0 +1,26 @@
+{
+  "checks": {
+    "containers": "/ri-authdns-registry-sync-1|running|11|sha256:ba61776ddb2eb0948b7c3cf4b1ffb04cac66b3a2e9da773a09c58e9449d0954c|/etc/resolver-identity/domain-center/authdns/compose.yml\n/ri-authdns-agent-1|running|10|sha256:ba61776ddb2eb0948b7c3cf4b1ffb04cac66b3a2e9da773a09c58e9449d0954c|/etc/resolver-identity/domain-center/authdns/compose.yml\n/ri-authdns-authority-proxy-1|running|10|sha256:ba61776ddb2eb0948b7c3cf4b1ffb04cac66b3a2e9da773a09c58e9449d0954c|/etc/resolver-identity/domain-center/authdns/compose.yml\n",
+    "dns": "192.0.2.10\n192.0.2.10\n",
+    "readiness": "registry=204\nagent=200\nauthority=204\n",
+    "sqlite": "ok\n"
+  },
+  "clean_compose": "/etc/resolver-identity/domain-center/authdns/compose.yml",
+  "completed_at_utc": "2026-08-09T13:30:01+00:00",
+  "compose_project": "ri-authdns",
+  "container_current_restart_counts": {
+    "agent": 10,
+    "authority-proxy": 10,
+    "registry-sync": 11
+  },
+  "database_preserved": true,
+  "evidence_preserved": true,
+  "image_manifest": "sha256:ba61776ddb2eb0948b7c3cf4b1ffb04cac66b3a2e9da773a09c58e9449d0954c",
+  "migration_passed": true,
+  "norn_state_modified": false,
+  "pki_preserved": true,
+  "restart_count_note": "Failed compatibility/permission-gated attempts incremented Docker RestartCount before recovery; final containers are stable and counts no longer increase. Evidence preserves this anomaly rather than reporting zero.",
+  "restart_count_zero_on_final_creation": false,
+  "role": "authdns",
+  "schema_version": "domain-center-existing-migration-authdns-result-v2"
+}
