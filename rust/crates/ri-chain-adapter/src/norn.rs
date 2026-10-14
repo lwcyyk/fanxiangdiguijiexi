@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, HashSet};
 use std::time::Duration;
 
 use async_trait::async_trait;
+use futures_util::stream::{FuturesUnordered, StreamExt};
 use prost::Message;
 use ri_core::{
     DnsServerIdentityV2, IssuerKeyRegistry, RegistryAdapterMetadataV2, RegistryFinalityTypeV2,
@@ -32,6 +33,11 @@ const NORN_SCHEMA_DESCRIPTOR_V1: &str = concat!(
     "entries[server_id,resolver_id_key,object_hash,object_version,valid_until,",
     "status,endpoint_keys],signature"
 );
+// Inclusion scans read immutable finalized blocks.  Keep the scan order and
+// dual-RPC agreement checks unchanged, but fetch a bounded batch concurrently
+// so a management-process restart does not turn a normal catch-up scan into a
+// multi-hour serial walk over empty blocks.
+const INCLUSION_SCAN_BATCH: u64 = 2;
 
 pub fn norn_registry_schema_hash() -> String {
     sha256_hex(NORN_SCHEMA_DESCRIPTOR_V1)
@@ -463,9 +469,27 @@ impl NornRegistryAdapter {
             upper_bound,
         );
         while let Some(height) = scan.next_height() {
-            let block = self.agreed_full_block(height).await?;
-            if let Some(publication) = scan.inspect(&block)? {
-                return Ok(Some(publication));
+            let batch_lower = height
+                .saturating_sub(INCLUSION_SCAN_BATCH.saturating_sub(1))
+                .max(lower_bound);
+            let mut pending = FuturesUnordered::new();
+            for requested_height in (batch_lower..=height).rev() {
+                pending.push(async move {
+                    self.agreed_full_block(requested_height)
+                        .await
+                        .map(|block| (requested_height, block))
+                });
+            }
+
+            let mut blocks = Vec::with_capacity((height - batch_lower + 1) as usize);
+            while let Some(result) = pending.next().await {
+                blocks.push(result?);
+            }
+            blocks.sort_by(|(left, _), (right, _)| right.cmp(left));
+            for (_, block) in blocks {
+                if let Some(publication) = scan.inspect(&block)? {
+                    return Ok(Some(publication));
+                }
             }
         }
         Ok(None)

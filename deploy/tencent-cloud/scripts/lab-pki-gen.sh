@@ -3,8 +3,8 @@
 # Runs on the management host (as root). Produces a staging tree under
 # /opt/domain-center-install/cloud-928ed0e/lab-pki/ that mirrors the final
 # secret-dir layouts; a separate distribution step installs into each host's
-# secret tree with the correct ownership. CA is RSA-2048, 2-day validity,
-# OU=TEST ONLY, per the acceptance contract.
+# secret tree with the correct ownership. CA and leaf certificates default to
+# 30-day validity for the physical lab rotation and remain OU=TEST ONLY.
 set -Eeuo pipefail
 
 ROOT=/opt/domain-center-install/cloud-928ed0e
@@ -12,14 +12,20 @@ PKI=$ROOT/lab-pki
 CA=$PKI/ca
 umask 077
 
+VALIDITY_DAYS="${RI_LAB_PKI_VALIDITY_DAYS:-30}"
+if ! [[ "$VALIDITY_DAYS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "RI_LAB_PKI_VALIDITY_DAYS must be a positive integer" >&2
+  exit 2
+fi
+
 mkdir -p "$CA"
 
-# ---- 1. Lab CA (RSA 2048, 2 days, test-only) ----
+# ---- 1. Lab CA (RSA 2048, configurable validity, test-only) ----
 if [ ! -s "$CA/ca.key" ]; then
   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "$CA/ca.key"
 fi
 if [ ! -s "$CA/ca.crt" ]; then
-  openssl req -x509 -new -sha256 -days 2 -key "$CA/ca.key" \
+  openssl req -x509 -new -sha256 -days "$VALIDITY_DAYS" -key "$CA/ca.key" \
     -subj "/CN=ri-lab-ca/OU=TEST ONLY" -out "$CA/ca.crt"
 fi
 chmod 600 "$CA/ca.key"
@@ -27,7 +33,7 @@ chmod 644 "$CA/ca.crt"
 
 serial=100
 sign() { # sign <csr> <out.crt> <ext-file>
-  openssl x509 -req -sha256 -days 2 -in "$1" -CA "$CA/ca.crt" -CAkey "$CA/ca.key" \
+  openssl x509 -req -sha256 -days "$VALIDITY_DAYS" -in "$1" -CA "$CA/ca.crt" -CAkey "$CA/ca.key" \
     -set_serial "$serial" -extfile "$3" -out "$2"
   serial=$((serial + 1))
 }
@@ -93,6 +99,14 @@ norn_client "$PKI/ri-authdns/norn-tls" ri-authdns-norn-read
 agent_certs() { # agent_certs <host> <ip> <is-r1>
   local host=$1 ip=$2 is_r1=$3
   local at=$PKI/$host/agent-tls
+  local peer_server_id
+  case "$host" in
+    ri-r1) peer_server_id='operator/L01/r1' ;;
+    ri-r2) peer_server_id='operator/L01/r2' ;;
+    ri-r3) peer_server_id='operator/L01/r3' ;;
+    ri-authdns) peer_server_id='operator/authdns' ;;
+    *) echo "unknown Agent host: $host" >&2; exit 1 ;;
+  esac
   mkdir -p "$at"
   local csr=$ROOT/work/agents/$host/agent.csr
   [ -s "$csr" ] || { echo "missing agent CSR for $host" >&2; exit 1; }
@@ -101,10 +115,13 @@ agent_certs() { # agent_certs <host> <ip> <is-r1>
   } > "$at/agent.ext"
   sign "$csr" "$at/agent.crt" "$at/agent.ext"
   rm -f "$at/agent.ext"
-  gen_rsa_pair "$at/agent-client.key" "$at/agent-client.crt" "agent-client-$host" clientAuth
-  gen_rsa_pair "$at/trace-client.key" "$at/trace-client.crt" "trace-client-$host" clientAuth
+  gen_rsa_pair "$at/agent-client.key" "$at/agent-client.crt" "agent-client-$host" clientAuth \
+    "URI:spiffe://ri/$peer_server_id"
+  gen_rsa_pair "$at/trace-client.key" "$at/trace-client.crt" "trace-client-$host" clientAuth \
+    "URI:spiffe://ri/$peer_server_id"
   if [ "$is_r1" = 1 ]; then
-    gen_rsa_pair "$at/wrapper-client.key" "$at/wrapper-client.crt" "wrapper-client-$host" clientAuth
+    gen_rsa_pair "$at/wrapper-client.key" "$at/wrapper-client.crt" "wrapper-client-$host" clientAuth \
+      'URI:spiffe://ri/wrapper'
   fi
   cp "$CA/ca.crt" "$at/client-ca.crt"
   cp "$CA/ca.crt" "$at/agent-ca.crt"
@@ -119,7 +136,8 @@ agent_certs ri-r3 10.206.16.7 0
 agent_certs ri-authdns 10.206.16.13 0
 gen_rsa_pair "$PKI/ri-authdns/agent-tls/authority-client.key" \
   "$PKI/ri-authdns/agent-tls/authority-client.crt" \
-  authority-client-ri-authdns clientAuth
+  authority-client-ri-authdns clientAuth \
+  'URI:spiffe://ri/operator/authdns-authority-proxy'
 chmod 600 "$PKI/ri-authdns/agent-tls/authority-client.key"
 chmod 644 "$PKI/ri-authdns/agent-tls/authority-client.crt"
 

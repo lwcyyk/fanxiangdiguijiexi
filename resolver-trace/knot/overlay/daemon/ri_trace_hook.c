@@ -12,12 +12,17 @@
 #include <sys/time.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #define RI_TRACE_HEADER_MAX 512
 #define RI_TRACE_ACK_MAX 16
 #define RI_TRACE_DEFAULT_TIMEOUT_MS 100
 
 static int trace_fd = -1;
+/* Knot can enter the production hooks concurrently while the Producer keeps
+ * one persistent stream per resolver process.  Serialize the complete
+ * frame/ACK exchange so a response cannot be consumed by another hook. */
+static pthread_mutex_t trace_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static void close_trace_fd(void)
 {
@@ -28,7 +33,9 @@ static void close_trace_fd(void)
 
 void ri_trace_hook_close(void)
 {
+	(void)pthread_mutex_lock(&trace_lock);
 	close_trace_fd();
+	(void)pthread_mutex_unlock(&trace_lock);
 }
 
 static int configured_timeout_ms(void)
@@ -157,19 +164,21 @@ static int emit_hook(const char *kind, const struct kr_request *request,
 		     const struct kr_transport *transport,
 		     const knot_pkt_t *packet, const char *reason)
 {
+	int result = -1;
+	(void)pthread_mutex_lock(&trace_lock);
 	if (!request || !kind || !reason || strchr(reason, ' ') || strchr(reason, '\n')) {
 		fprintf(stderr, "[ri-trace] rejected invalid %s hook fields\n",
 			kind ? kind : "unknown");
-		return -1;
+		goto out;
 	}
 	const size_t wire_length = packet ? packet->size : 0;
 	if (wire_length > UINT16_MAX)
-		return -1;
+		goto out;
 	char address[INET6_ADDRSTRLEN] = "-";
 	uint16_t port = 0;
 	if (endpoint_text(transport, address, sizeof(address), &port) != 0) {
 		fprintf(stderr, "[ri-trace] %s hook has no valid transport endpoint\n", kind);
-		return -1;
+		goto out;
 	}
 	char header[RI_TRACE_HEADER_MAX];
 	int header_length = snprintf(
@@ -178,25 +187,28 @@ static int emit_hook(const char *kind, const struct kr_request *request,
 		(unsigned)port, dnssec_status(request), reason, wire_length);
 	if (header_length <= 0 || (size_t)header_length >= sizeof(header)) {
 		fprintf(stderr, "[ri-trace] %s hook header exceeds its bound\n", kind);
-		return -1;
+		goto out;
 	}
 	if (connect_trace() != 0) {
 		fprintf(stderr, "[ri-trace] %s hook cannot connect to Trace Producer\n", kind);
-		return -1;
+		goto out;
 	}
 	if (write_all(trace_fd, (const uint8_t *)header, (size_t)header_length) != 0
 	    || (wire_length > 0
 		&& write_all(trace_fd, packet->wire, wire_length) != 0)) {
 		fprintf(stderr, "[ri-trace] %s hook cannot write to Trace Producer\n", kind);
 		close_trace_fd();
-		return -1;
+		goto out;
 	}
 	if (read_ack(trace_fd) != 0) {
 		fprintf(stderr, "[ri-trace] %s hook did not receive a durable ACK\n", kind);
 		close_trace_fd();
-		return -1;
+		goto out;
 	}
-	return 0;
+	result = 0;
+out:
+	(void)pthread_mutex_unlock(&trace_lock);
+	return result;
 }
 
 int ri_trace_hook_begin(const struct kr_request *request, const knot_pkt_t *packet)
