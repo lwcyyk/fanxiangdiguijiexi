@@ -1,0 +1,64 @@
+{
+  "status": "READONLY_INVENTORY_PASSED",
+  "inventory": {
+    "architecture": "aarch64",
+    "kernel": "6.18.34+rpt-rpi-v8",
+    "pid": 137168,
+    "exe": "/opt/ri-lab/releases/management-wrapper-20260830",
+    "exe_sha256": "22f6d393a949ca2791f18a8ef93150225ef07a30218b31cd6968df598a72194a",
+    "environment_sha256": "7c69783b2f5fd5f3065020855f1e02dad918f45b31972783d7d615d732b9fe11",
+    "nonsecret_config": {
+      "RI_ENVIRONMENT": "production",
+      "RI_VERIFICATION_MODE": "controlled-pipelined",
+      "RI_WRAPPER_AGENT_URL": "https://ri-r1.cloud.lab:8443",
+      "RI_WRAPPER_UPSTREAMS": "tcp://192.168.10.108:53",
+      "RI_WRAPPER_UDP_BIND": "192.168.10.105:10053",
+      "RI_WRAPPER_TCP_BIND": "192.168.10.105:10053",
+      "RI_WRAPPER_MONITORING_BIND": "127.0.0.1:19108",
+      "RI_WRAPPER_TLS_CLIENT_CERT_FILE": "/opt/ri-lab/management-strict-20260830/secret/agent-tls/wrapper-client.crt",
+      "RI_WRAPPER_TLS_CLIENT_KEY_FILE": "/opt/ri-lab/management-strict-20260830/secret/agent-tls/wrapper-client.key",
+      "RI_WRAPPER_TLS_CA_FILE": "/opt/ri-lab/management-strict-20260830/secret/agent-tls/agent-ca.crt",
+      "RI_WRAPPER_AGENT_TOKEN_FILE": "/opt/ri-lab/management-strict-20260830/secret/agent_wrapper_token",
+      "RI_ISSUER_KEYS_FILE": "/opt/ri-lab/management-strict-20260830/config/issuer-keys.json",
+      "RI_DATABASE": "/var/lib/resolver-identity/ri-management-strict/evidence-v2.db",
+      "RI_WRAPPER_AGENT_TIMEOUT_MS": "120000",
+      "RI_WRAPPER_UPSTREAM_TIMEOUT_MS": "120000",
+      "RI_REGISTRY_MAX_STALENESS_SECONDS": "45"
+    },
+    "required_files_present": {
+      "RI_WRAPPER_TLS_CLIENT_CERT_FILE": true,
+      "RI_WRAPPER_TLS_CLIENT_KEY_FILE": true,
+      "RI_WRAPPER_TLS_CA_FILE": true,
+      "RI_WRAPPER_AGENT_TOKEN_FILE": true,
+      "RI_ISSUER_KEYS_FILE": true,
+      "RI_DATABASE": true
+    },
+    "tools": {
+      "cargo": null,
+      "rustc": null,
+      "cc": "/usr/bin/cc",
+      "gcc": "/usr/bin/gcc",
+      "pkg-config": "/usr/bin/pkg-config"
+    },
+    "listeners": {
+      "returncode": 0,
+      "stdout": "udp UNCONN 0      0             0.0.0.0:111   0.0.0.0:*\nudp UNCONN 0      0             0.0.0.0:5353  0.0.0.0:*\nudp UNCONN 0      0      192.168.10.105:10053 0.0.0.0:*\nudp UNCONN 0      0             0.0.0.0:46461 0.0.0.0:*\nudp UNCONN 0      0             0.0.0.0:58281 0.0.0.0:*\nudp UNCONN 0      0                   *:50665       *:*\nudp UNCONN 0      0                   *:111         *:*\nudp UNCONN 0      0                   *:5353        *:*\nudp UNCONN 0      0                   *:58281       *:*\ntcp LISTEN 0      4096        127.0.0.1:36815 0.0.0.0:*\ntcp LISTEN 0      128           0.0.0.0:22    0.0.0.0:*\ntcp LISTEN 0      128         127.0.0.1:19108 0.0.0.0:*\ntcp LISTEN 0      128         127.0.0.1:19109 0.0.0.0:*\ntcp LISTEN 0      4096          0.0.0.0:111   0.0.0.0:*\ntcp LISTEN 0      128    192.168.10.105:10053 0.0.0.0:*\ntcp LISTEN 0      128              [::]:22       [::]:*\ntcp LISTEN 0      4096             [::]:111      [::]:*\n",
+      "stderr": ""
+    },
+    "ready": {
+      "19108": {
+        "returncode": 0,
+        "stdout": "204",
+        "stderr": ""
+      },
+      "19109": {
+        "returncode": 0,
+        "stdout": "204",
+        "stderr": ""
+      }
+    }
+  },
+  "formal_samples": 0,
+  "physical_queries": 0,
+  "deployed": false
+}

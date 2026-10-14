@@ -1,0 +1,4375 @@
+{
+  "status": "VALID_FORMAL_BLOCK",
+  "tag": "rq5f-2e2fe59e69a7",
+  "mode": "B0-matched",
+  "pair_number": 94,
+  "condition": {
+    "profile_id": "D3-rate025-UDP-hot",
+    "depth": 3,
+    "kind": "hot",
+    "nominal_transport": "udp",
+    "offered_rate_qps": "0.25",
+    "nominal_serial_condition": false,
+    "condition_index": 18,
+    "A": "B0-matched",
+    "B": "B1-pipelined"
+  },
+  "source_sha256": "e11ba23375fc17f21f74fcb13cab8ae3563f577c4cac612cf3c66d9d1321359b",
+  "start_epoch_ns": 1791194486631025300,
+  "schedule_sha256": "6e21025bbf089e1ce682d72e31b472473a06685eee1cfa4115899d0844c4f64b",
+  "restore_errors": [],
+  "evidence_errors": [],
+  "power_stability_claimed": false,
+  "storage_before": {
+    "free_bytes": 2288295936,
+    "throttled_raw": "throttled=0x50005",
+    "power_stability_claimed": false,
+    "warning": false,
+    "archive_trigger": false,
+    "hard_stop": false,
+    "reserve_bytes": 512000000
+  },
+  "cache_reset": "NEW_EMPTY_NATIVE_PRIVATE_CACHE_PER_BLOCK_WITH_MANAGEMENT_NO_CACHE",
+  "resources_before": {
+    "client": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-05T10:03:16Z\n0.22 0.06 0.02 1/274 68637\nMem:       949071872   329670656   100589568    29941760   615997440   619401216\n23302979584"
+    },
+    "management": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-05T10:03:16Z\n0.64 0.64 0.65 1/343 183897\nMem:       949071872   363708416    41484288    26804224   637972480   585363456\n1788227584"
+    },
+    "r1": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-05T10:03:17Z\n0.38 0.37 0.45 1/422 525590\nMem:       949071872   617361408    64909312   275640320   608743424   331710464\n14412775424"
+    },
+    "r2": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-05T10:03:17Z\n0.70 0.53 0.54 1/487 505263\nMem:       949071872   644239360    50814976   273108992   592060416   304832512\n2287726592"
+    },
+    "r3": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-05T10:03:16Z\n0.19 0.15 0.14 1/420 445118\nMem:       949071872   599613440    65667072   278102016   628322304   349458432\n13910802432"
+    },
+    "authdns": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-05T10:03:16Z\n0.02 0.04 0.01 2/325 244654\nMem:       949071872   352927744    93958144    28946432   598446080   596144128\n19269996544"
+    }
+  },
+  "workload": {
+    "remote": "/var/tmp/rq5-formal-client-rq5f-2e2fe59e69a7-workload",
+    "summary": {
+      "arrival_hash": "20c75ba1dc83b2b58f30a469cd1f7937d549199d9879729e36947989fdad7cd7",
+      "completed_ok": 45,
+      "endpoint": {
+        "host": "192.168.10.105",
+        "port": 10053
+      },
+      "failed_after_send": 0,
+      "max_send_lag_ms": 7.149,
+      "not_sent": 0,
+      "offered": 45,
+      "output": "/var/tmp/rq5-formal-client-rq5f-2e2fe59e69a7-workload/raw.jsonl",
+      "schedule_schema": "qbrp-rq5-openloop-schedule-v2",
+      "schedule_start_utc_ns": 1791194599162926643,
+      "schema": "qbrp-rq5-openloop-summary-v2",
+      "sent": 45,
+      "transport": "udp"
+    }
+  },
+  "drain": {
+    "literal_fixed_seconds": 180,
+    "actual_seconds": 180.00008389982395,
+    "observations": [],
+    "origin": "AFTER_CLIENT_TERMINAL_ROWS_OR_180S_OFFER_WINDOW_WHICHEVER_LATER",
+    "adaptive_extension": false,
+    "backlog_is_performance_outcome_not_automatic_INVALID": true
+  },
+  "resources_after": {
+    "client": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-05T10:09:19Z\n0.00 0.03 0.00 1/273 68709\nMem:       949071872   322998272   107057152    30007296   616284160   626073600\n23302844416"
+    },
+    "management": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-05T10:09:19Z\n0.68 0.73 0.70 2/339 183961\nMem:       949071872   352985088    49958912    26726400   640155648   596086784\n1785634816"
+    },
+    "r1": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-05T10:09:19Z\n0.08 0.19 0.33 2/418 525656\nMem:       949071872   630792192    50483200   275578880   609685504   318279680\n14412697600"
+    },
+    "r2": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-05T10:09:19Z\n0.10 0.28 0.42 1/482 505310\nMem:       949071872   639213568    46456832   273051648   601403392   309858304\n2280030208"
+    },
+    "r3": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-05T10:09:19Z\n0.00 0.05 0.08 1/416 445141\nMem:       949071872   591241216    73392128   278118400   628989952   357830656\n13910740992"
+    },
+    "authdns": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-05T10:09:19Z\n0.00 0.02 0.00 1/324 244676\nMem:       949071872   352641024    94244864    28946432   598446080   596430848\n19269996544"
+    }
+  },
+  "observer_errors": [],
+  "captures": {
+    "client": {
+      "remote": {
+        "pid": 68573,
+        "starttime": "61660300",
+        "directory": "/var/tmp/rq5f-2e2fe59e69a7-client",
+        "pcap": "/var/tmp/rq5f-2e2fe59e69a7-client/capture.pcap",
+        "log": "/var/tmp/rq5f-2e2fe59e69a7-client/capture.log",
+        "command": [
+          "timeout",
+          "-s",
+          "INT",
+          "900",
+          "tcpdump",
+          "-i",
+          "any",
+          "-nn",
+          "-s",
+          "0",
+          "-U",
+          "-Z",
+          "root",
+          "-w",
+          "/var/tmp/rq5f-2e2fe59e69a7-client/capture.pcap",
+          "port 53 or port 5353 or port 5354 or port 10053 or port 8443 or port 8444 or port 8446 or port 18443 or (ip[6:2] & 0x1fff != 0)"
+        ],
+        "boot_id": "0ea5e534-fc94-4a93-929b-0b5198b4c85f",
+        "power_start": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "undervoltage_risk_waived": true
+      },
+      "stop": {
+        "stopped": true,
+        "log_text": "tcpdump: WARNING: any: That device doesn't support promiscuous mode\n(Promiscuous mode not supported on the \"any\" device)\ntcpdump: listening on any, link-type LINUX_SLL2 (Linux cooked v2), snapshot length 262144 bytes\n92 packets captured\n92 packets received by filter\n0 packets dropped by kernel\n",
+        "boot_id": "0ea5e534-fc94-4a93-929b-0b5198b4c85f",
+        "pcap_bytes": 11248,
+        "log_bytes": 295,
+        "power_stop": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "source_pcap_sha256": "a54989c862d8af17408b85820b7fc884ac4d341c09a1419e1bc02039ee3651aa",
+        "source_log_sha256": "73c562df8632711a564f2d6752ed51d83804d3df748fe5ab2d1eb92ed5054419"
+      },
+      "pcap": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.11:/var/tmp/rq5f-2e2fe59e69a7-client/capture.pcap",
+          "D:\\backup\\.rq4-v2l-67360-client-pcap.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 11248,
+        "sha256": "a54989c862d8af17408b85820b7fc884ac4d341c09a1419e1bc02039ee3651aa"
+      },
+      "log": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.11:/var/tmp/rq5f-2e2fe59e69a7-client/capture.log",
+          "D:\\backup\\.rq4-v2l-67360-client-log.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 295,
+        "sha256": "73c562df8632711a564f2d6752ed51d83804d3df748fe5ab2d1eb92ed5054419"
+      }
+    },
+    "management": {
+      "remote": {
+        "pid": 183865,
+        "starttime": "61660387",
+        "directory": "/var/tmp/rq5f-2e2fe59e69a7-management",
+        "pcap": "/var/tmp/rq5f-2e2fe59e69a7-management/capture.pcap",
+        "log": "/var/tmp/rq5f-2e2fe59e69a7-management/capture.log",
+        "command": [
+          "timeout",
+          "-s",
+          "INT",
+          "900",
+          "tcpdump",
+          "-i",
+          "any",
+          "-nn",
+          "-s",
+          "0",
+          "-U",
+          "-Z",
+          "root",
+          "-w",
+          "/var/tmp/rq5f-2e2fe59e69a7-management/capture.pcap",
+          "port 53 or port 5353 or port 5354 or port 10053 or port 8443 or port 8444 or port 8446 or port 18443 or (ip[6:2] & 0x1fff != 0)"
+        ],
+        "boot_id": "b0ad88c4-3af4-4a31-8ffd-d10e170192b5",
+        "power_start": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "undervoltage_risk_waived": true
+      },
+      "stop": {
+        "stopped": true,
+        "log_text": "tcpdump: WARNING: any: That device doesn't support promiscuous mode\n(Promiscuous mode not supported on the \"any\" device)\ntcpdump: listening on any, link-type LINUX_SLL2 (Linux cooked v2), snapshot length 262144 bytes\n12349 packets captured\n12349 packets received by filter\n0 packets dropped by kernel\n",
+        "boot_id": "b0ad88c4-3af4-4a31-8ffd-d10e170192b5",
+        "pcap_bytes": 3185579,
+        "log_bytes": 301,
+        "power_stop": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "source_pcap_sha256": "f746319fbb80ea336296069c760808fc075e3ce38521b9bba4bae0112881dbe0",
+        "source_log_sha256": "8c4ca65cd488a05f44dd62ff085537cdb1d05f7de46f5108025966df9a046a69"
+      },
+      "pcap": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.12:/var/tmp/rq5f-2e2fe59e69a7-management/capture.pcap",
+          "D:\\backup\\.rq4-v2l-67360-management-pcap.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 3185579,
+        "sha256": "f746319fbb80ea336296069c760808fc075e3ce38521b9bba4bae0112881dbe0"
+      },
+      "log": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.12:/var/tmp/rq5f-2e2fe59e69a7-management/capture.log",
+          "D:\\backup\\.rq4-v2l-67360-management-log.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 301,
+        "sha256": "8c4ca65cd488a05f44dd62ff085537cdb1d05f7de46f5108025966df9a046a69"
+      }
+    },
+    "r1": {
+      "remote": {
+        "pid": 525560,
+        "starttime": "61660530",
+        "directory": "/var/tmp/rq5f-2e2fe59e69a7-r1",
+        "pcap": "/var/tmp/rq5f-2e2fe59e69a7-r1/capture.pcap",
+        "log": "/var/tmp/rq5f-2e2fe59e69a7-r1/capture.log",
+        "command": [
+          "timeout",
+          "-s",
+          "INT",
+          "900",
+          "tcpdump",
+          "-i",
+          "any",
+          "-nn",
+          "-s",
+          "0",
+          "-U",
+          "-Z",
+          "root",
+          "-w",
+          "/var/tmp/rq5f-2e2fe59e69a7-r1/capture.pcap",
+          "port 53 or port 5353 or port 5354 or port 10053 or port 8443 or port 8444 or port 8446 or port 18443 or (ip[6:2] & 0x1fff != 0)"
+        ],
+        "boot_id": "845f3f40-dd9b-44ba-9d68-ae4a164442e2",
+        "power_start": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "undervoltage_risk_waived": true
+      },
+      "stop": {
+        "stopped": true,
+        "log_text": "tcpdump: WARNING: any: That device doesn't support promiscuous mode\n(Promiscuous mode not supported on the \"any\" device)\ntcpdump: listening on any, link-type LINUX_SLL2 (Linux cooked v2), snapshot length 262144 bytes\n1046 packets captured\n1046 packets received by filter\n0 packets dropped by kernel\n",
+        "boot_id": "845f3f40-dd9b-44ba-9d68-ae4a164442e2",
+        "pcap_bytes": 129136,
+        "log_bytes": 299,
+        "power_stop": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "source_pcap_sha256": "8163a6e8cbec0f30b5d058e086746ce35d2f8f8129d3592d3a2520791b6ce76a",
+        "source_log_sha256": "eec290bd84658cfac7a58c7d65d59a704af2357426f09d4560e2efba07d8145f"
+      },
+      "pcap": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.15:/var/tmp/rq5f-2e2fe59e69a7-r1/capture.pcap",
+          "D:\\backup\\.rq4-v2l-67360-r1-pcap.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 129136,
+        "sha256": "8163a6e8cbec0f30b5d058e086746ce35d2f8f8129d3592d3a2520791b6ce76a"
+      },
+      "log": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.15:/var/tmp/rq5f-2e2fe59e69a7-r1/capture.log",
+          "D:\\backup\\.rq4-v2l-67360-r1-log.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 299,
+        "sha256": "eec290bd84658cfac7a58c7d65d59a704af2357426f09d4560e2efba07d8145f"
+      }
+    },
+    "r2": {
+      "remote": {
+        "pid": 505233,
+        "starttime": "61660004",
+        "directory": "/var/tmp/rq5f-2e2fe59e69a7-r2",
+        "pcap": "/var/tmp/rq5f-2e2fe59e69a7-r2/capture.pcap",
+        "log": "/var/tmp/rq5f-2e2fe59e69a7-r2/capture.log",
+        "command": [
+          "timeout",
+          "-s",
+          "INT",
+          "900",
+          "tcpdump",
+          "-i",
+          "any",
+          "-nn",
+          "-s",
+          "0",
+          "-U",
+          "-Z",
+          "root",
+          "-w",
+          "/var/tmp/rq5f-2e2fe59e69a7-r2/capture.pcap",
+          "port 53 or port 5353 or port 5354 or port 10053 or port 8443 or port 8444 or port 8446 or port 18443 or (ip[6:2] & 0x1fff != 0)"
+        ],
+        "boot_id": "b8a83f40-848a-41cb-9bb2-88622bf8a929",
+        "power_start": {
+          "throttled_raw": "throttled=0x50005",
+          "throttled_mask": 327685,
+          "current_fault_bits": 5,
+          "undervoltage_events": 8,
+          "risk_waived": true
+        },
+        "capture_scheme": "v2l-in-place-single-hash",
+        "undervoltage_risk_waived": true
+      },
+      "stop": {
+        "stopped": true,
+        "log_text": "tcpdump: WARNING: any: That device doesn't support promiscuous mode\n(Promiscuous mode not supported on the \"any\" device)\ntcpdump: listening on any, link-type LINUX_SLL2 (Linux cooked v2), snapshot length 262144 bytes\n33733 packets captured\n33733 packets received by filter\n0 packets dropped by kernel\n",
+        "boot_id": "b8a83f40-848a-41cb-9bb2-88622bf8a929",
+        "pcap_bytes": 9219112,
+        "log_bytes": 301,
+        "power_stop": {
+          "throttled_raw": "throttled=0x50005",
+          "throttled_mask": 327685,
+          "current_fault_bits": 5,
+          "undervoltage_events": 8
+        },
+        "capture_scheme": "v2l-in-place-single-hash",
+        "source_pcap_sha256": "d62ff30f0abbdb45462b0580d0548e52d673439416bf84b3335e9bf3402a409e",
+        "source_log_sha256": "64b8bae0288687a7501a46be8195d5c13e1c2f0df13d3271c607843b14f746fb"
+      },
+      "pcap": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.16:/var/tmp/rq5f-2e2fe59e69a7-r2/capture.pcap",
+          "D:\\backup\\.rq4-v2l-67360-r2-pcap.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 9219112,
+        "sha256": "d62ff30f0abbdb45462b0580d0548e52d673439416bf84b3335e9bf3402a409e"
+      },
+      "log": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.16:/var/tmp/rq5f-2e2fe59e69a7-r2/capture.log",
+          "D:\\backup\\.rq4-v2l-67360-r2-log.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 301,
+        "sha256": "64b8bae0288687a7501a46be8195d5c13e1c2f0df13d3271c607843b14f746fb"
+      }
+    },
+    "r3": {
+      "remote": {
+        "pid": 445089,
+        "starttime": "61660642",
+        "directory": "/var/tmp/rq5f-2e2fe59e69a7-r3",
+        "pcap": "/var/tmp/rq5f-2e2fe59e69a7-r3/capture.pcap",
+        "log": "/var/tmp/rq5f-2e2fe59e69a7-r3/capture.log",
+        "command": [
+          "timeout",
+          "-s",
+          "INT",
+          "900",
+          "tcpdump",
+          "-i",
+          "any",
+          "-nn",
+          "-s",
+          "0",
+          "-U",
+          "-Z",
+          "root",
+          "-w",
+          "/var/tmp/rq5f-2e2fe59e69a7-r3/capture.pcap",
+          "port 53 or port 5353 or port 5354 or port 10053 or port 8443 or port 8444 or port 8446 or port 18443 or (ip[6:2] & 0x1fff != 0)"
+        ],
+        "boot_id": "8afc812e-b7a6-4181-94e1-9ecea2c7ec8b",
+        "power_start": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "undervoltage_risk_waived": true
+      },
+      "stop": {
+        "stopped": true,
+        "log_text": "tcpdump: WARNING: any: That device doesn't support promiscuous mode\n(Promiscuous mode not supported on the \"any\" device)\ntcpdump: listening on any, link-type LINUX_SLL2 (Linux cooked v2), snapshot length 262144 bytes\n865 packets captured\n865 packets received by filter\n0 packets dropped by kernel\n",
+        "boot_id": "8afc812e-b7a6-4181-94e1-9ecea2c7ec8b",
+        "pcap_bytes": 85633,
+        "log_bytes": 297,
+        "power_stop": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "source_pcap_sha256": "53e8f7bd35b81f47b66a275b781dafa991f1ff52ffb8e30d60731ada6bd02d32",
+        "source_log_sha256": "d865ad50159ffdbef0b13956f77d241bf029947e5e131a21e8e753bd083b3451"
+      },
+      "pcap": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.17:/var/tmp/rq5f-2e2fe59e69a7-r3/capture.pcap",
+          "D:\\backup\\.rq4-v2l-67360-r3-pcap.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 85633,
+        "sha256": "53e8f7bd35b81f47b66a275b781dafa991f1ff52ffb8e30d60731ada6bd02d32"
+      },
+      "log": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.17:/var/tmp/rq5f-2e2fe59e69a7-r3/capture.log",
+          "D:\\backup\\.rq4-v2l-67360-r3-log.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 297,
+        "sha256": "d865ad50159ffdbef0b13956f77d241bf029947e5e131a21e8e753bd083b3451"
+      }
+    },
+    "authdns": {
+      "remote": {
+        "pid": 244625,
+        "starttime": "61660875",
+        "directory": "/var/tmp/rq5f-2e2fe59e69a7-authdns",
+        "pcap": "/var/tmp/rq5f-2e2fe59e69a7-authdns/capture.pcap",
+        "log": "/var/tmp/rq5f-2e2fe59e69a7-authdns/capture.log",
+        "command": [
+          "timeout",
+          "-s",
+          "INT",
+          "900",
+          "tcpdump",
+          "-i",
+          "any",
+          "-nn",
+          "-s",
+          "0",
+          "-U",
+          "-Z",
+          "root",
+          "-w",
+          "/var/tmp/rq5f-2e2fe59e69a7-authdns/capture.pcap",
+          "port 53 or port 5353 or port 5354 or port 10053 or port 8443 or port 8444 or port 8446 or port 18443 or (ip[6:2] & 0x1fff != 0)"
+        ],
+        "boot_id": "c64d72a1-9240-4f75-8503-052a70bc694b",
+        "power_start": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "undervoltage_risk_waived": true
+      },
+      "stop": {
+        "stopped": true,
+        "log_text": "tcpdump: WARNING: any: That device doesn't support promiscuous mode\n(Promiscuous mode not supported on the \"any\" device)\ntcpdump: listening on any, link-type LINUX_SLL2 (Linux cooked v2), snapshot length 262144 bytes\n133 packets captured\n223 packets received by filter\n0 packets dropped by kernel\n",
+        "boot_id": "c64d72a1-9240-4f75-8503-052a70bc694b",
+        "pcap_bytes": 22493,
+        "log_bytes": 297,
+        "power_stop": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "source_pcap_sha256": "6aad0bc5b0792940a78a76c87c1cb9eb196bf32495938abfa2401c2ef8d6f848",
+        "source_log_sha256": "d1167c28acf1afca52dcf16996f8d1d01bdf69955cdaffa35c544a0a398bb156"
+      },
+      "pcap": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.18:/var/tmp/rq5f-2e2fe59e69a7-authdns/capture.pcap",
+          "D:\\backup\\.rq4-v2l-67360-authdns-pcap.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 22493,
+        "sha256": "6aad0bc5b0792940a78a76c87c1cb9eb196bf32495938abfa2401c2ef8d6f848"
+      },
+      "log": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.18:/var/tmp/rq5f-2e2fe59e69a7-authdns/capture.log",
+          "D:\\backup\\.rq4-v2l-67360-authdns-log.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 297,
+        "sha256": "d1167c28acf1afca52dcf16996f8d1d01bdf69955cdaffa35c544a0a398bb156"
+      }
+    }
+  },
+  "capture_errors": [],
+  "verification": {
+    "status": "VALID_FORMAL_BLOCK_BASIC_SEMANTICS",
+    "offered": 45,
+    "measure_offered": 30,
+    "measure_sent": 30,
+    "measure_success": 30,
+    "measure_not_sent": 0,
+    "measure_failed_after_send": 0,
+    "effective_success_qps": 0.25,
+    "p50_success_ms": 41.959500000000006,
+    "p95_success_ms": 159.166,
+    "path_counts": {
+      "r1": 49,
+      "r2": 4,
+      "r3": 4,
+      "authdns": 1
+    },
+    "native_cache": {
+      "hot_upstream_unique_exchanges_including_prime": 1,
+      "management_NO_CACHE": true,
+      "canonical_LAN_egress": "192.168.10.108",
+      "bridge_veth_pre_NAT_not_double_counted": true
+    },
+    "row_checks": [
+      {
+        "index": 0,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47600,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21595,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "b20f19920d106d84e8568c643c3d2b05eb130774387c79234232ddbf2d70a9eb"
+          },
+          "final": {
+            "txid": 47600,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21595,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "b20f19920d106d84e8568c643c3d2b05eb130774387c79234232ddbf2d70a9eb"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 1,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47601,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21591,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "221879a6e9baebfddb6f74743e88946fd84642b2cbf826ed66e022f8b931d733"
+          },
+          "final": {
+            "txid": 47601,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21591,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "221879a6e9baebfddb6f74743e88946fd84642b2cbf826ed66e022f8b931d733"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 2,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47602,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21587,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "576bb24d8874c80f97d44511fdbd5ba6d0bc7ec8c5d468643c57440d677552db"
+          },
+          "final": {
+            "txid": 47602,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21587,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "576bb24d8874c80f97d44511fdbd5ba6d0bc7ec8c5d468643c57440d677552db"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 3,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47603,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21583,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "8a0aa4dfe3b8aa1c592ac6235e41cde52739409a5dcb08e7d4763b977ff4d463"
+          },
+          "final": {
+            "txid": 47603,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21583,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "8a0aa4dfe3b8aa1c592ac6235e41cde52739409a5dcb08e7d4763b977ff4d463"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 4,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47604,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21579,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "d2d2119af6649cf99a51ab1c39701674e053b2a74981dc729a6b643278b6c95b"
+          },
+          "final": {
+            "txid": 47604,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21579,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "d2d2119af6649cf99a51ab1c39701674e053b2a74981dc729a6b643278b6c95b"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 5,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47605,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21575,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "39d8135194e8ad8eecd218d70f7aeac525446267fbd74cdcdcb8b6f203f27db6"
+          },
+          "final": {
+            "txid": 47605,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21575,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "39d8135194e8ad8eecd218d70f7aeac525446267fbd74cdcdcb8b6f203f27db6"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 6,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47606,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21571,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "56827432e29189e4b7d63017c2bb98c923d9436ed853b125cb2b065b5d49d5ea"
+          },
+          "final": {
+            "txid": 47606,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21571,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "56827432e29189e4b7d63017c2bb98c923d9436ed853b125cb2b065b5d49d5ea"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 7,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47607,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21567,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "1426cc43c773b5708c1912db8bc6b0282781e0921f499611a0fbf24f923daa0b"
+          },
+          "final": {
+            "txid": 47607,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21567,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "1426cc43c773b5708c1912db8bc6b0282781e0921f499611a0fbf24f923daa0b"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 8,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47608,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21563,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "f0441aaf85a7f1905e8a57bd08086c9d04122b2564d18c9880947cb5b9696c65"
+          },
+          "final": {
+            "txid": 47608,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21563,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "f0441aaf85a7f1905e8a57bd08086c9d04122b2564d18c9880947cb5b9696c65"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 9,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47609,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21559,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "76bbcd37537f382630d605b6313bd62c8f6523da82005638ca127296df64f1be"
+          },
+          "final": {
+            "txid": 47609,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21559,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "76bbcd37537f382630d605b6313bd62c8f6523da82005638ca127296df64f1be"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 10,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47610,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21555,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "7dd1e9d10e9b68f556d4e95b5f85fc448f17d25b10521d0e250ce63e8e0dddff"
+          },
+          "final": {
+            "txid": 47610,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21555,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "7dd1e9d10e9b68f556d4e95b5f85fc448f17d25b10521d0e250ce63e8e0dddff"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 11,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47611,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21551,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "18d641da6e824d112c6f08ccdde6f6c29710486efeedaefbacd932590e4930c2"
+          },
+          "final": {
+            "txid": 47611,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21551,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "18d641da6e824d112c6f08ccdde6f6c29710486efeedaefbacd932590e4930c2"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 12,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47612,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21547,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "9da40a01c1831d205470790e7be419f16b4c0795733995e42788d29f975140eb"
+          },
+          "final": {
+            "txid": 47612,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21547,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "9da40a01c1831d205470790e7be419f16b4c0795733995e42788d29f975140eb"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 13,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47613,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21543,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "56498aef9b1e522eeaf3cf647fbb0c4c098bfad096dc52dba8da8856b3a2b15e"
+          },
+          "final": {
+            "txid": 47613,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21543,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "56498aef9b1e522eeaf3cf647fbb0c4c098bfad096dc52dba8da8856b3a2b15e"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 14,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47614,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21539,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "5093c21dbeed0cb3b9a42347ad91540b6210239102b3428f33168f20e06e60f3"
+          },
+          "final": {
+            "txid": 47614,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21539,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "5093c21dbeed0cb3b9a42347ad91540b6210239102b3428f33168f20e06e60f3"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 15,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47615,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21535,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "512fc98fcaae169ba533aa7ba385894adce265bd45233046cda20ef3339117b7"
+          },
+          "final": {
+            "txid": 47615,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21535,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "512fc98fcaae169ba533aa7ba385894adce265bd45233046cda20ef3339117b7"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 16,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47616,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21531,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "e0a2fcbfd19be7997e68c8f429c399de74d017883287957598ccf4c9b7da4766"
+          },
+          "final": {
+            "txid": 47616,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21531,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "e0a2fcbfd19be7997e68c8f429c399de74d017883287957598ccf4c9b7da4766"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 17,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47617,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21527,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "57a100c444c6ecba780dd02189084af1ab9751d82a77b99c82a827249f3ea025"
+          },
+          "final": {
+            "txid": 47617,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21527,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "57a100c444c6ecba780dd02189084af1ab9751d82a77b99c82a827249f3ea025"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 18,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47618,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21523,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "995b0da436b18285e62fb1ee8cbce0e95f260338869e759cc2e8e919fb1d8cdf"
+          },
+          "final": {
+            "txid": 47618,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21523,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "995b0da436b18285e62fb1ee8cbce0e95f260338869e759cc2e8e919fb1d8cdf"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 19,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47619,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21519,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "c9400b50a27006ab08748e581d9338adcc6cb13667b1b4594146908c475f054e"
+          },
+          "final": {
+            "txid": 47619,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21519,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "c9400b50a27006ab08748e581d9338adcc6cb13667b1b4594146908c475f054e"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 20,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47620,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21515,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "ab26f51327601299de879d77f4c8664a12603a59396e73ab3fd9297de409cf55"
+          },
+          "final": {
+            "txid": 47620,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21515,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "ab26f51327601299de879d77f4c8664a12603a59396e73ab3fd9297de409cf55"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 21,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47621,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21511,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "2d1050a0a401d47eef5bf537aec9ad49dd26a98836c10322117dc559e758bc49"
+          },
+          "final": {
+            "txid": 47621,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21511,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "2d1050a0a401d47eef5bf537aec9ad49dd26a98836c10322117dc559e758bc49"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 22,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47622,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21507,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "5e49a1203d33b84064d8b34b852abe8c4438f59fd24adac79191b69104601f0c"
+          },
+          "final": {
+            "txid": 47622,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21507,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "5e49a1203d33b84064d8b34b852abe8c4438f59fd24adac79191b69104601f0c"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 23,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47623,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21503,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "72f5ea6bb8e38991e167e2ac7f3d4663dd2ad5c90ee8d403333f60cb18fc0b86"
+          },
+          "final": {
+            "txid": 47623,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21503,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "72f5ea6bb8e38991e167e2ac7f3d4663dd2ad5c90ee8d403333f60cb18fc0b86"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 24,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47624,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21499,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "251da43c8a1d5c3b184235e7ca498a8b40d8d3a23f15183cd41a1f0af818fc2c"
+          },
+          "final": {
+            "txid": 47624,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21499,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "251da43c8a1d5c3b184235e7ca498a8b40d8d3a23f15183cd41a1f0af818fc2c"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 25,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47625,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21495,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "4dc67446714773166a1f8c1535e1cb0ce7337600cf4d6330c51c0f69bad0796b"
+          },
+          "final": {
+            "txid": 47625,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21495,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "4dc67446714773166a1f8c1535e1cb0ce7337600cf4d6330c51c0f69bad0796b"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 26,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47626,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21491,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "43b91857bda5fcdc8678cfc668748f8ed39e5e6572e0b2aa26430fb67d033801"
+          },
+          "final": {
+            "txid": 47626,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21491,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "43b91857bda5fcdc8678cfc668748f8ed39e5e6572e0b2aa26430fb67d033801"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 27,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47627,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21487,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "dedf70c628f28dcf21263cd999bb7359e01a5ff9192191dece2b65b53970ded2"
+          },
+          "final": {
+            "txid": 47627,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21487,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "dedf70c628f28dcf21263cd999bb7359e01a5ff9192191dece2b65b53970ded2"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 28,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47628,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21483,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "db7f98e13e990a2ed6db7d486b749178cbb5c8eb1b994d0fb1b608c6112b0dec"
+          },
+          "final": {
+            "txid": 47628,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21483,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "db7f98e13e990a2ed6db7d486b749178cbb5c8eb1b994d0fb1b608c6112b0dec"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 29,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47629,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21479,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "17808e7f2be25c171c803e44bf3a8b9605bb2d45f9b9401268e9717a09d59062"
+          },
+          "final": {
+            "txid": 47629,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21479,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "17808e7f2be25c171c803e44bf3a8b9605bb2d45f9b9401268e9717a09d59062"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 30,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47630,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21475,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "7eb198614311add9204fc78bde2fd0101322765fc7badc0f8bce7c9d175fdc2c"
+          },
+          "final": {
+            "txid": 47630,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21475,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "7eb198614311add9204fc78bde2fd0101322765fc7badc0f8bce7c9d175fdc2c"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 31,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47631,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21471,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "29ada359803a2b07e7c4605768fe2ee028cbb2a27f5835bbb9aa9c21aaa3c4bf"
+          },
+          "final": {
+            "txid": 47631,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21471,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "29ada359803a2b07e7c4605768fe2ee028cbb2a27f5835bbb9aa9c21aaa3c4bf"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 32,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47632,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21467,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "307804cc2d58c5787f933d73d8353475d0ae2b05e121d7dc896528b1b71cdcdd"
+          },
+          "final": {
+            "txid": 47632,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21467,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "307804cc2d58c5787f933d73d8353475d0ae2b05e121d7dc896528b1b71cdcdd"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 33,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47633,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21463,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "ae512c601ec4488c6d9c35e1c38df3c53237cba784bc7abaf212ea58abe98761"
+          },
+          "final": {
+            "txid": 47633,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21463,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "ae512c601ec4488c6d9c35e1c38df3c53237cba784bc7abaf212ea58abe98761"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 34,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47634,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21459,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "c0312371a7fa8d404694582a62c554aeae058fcc2c172b8aaf49dc9d2a3d8fe6"
+          },
+          "final": {
+            "txid": 47634,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21459,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "c0312371a7fa8d404694582a62c554aeae058fcc2c172b8aaf49dc9d2a3d8fe6"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 35,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47635,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21455,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "fabfd185cf7496bcd7cd18c74f5064f1f378164a8acdd16bbc97afd160340fde"
+          },
+          "final": {
+            "txid": 47635,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21455,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "fabfd185cf7496bcd7cd18c74f5064f1f378164a8acdd16bbc97afd160340fde"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 36,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47636,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21451,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "00ef2e9c21ea2e3e6e2bf2c80221d79b43697dbfe84e163066ff5fa8dfd2dbd3"
+          },
+          "final": {
+            "txid": 47636,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21451,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "00ef2e9c21ea2e3e6e2bf2c80221d79b43697dbfe84e163066ff5fa8dfd2dbd3"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 37,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47637,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21447,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "d69a6e2ae0dc67e087a32dc027a31fd46f42c07f29fa7be10bb7d8479fade81b"
+          },
+          "final": {
+            "txid": 47637,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21447,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "d69a6e2ae0dc67e087a32dc027a31fd46f42c07f29fa7be10bb7d8479fade81b"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 38,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47638,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21443,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "1a75281418dfbe7a6d4ac30ca17ac29e5c2afe806a020d6d99b6a32ed14b46b5"
+          },
+          "final": {
+            "txid": 47638,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21443,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "1a75281418dfbe7a6d4ac30ca17ac29e5c2afe806a020d6d99b6a32ed14b46b5"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 39,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47639,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21439,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "a9e9d93cc1c561c4a45d55c0545c18152f62905b74937199a99d552dc749f05f"
+          },
+          "final": {
+            "txid": 47639,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21439,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "a9e9d93cc1c561c4a45d55c0545c18152f62905b74937199a99d552dc749f05f"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 40,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47640,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21435,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "9a7be9afc651e9d6bc9d73275907c1b0eec65af520882c9174976ebaf9c086e0"
+          },
+          "final": {
+            "txid": 47640,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21435,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "9a7be9afc651e9d6bc9d73275907c1b0eec65af520882c9174976ebaf9c086e0"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 41,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47641,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21431,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "12f9d1dd3548efaad5610141b102427d0cd0b356aaa7d7c2425c3d505539ade1"
+          },
+          "final": {
+            "txid": 47641,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21431,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "12f9d1dd3548efaad5610141b102427d0cd0b356aaa7d7c2425c3d505539ade1"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 42,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47642,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21427,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "e96b7c83c983d401ba5bce3a1a3db0fcf0ccfa4ff0fcdc9bacf21e7007f4c457"
+          },
+          "final": {
+            "txid": 47642,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21427,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "e96b7c83c983d401ba5bce3a1a3db0fcf0ccfa4ff0fcdc9bacf21e7007f4c457"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 43,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47643,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21423,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "ecc5582bb42a75ef1bec7bc93ae810ccf74f79c5a28aa227812edbc752bd9d32"
+          },
+          "final": {
+            "txid": 47643,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21423,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "ecc5582bb42a75ef1bec7bc93ae810ccf74f79c5a28aa227812edbc752bd9d32"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      },
+      {
+        "index": 44,
+        "success": true,
+        "failed_after_send": false,
+        "wire_oracle": {
+          "status": "PASS",
+          "errors": [],
+          "first": {
+            "txid": 47644,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21419,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "40b9d498fb871d4559b64b3a061d1e24543f50e102a1fc904798edcc8c575587"
+          },
+          "final": {
+            "txid": 47644,
+            "qr": true,
+            "tc": false,
+            "rcode": 0,
+            "questions": [
+              [
+                "p1199.ri-test.invalid.",
+                1,
+                1
+              ]
+            ],
+            "answers": [
+              {
+                "name": "p1199.ri-test.invalid.",
+                "type": 1,
+                "class": 1,
+                "ttl": 21419,
+                "rdata": "192.0.2.10"
+              }
+            ],
+            "authority": [],
+            "additional": [
+              {
+                "name": ".",
+                "type": 41,
+                "class": 1232,
+                "ttl": 0,
+                "rdata": ""
+              }
+            ],
+            "wire_bytes": 66,
+            "wire_sha256": "40b9d498fb871d4559b64b3a061d1e24543f50e102a1fc904798edcc8c575587"
+          }
+        },
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          0
+        ]
+      }
+    ],
+    "packet_decode_errors_disclosed": {
+      "client": [],
+      "management": [],
+      "r1": [],
+      "r2": [],
+      "r3": [],
+      "authdns": []
+    },
+    "full_causal_GC_fault_checks": "DEFERRED_NOT_PASS",
+    "power_stability_claimed": false
+  },
+  "end_epoch_ns": 1791195054097580100
+}

@@ -1,0 +1,112 @@
+{
+  "status": "COLLECTED",
+  "cell": "component-old-graph",
+  "count": 1000,
+  "baseline_accepts": 1000,
+  "exact_expired_rejections": 1000,
+  "unique_roots": 1000,
+  "unique_graphs": 1000,
+  "unexpected_errors": 0,
+  "physical_trials": 0,
+  "source_campaign": null,
+  "scope": "Local production ri-core::EvidenceValidator::validate_graph temporal replay; unchanged signed Graph, same Root/Attempt/challenge, baseline at issued_at and candidate at expires_at+1. No new DNS, HTTP, Registry freshness, Store consume, new-query binding or Wrapper release experiment. Historical clocks are arguments only.",
+  "ready": {
+    "19108": 204,
+    "19109": 204
+  },
+  "registry": {
+    "schema_version": "resolver-identity-norn-registry-snapshot-v1",
+    "chain_id": 20001,
+    "genesis_block_hash": "0x7e7b36e6ec7d1671500da326134300a86f32e097cd49a275aab63dad956b4973",
+    "registry_address": "0x1000000000000000000000000000000000000001",
+    "registry_key": "resolver-identity-registry-v2",
+    "registry_schema_hash": "0xadb0b846e01c44c8dcc41b612eea34999b5e10b25b3e68c7dab4a3fd70cc3499",
+    "snapshot_version": 104,
+    "checkpoint_height": 859130,
+    "checkpoint_hash": "0xfcd0f8b4e8d99932c05d49c53b13484e2f6d19beae3381a75684798cf097b16f",
+    "state_root": "0xeb930df6b32047fa492a129baf86996450a935ae64c3d2a7b8d1d8c55af22911",
+    "root_status": "ACTIVE",
+    "published_at": 1789811118,
+    "valid_until": 1792213234,
+    "issuer": "norn-registry",
+    "key_id": "snapshot-key-1",
+    "entries": [
+      {
+        "server_id": "operator/L01/r1",
+        "resolver_id_key": "0x9db6107c67e1e908251f9d4eb3847b133ae2e41b690b633c330618fdbe9f5732",
+        "object_hash": "0xb805c0d3d6fef7a37f191ce93ef217aaf3426afd16f1cc62488c7c8382e0fddd",
+        "object_version": 7,
+        "valid_until": 1792213234,
+        "status": "ACTIVE",
+        "endpoint_keys": [
+          "0x692dba342b23f4648f0062e0de277b297b68a8749c3c4e7fa9d5b0b380f1b218",
+          "0xc510f7c64eba372f2a399d96185218d39964462dab7f6d4d0c755fc6b45b7677"
+        ]
+      },
+      {
+        "server_id": "operator/L01/r2",
+        "resolver_id_key": "0x7888b61b424029aef20dd225a95d61399dfb042a717d59efe2f00968fd30e742",
+        "object_hash": "0x3108f1c7940336f4f69ba8db4bef9c9cae906456f482f3ce4ffcc4eb6b5f55fc",
+        "object_version": 7,
+        "valid_until": 1792213234,
+        "status": "ACTIVE",
+        "endpoint_keys": [
+          "0xb65826ce10d157b309c756a7c3f9dbf30aa321bc88a044e1d17c267344e5e803",
+          "0x606874882256a9773027eccacf0b5df9316ccd6849f6c5dfc022c3220768aa78",
+          "0xa19a3cc25b138d762a768b1cbfd3a4e92937f2f49fbb14fd76a747559f46a625",
+          "0x824412e56cfe0d656169ded1c974629ef65ee021a005c8fc3cad5cf59e20ab7b"
+        ]
+      },
+      {
+        "server_id": "operator/L01/r3",
+        "resolver_id_key": "0x638bf13385392e6fd2b34c9d3e81e7ab764e0a4214040c2ef82d8311d82a7a13",
+        "object_hash": "0x9ac796d4c63cc8c011a17c48d80a62d8f3bf4905921c6fbdef377c25a6914d19",
+        "object_version": 8,
+        "valid_until": 1792213234,
+        "status": "ACTIVE",
+        "endpoint_keys": [
+          "0xc7fd598859067e72e54fa8f4e052ad5acc0fd0c4fc1752403112727334b3f410",
+          "0x0a723f1890ef46d25d4eae2a36d3b73b3913aa66db5f35104714027402be664c",
+          "0x052e19f9227105743505162087ee438ff031647f995e167fd6c6233dafd50cff",
+          "0x7c63beda6fb85084799a7aea17793c7c6dc6dfeed8fe0b397d1bc6c32407381b"
+        ]
+      },
+      {
+        "server_id": "operator/authdns",
+        "resolver_id_key": "0x761d6f2de29cc6bdf97ab956d3962b605f296777c9b87108628b49decd31b3d6",
+        "object_hash": "0xcf64e35c88d32696f24f8ccded258e5c6043340f3fdc0507199364df190fd5d6",
+        "object_version": 10,
+        "valid_until": 1792213234,
+        "status": "ACTIVE",
+        "endpoint_keys": [
+          "0x55a3bc9b22f4af0feb96ab4540d38a9559c8fb754a246dae045455e568212964",
+          "0x0f4e5785985dafbd1a1425869646b33534dfc7a64e92e96600cb1bd739909285",
+          "0x549bb1073431a4aaf6f8d2f727d8c7b86e2554831c66d5a0616db8ea235d8618",
+          "0x92791b9790cca78e1ae88d3c153a6c6728698872821938138622e4fa174c8092",
+          "0x0b9c3c75156a0661f83afb6ca01715588694521944f9bd3c41f3b64784ba5ca4",
+          "0xe60da443b7622a685a6bf4722c19f1982f990e163283443b17ab212ee72d4bb5",
+          "0xf907bed34ad2101123a0f17bb71554ddbcd7406c10312ca2750c59a4dd3a8183",
+          "0xd3de3e439466e9c33a5cd22b85974d2d00f1cd6ac4e5dc4817df16cbd48c206b",
+          "0x44422fd3b6a8fb722b15fff71a19108aa9f55aac16d68ac9e0892e8ee1e56d4c",
+          "0x3554d0b8dabc15a0a3271d2c59150e29f0c733bd08d1c83545a8d2ac3fa8eaeb"
+        ]
+      }
+    ],
+    "signature": "base64:ed25519:lBHrAlApiL9Hha6Q1GbQpRp/ocjs25s9zwrTr4TDMhz7y9NaXFRM5c0Yvym/kGa+QalAVpW6fwPlDDrZ/+8bBQ=="
+  },
+  "strata": {
+    "D1/udp": 84,
+    "D1/tcp": 84,
+    "D2/udp": 84,
+    "D2/tcp": 84,
+    "D3/udp": 83,
+    "D3/tcp": 83,
+    "cache-R1/udp": 83,
+    "cache-R1/tcp": 83,
+    "cache-R2/udp": 83,
+    "cache-R2/tcp": 83,
+    "cache-R3/udp": 83,
+    "cache-R3/tcp": 83
+  },
+  "finished": "2026-09-20T07:45:09.306803+00:00"
+}

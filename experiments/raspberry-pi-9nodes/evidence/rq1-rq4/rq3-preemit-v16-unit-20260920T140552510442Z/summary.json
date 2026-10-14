@@ -1,0 +1,39 @@
+{
+  "status": "OFFLINE_PREEMIT_RECORDER_AND_HISTORICAL_CRYPTO_VERIFIED",
+  "tests": 32,
+  "historical_positive_replays": 2,
+  "production_crypto_decisions": 4,
+  "results": [
+    {
+      "trial": "physical-correlation-000-udp",
+      "structure": "PASSED",
+      "production_graph_crypto": "CORRECT_ACCEPT",
+      "signature_negative_control": {
+        "decision": "SAFE_REJECT",
+        "reason": "invalid signature"
+      }
+    },
+    {
+      "trial": "physical-correlation-001-tcp",
+      "structure": "PASSED",
+      "production_graph_crypto": "CORRECT_ACCEPT",
+      "signature_negative_control": {
+        "decision": "SAFE_REJECT",
+        "reason": "invalid signature"
+      }
+    }
+  ],
+  "source_manifest": {
+    "entries": 102,
+    "manifest_sha256": "b33936521623d19d3950f8bf119ba737f7aa3f30072e4ae24deb0b5c3e27692d",
+    "changed": 0
+  },
+  "physical_samples_added": 0,
+  "formal_samples_added": 0,
+  "online_changes": false,
+  "current_health_refreshed": false,
+  "full_physical_trial_verified": false,
+  "limitation": "D3 only. Historical decision epoch used; pinned-view structural join, not current Registry freshness check. Does not verify six-node pcap, actual injection, endpoint delivery or live mTLS.",
+  "next": "Integrate v14 receipts + v15 endpoint subgate + v16 D3 preemit/crypto into new six-node pilot coordinator. No standalone ignored live harness.",
+  "finished": "2026-09-20T14:05:53.702428+00:00"
+}

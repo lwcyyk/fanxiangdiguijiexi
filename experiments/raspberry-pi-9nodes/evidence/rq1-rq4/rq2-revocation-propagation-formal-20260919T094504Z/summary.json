@@ -1,0 +1,21 @@
+{
+  "status": "RQ2_REVOCATION_PROPAGATION_FORMAL_COMPLETE",
+  "mode": "formal",
+  "planned_episodes": 30,
+  "completed_episodes": 30,
+  "formal_publication_episodes": 30,
+  "unique_revocation_transactions": 30,
+  "unique_restoration_transactions": 30,
+  "failure": null,
+  "recovery_failure": null,
+  "registry_active_restored": true,
+  "internal_tcp_restored": true,
+  "profile_b_restored": true,
+  "runtime_drift": [],
+  "final_ready": {
+    "19108": 204,
+    "19109": 204
+  },
+  "final_snapshot_version": 104,
+  "finished": "2026-09-19T11:19:59.827399+00:00"
+}

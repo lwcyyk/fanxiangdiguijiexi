@@ -1,0 +1,52 @@
+{
+  "status": "PILOT_PASSED",
+  "verified_pilot_queries": 4,
+  "formal_samples": 0,
+  "results": [
+    {
+      "status": "HELD_RESPONSE_PHYSICAL_PILOT_VERIFIED",
+      "trial_id": "held17-00-udp-baseline",
+      "candidate": false,
+      "transport": "udp",
+      "root": "25cd88926a722f1b8c22f53d8bd37408206095ab2c22fa24960578feb1f6b46a",
+      "attempt": "89f453ba05ce6d210c8f7be4e4e4b30c",
+      "graph_digest": "0x4a7c21a25a8c3e1a75d417ae8c5f89f7b4e6f0417c34b94d2985df57faeb2cd5",
+      "wire_events": 7,
+      "formal_samples": 0
+    },
+    {
+      "status": "HELD_RESPONSE_PHYSICAL_PILOT_VERIFIED",
+      "trial_id": "held17-01-udp-candidate",
+      "candidate": true,
+      "transport": "udp",
+      "root": "86265aa02eccbf4ee94854a2c23e4befc535cb69a5d2b8c6c7e68e906cf06cf9",
+      "attempt": "802ea19ffdde6b1cf6f57538870dfc76",
+      "graph_digest": "0xca65b0515d2630b1e1b5c781c628f393a01494657e752d4fc94b03f354b662cb",
+      "wire_events": 7,
+      "formal_samples": 0
+    },
+    {
+      "status": "HELD_RESPONSE_PHYSICAL_PILOT_VERIFIED",
+      "trial_id": "held17-02-tcp-baseline",
+      "candidate": false,
+      "transport": "tcp",
+      "root": "87deb4b96a0eee957172677f5ddd24eed1b9fb7c75bc75e81e27e37ee8c7e7ee",
+      "attempt": "549b56a6045fc8d0d6f2745b81123ff1",
+      "graph_digest": "0xa6a3114a75da47059552f9f1fccb7a36a74dc15e440ed3e2caf9aa7ca7687e04",
+      "wire_events": 7,
+      "formal_samples": 0
+    },
+    {
+      "status": "HELD_RESPONSE_PHYSICAL_PILOT_VERIFIED",
+      "trial_id": "held17-03-tcp-candidate",
+      "candidate": true,
+      "transport": "tcp",
+      "root": "2cfc792b7aca32f68b36b11b17b98ce2062b9312ca235dfaeb9959977a6291f5",
+      "attempt": "a5d773c8126fda3905c0c0a3f054834a",
+      "graph_digest": "0xedca923eef7ab116da9b971a205511a5a38343735153d0e98a06c34f90afcba5",
+      "wire_events": 7,
+      "formal_samples": 0
+    }
+  ],
+  "finished": "2026-09-20T14:47:21.875915+00:00"
+}

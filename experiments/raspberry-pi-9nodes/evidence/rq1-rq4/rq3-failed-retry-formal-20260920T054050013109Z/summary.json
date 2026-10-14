@@ -1,0 +1,19 @@
+{
+  "status": "COLLECTED_PENDING_INDEPENDENT_REVIEW",
+  "cell": "component-failed-retry-branch",
+  "candidates": 1000,
+  "baselines": 1000,
+  "verified_decisions": 2000,
+  "causal_rejections": 1000,
+  "unexpected_errors": 0,
+  "http_422": 0,
+  "physical_trials": 0,
+  "ready": {
+    "19108": 204,
+    "19109": 204
+  },
+  "runtime_drift": false,
+  "source_campaign": null,
+  "binary_sha256": "418650c54afac1c1909854062ede39bc9883c02c2c19ca42945380f185704c8c",
+  "completed": "2026-09-20T05:43:46.053545+00:00"
+}

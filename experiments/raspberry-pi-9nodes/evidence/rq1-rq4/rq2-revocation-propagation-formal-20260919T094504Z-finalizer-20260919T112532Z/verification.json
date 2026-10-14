@@ -1,0 +1,71 @@
+{
+  "status": "RQ2_REVOCATION_PROPAGATION_FORMAL_INDEPENDENTLY_FINALIZED",
+  "campaign": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-revocation-propagation-formal-20260919T094504Z",
+  "formal_publication_episodes": 30,
+  "by_transport": {
+    "udp": 15,
+    "tcp": 15
+  },
+  "unique_revocation_transactions": 30,
+  "unique_restoration_transactions": 30,
+  "verified_identity_rejections": 30,
+  "verified_restored_releases": 30,
+  "manifest_entries": 6511,
+  "manifest_mismatches": [],
+  "unexpected_files": [],
+  "source_drift": {},
+  "runtime_drift": [],
+  "final_snapshot_version": 104,
+  "norn_a_b_identical": true,
+  "r2_status": "ACTIVE",
+  "readiness": {
+    "19108": 204,
+    "19109": 204
+  },
+  "profile_b_target": "operator/L01/r3",
+  "metrics": {
+    "revoked_dual_node_finality_upper_seconds": {
+      "count": 30,
+      "min": 27.10984529997222,
+      "median": 31.690927500021644,
+      "p95": 34.55327760009095,
+      "max": 41.40917919995263
+    },
+    "revoked_sync_accept_upper_seconds": {
+      "count": 30,
+      "min": 52.28421610011719,
+      "median": 56.35963275004178,
+      "p95": 60.46358050010167,
+      "max": 64.76441000006162
+    },
+    "first_identity_reject_seconds": {
+      "count": 30,
+      "min": 59.745728954,
+      "median": 64.3084246935,
+      "p95": 69.770002561,
+      "max": 72.681877552
+    },
+    "active_dual_node_finality_upper_seconds": {
+      "count": 30,
+      "min": 27.68250730005093,
+      "median": 31.157990450039506,
+      "p95": 34.025367700029165,
+      "max": 36.922573199961334
+    },
+    "active_sync_accept_upper_seconds": {
+      "count": 30,
+      "min": 51.598203300032765,
+      "median": 56.24454204994254,
+      "p95": 59.134764099959284,
+      "max": 62.1903297000099
+    },
+    "first_restored_release_seconds": {
+      "count": 30,
+      "min": 59.020075771,
+      "median": 62.9961989715,
+      "p95": 65.847817168,
+      "max": 68.967162575
+    }
+  },
+  "completed": "2026-09-19T11:25:49.044584+00:00"
+}

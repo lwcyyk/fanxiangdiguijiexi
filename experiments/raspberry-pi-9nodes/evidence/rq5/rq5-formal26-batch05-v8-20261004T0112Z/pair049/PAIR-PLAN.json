@@ -1,0 +1,24 @@
+{
+  "pair_number": 49,
+  "repeat": 5,
+  "batch_number": 5,
+  "order_label": "BA",
+  "mode_order": [
+    "B1-pipelined",
+    "B0-matched"
+  ],
+  "condition": {
+    "profile_id": "D3-UDP-fallback",
+    "depth": 3,
+    "kind": "fallback",
+    "nominal_transport": "udp",
+    "offered_rate_qps": "1",
+    "nominal_serial_condition": false,
+    "condition_index": 9,
+    "A": "B0-matched",
+    "B": "B1-pipelined"
+  },
+  "schedule_file": "schedules/pair049.json",
+  "schedule_sha256": "cffa8e955c866d0524660727fbc39fe83e0f24275bd9d675d6ba90e4966edcbe",
+  "arrival_hash": "31611a447d9089bb172b8763a5f2ebe2f21dded1ea27cfa0c0dfcf27b1577f0d"
+}

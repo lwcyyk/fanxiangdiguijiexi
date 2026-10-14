@@ -1,0 +1,20 @@
+{
+  "status": "VERIFIED",
+  "archive": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq5-formal26-batch10-v11-20261005T1320BJT-archives\\batch.zip",
+  "bytes": 581221699,
+  "sha256": "ffa8332ac6f8730c2fa815917546c9b0fdc81719c57cf597fe7b7467ca6a0e1a",
+  "file_count": 13543,
+  "pair_numbers": [
+    90,
+    91,
+    92,
+    93,
+    94,
+    95,
+    96,
+    97,
+    98,
+    99
+  ],
+  "raw_unique_or_unverified_deleted": false
+}

@@ -1,0 +1,18 @@
+\begin{table*}[t]
+\centering\small
+\setlength{\tabcolsep}{3.5pt}
+\caption{RQ2 publication-to-observation intervals (s) over 30 episodes: 15 UDP and 15 TCP. Dual-node and accepted-view entries are controller-monotonic polling upper bounds. First-query rejection/release entries use controller/client wall-clock differences without a calibrated offset bound. These publication observations are separate from RQ5 request latency.}
+\label{tab:revocation}
+\begin{tabularx}{\textwidth}{@{}Xr r@{}}
+\toprule
+Observed milestone & Median (s) & P95 (s) \\
+\midrule
+Revocation: dual-node observation & 31.69 & 34.55 \\
+Revocation: accepted view observed & 56.36 & 60.46 \\
+Revocation: first observed rejection & 64.31 & 69.77 \\
+Reactivation: dual-node observation & 31.16 & 34.03 \\
+Reactivation: accepted view observed & 56.24 & 59.13 \\
+Reactivation: first restored release & 63.00 & 65.85 \\
+\bottomrule
+\end{tabularx}
+\end{table*}

@@ -1,0 +1,9 @@
+{
+  "status": "FORMAL_COMPLETED",
+  "verified_queries": 110,
+  "attacks": 100,
+  "controls": 10,
+  "formal_attack_trials": 100,
+  "restoration_ok": true,
+  "finished": "2026-09-20T20:58:24.156890+00:00"
+}

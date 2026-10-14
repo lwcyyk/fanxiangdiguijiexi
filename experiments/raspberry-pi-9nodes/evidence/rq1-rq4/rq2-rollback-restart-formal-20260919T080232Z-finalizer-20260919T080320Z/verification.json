@@ -1,0 +1,27 @@
+{
+  "status": "RQ2_ROLLBACK_RESTART_FORMAL_INDEPENDENTLY_FINALIZED",
+  "campaign": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-rollback-restart-formal-20260919T080232Z",
+  "family": "rollback-restart",
+  "layer": "isolated-production-verifier",
+  "formal_samples": 100,
+  "by_transport": {
+    "udp": 50,
+    "tcp": 50
+  },
+  "safe_rejects": 100,
+  "unsafe_accepts": 0,
+  "atomic_state_preserved": 100,
+  "unique_candidates": 100,
+  "restart_process_boundary_trials": 100,
+  "manifest_entries": 532,
+  "manifest_mismatches": [],
+  "unexpected_files": [],
+  "runtime_drift": [],
+  "online_registry_mutated": false,
+  "live_registry_unchanged": true,
+  "readiness": {
+    "19108": 204,
+    "19109": 204
+  },
+  "completed": "2026-09-19T08:03:43.565777+00:00"
+}

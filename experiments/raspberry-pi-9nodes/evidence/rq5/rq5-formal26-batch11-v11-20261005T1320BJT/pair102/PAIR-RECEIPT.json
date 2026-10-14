@@ -1,0 +1,13 @@
+{
+  "status": "VALID_FORMAL_PAIR",
+  "pair_number": 102,
+  "order": [
+    "B0-matched",
+    "B1-pipelined"
+  ],
+  "block_receipts": [
+    "VALID_FORMAL_BLOCK",
+    "VALID_FORMAL_BLOCK"
+  ],
+  "power_stability_claimed": false
+}

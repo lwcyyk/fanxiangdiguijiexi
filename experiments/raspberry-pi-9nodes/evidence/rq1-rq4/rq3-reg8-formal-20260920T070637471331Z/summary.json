@@ -1,0 +1,23 @@
+{
+  "status": "COLLECTED",
+  "family": "conflicting-registration",
+  "count": 1000,
+  "baseline_count": 1000,
+  "exact_conflicts_rejected": 1000,
+  "unexpected_errors": 0,
+  "variant_counts": {
+    "context-id": 500,
+    "hop-id": 500
+  },
+  "fresh_control_accepts": 1000,
+  "replay_excluded_metadata": [
+    "ri_v3_query_contexts.created_at"
+  ],
+  "physical_trials": 0,
+  "source_campaign": null,
+  "ready": {
+    "19108": 204,
+    "19109": 204
+  },
+  "finished": "2026-09-20T07:07:48.832460+00:00"
+}

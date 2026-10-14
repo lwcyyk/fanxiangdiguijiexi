@@ -1,0 +1,67 @@
+{
+  "client": {
+    "ok": true,
+    "hostname": "ri-client",
+    "ready": null,
+    "temporary_processes": 0
+  },
+  "management": {
+    "ok": true,
+    "hostname": "ri-management",
+    "ready": {
+      "19108": {
+        "rc": 0,
+        "stdout": "204",
+        "stderr": ""
+      },
+      "19109": {
+        "rc": 0,
+        "stdout": "204",
+        "stderr": ""
+      }
+    },
+    "temporary_processes": 0
+  },
+  "norn-a": {
+    "ok": true,
+    "hostname": "ri-norn-a",
+    "ready": null,
+    "temporary_processes": 0
+  },
+  "r1": {
+    "ok": true,
+    "hostname": "ri-r1",
+    "ready": null,
+    "temporary_processes": 0
+  },
+  "r2": {
+    "ok": true,
+    "hostname": "ri-r2",
+    "ready": null,
+    "temporary_processes": 0
+  },
+  "r3": {
+    "ok": true,
+    "hostname": "ri-r3",
+    "ready": null,
+    "temporary_processes": 0
+  },
+  "authdns": {
+    "ok": true,
+    "hostname": "ri-authdns",
+    "ready": null,
+    "temporary_processes": 0
+  },
+  "monitor": {
+    "ok": true,
+    "hostname": "ri-monitor",
+    "ready": null,
+    "temporary_processes": 0
+  },
+  "test": {
+    "ok": true,
+    "hostname": "ri-test",
+    "ready": null,
+    "temporary_processes": 0
+  }
+}

@@ -1,0 +1,36 @@
+\begin{table*}[t]
+\centering\small
+\setlength{\tabcolsep}{3.5pt}
+\caption{RQ3 component coverage: 24 cells with 1,000 fixtures/groups each. Counting units depend on the interface, and variants may share source Graphs. The four jointly re-signed pilot acceptances are reported separately; these cells are not independent physical-query samples.}
+\label{tab:rq3-components}
+\begin{tabularx}{\textwidth}{@{}X X r@{}}
+\toprule
+Cell & Component scope & Fixtures/groups \\
+\midrule
+same-root-same-attempt-race & Store consumption race & 1000 \\
+same-root-different-attempt-race & Store consumption race & 1000 \\
+held-response-substitution & Held-byte binding & 1000 \\
+changed-challenge & Store non-reuse & 1000 \\
+crash-before-emit-replay & Store reopen/non-reuse & 1000 \\
+cross-root & Signed Graph references & 1000 \\
+wrong-parent & Signed Graph references & 1000 \\
+cross-trace & Signed reference conflict & 1000 \\
+terminal-swap & Signed reference conflict & 1000 \\
+pre-registration-old-event & Local Agent/Context/Store & 1000 \\
+CQ-bind-race & Local Agent/Context/Store & 1000 \\
+event-reorder & Local Agent/Context/Store & 1000 \\
+expired & Local Agent/Context/Store & 1000 \\
+closed & Local Agent/Context/Store & 1000 \\
+event-delay & Local Agent/Context/Store & 1000 \\
+cross-attempt & Local Agent/Context/Store & 1000 \\
+failed-retry-branch & Local Agent/Context/Store & 1000 \\
+same-digest & Local Agent/Context/Store & 1000 \\
+TXID-reuse & Local Agent/Context/Store & 1000 \\
+duplicate-nonce-conflict & Context/Hop ID conflict (no independent nonce field) & 1000 \\
+old-graph & Graph validity time & 1000 \\
+sibling & Local Agent/Context/Store & 1000 \\
+two-candidate-contributions & Graph ambiguity & 1000 \\
+non-selected-source & Local Agent/Context/Store & 1000 \\
+\bottomrule
+\end{tabularx}
+\end{table*}

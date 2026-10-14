@@ -1,0 +1,15 @@
+{
+  "restored": true,
+  "errors": {},
+  "configuration_matches_initial": {
+    "r1": true,
+    "r2": true
+  },
+  "management_service_identity_unchanged": true,
+  "ready": {
+    "19108": "204",
+    "19109": "204"
+  },
+  "normal_dns_pending": true,
+  "formal_samples_added": 0
+}

@@ -1,0 +1,28 @@
+{
+  "status": "INDEPENDENT_PHYSICAL_PILOT_VERIFIED",
+  "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq3-held-v17e-pilot-20260920T144123514607Z",
+  "verified_pilot_queries": 4,
+  "baseline_delivered": 2,
+  "candidate_graph_binding_rejected_without_delivery": 2,
+  "negative_verifier_controls": 8,
+  "replayed_graph_authority_decisions": 4,
+  "source_manifest_entries": 409,
+  "source_unchanged": true,
+  "restored": {
+    "restored": true,
+    "ready": {
+      "19108": 204,
+      "19109": 204
+    }
+  },
+  "formal_physical_samples": 0,
+  "formal_synchronized_groups": 0,
+  "formal_ablation_pairs": 0,
+  "limitations": [
+    "Uses cfg(test) owned-LAN Wrapper entry on ARM with production prepare/emit; not replacement of online service.",
+    "One family pilot only; not full physical RQ3 matrix.",
+    "HTTP status logs are not comprehensively collected; no blanket HTTP422=0 claim.",
+    "Independent finalizer reuses frozen production/gate functions; this is independent execution, not an independently implemented protocol."
+  ],
+  "finished": "2026-09-20T14:49:50.135224+00:00"
+}

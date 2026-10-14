@@ -1,0 +1,24 @@
+{
+  "status": "INCOMPLETE_ENGINEERING_EVIDENCE",
+  "planned_formal_samples": 100,
+  "formal_samples": 0,
+  "udp": 50,
+  "tcp": 50,
+  "diagnostic_controls": 2,
+  "unique_roots": 100,
+  "unique_root_attempts": 100,
+  "unique_graph_digests": 100,
+  "failure": "AssertionError(('revoked-formal-009-udp', 'r1', 'outbound-context', [{'rowid': 19, 'query_context_id': 'ctx-f43583375ea07a0107fd80f427d7e5c5', 'root_query_context_id': 'bc8067fe6669ef5b1b862b3f11c9938be70e244d2765488d2a4707dec708d797', 'attempt_id': 'ctx-66f37be95666b7a5e935eb6942ad6cc9', 'hop_context_id': 'ctx-f43583375ea07a0107fd80f427d7e5c5', 'parent_context_id': '87afd7b2a2c4986d5a9e4abfda40afe6e99b5dad500133081e895e8ea6d2c346', 'source_server_id': 'operator/L01/r1', 'target_server_id': 'operator/L01/r2', 'internal_transaction_id': 30124, 'query_digest': '0x8fe8b011a0710e07b130166081ad8b6a28d10500e1608c72066943e5cfd8c732', 'expected_endpoint_json': '{\"ip\":\"192.168.10.254\",\"port\":5353,\"transport\":\"tcp\"}', 'state': 'REGISTERED', 'min_event_rowid': 2415, 'registered_at': 1789798380, 'expires_at': 1789798680, 'bound_trace_id': None, 'bound_client_query_event_id': None, 'bound_terminal_event_id': None, 'created_at': '2026-09-19 06:13:00'}, {'rowid': 20, 'query_context_id': 'ctx-de0668c130379835dd26883f4e83335e', 'root_query_context_id': 'bc8067fe6669ef5b1b862b3f11c9938be70e244d2765488d2a4707dec708d797', 'attempt_id': '84143084e49ae03f341c2331ab9fa97e', 'hop_context_id': 'ctx-de0668c130379835dd26883f4e83335e', 'parent_context_id': '87afd7b2a2c4986d5a9e4abfda40afe6e99b5dad500133081e895e8ea6d2c346', 'source_server_id': 'operator/L01/r1', 'target_server_id': 'operator/L01/r2', 'internal_transaction_id': 53378, 'query_digest': '0x1dfabcd3dd39a4d1503254e9254989d99bd6b32d93dd0033c0e31d9a32d83754', 'expected_endpoint_json': '{\"ip\":\"192.168.10.254\",\"port\":5353,\"transport\":\"tcp\"}', 'state': 'REGISTERED', 'min_event_rowid': 2417, 'registered_at': 1789798380, 'expires_at': 1789798380, 'bound_trace_id': None, 'bound_client_query_event_id': None, 'bound_terminal_event_id': None, 'created_at': '2026-09-19 06:13:00'}]))",
+  "recovery_failure": null,
+  "registry_restored": true,
+  "internal_tcp_restored": true,
+  "profile_b_restored": true,
+  "verified_internal_tcp_lineages": 0,
+  "runtime_drift": [],
+  "final_ready": {
+    "19108": 204,
+    "19109": 204
+  },
+  "final_snapshot_version": 33,
+  "finished": "2026-09-19T06:25:39.134932+00:00"
+}

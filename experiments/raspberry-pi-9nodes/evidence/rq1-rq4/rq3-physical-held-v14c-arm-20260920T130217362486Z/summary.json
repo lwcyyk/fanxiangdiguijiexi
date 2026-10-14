@@ -1,0 +1,14 @@
+{
+  "status": "ARM_TEST_BINARY_BUILT_NOT_EXECUTED",
+  "artifacts": [
+    {
+      "path": "D:\\backup\\paper-execution-v20260920-physical-held-v14b\\arm-target-v14c\\aarch64-unknown-linux-gnu\\debug\\deps\\ri_wrapper-214ba56ffc8ea268",
+      "sha256": "fc9e1b609e913f6b272f84ed41eba1a2c6a968f347120ba39a211d6c3b7e4100",
+      "bytes": 98865144
+    }
+  ],
+  "formal_samples": 0,
+  "physical_queries": 0,
+  "online_deployed": false,
+  "finished": "2026-09-20T13:04:35.655922+00:00"
+}

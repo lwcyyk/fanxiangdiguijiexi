@@ -1,0 +1,66 @@
+{
+  "status": "PILOT_VERIFIED",
+  "baselines": 4,
+  "expected_rejects": 4,
+  "formal_samples": 0,
+  "physical_trials": 0,
+  "results": [
+    {
+      "root": "ns13-920T110123362427Z-0000",
+      "attempt": "ns13-920T110123362427Z-0000-attempt",
+      "trace": "knot-678a457f4106c2721238e0884aedfe8d",
+      "baseline": 200,
+      "candidate": 503,
+      "reason": "identity evidence unavailable: trace terminal ancestry violates producer lineage",
+      "winner_hop": "ctx-dabf7c75780318c7a172abfa79e3ecd0",
+      "excluded_hop": "ctx-9bce8ec29efdfd97870de3d4191e5cec",
+      "mutation_fields": [
+        "terminal.parent_event_id"
+      ]
+    },
+    {
+      "root": "ns13-920T110123362427Z-0001",
+      "attempt": "ns13-920T110123362427Z-0001-attempt",
+      "trace": "knot-a3b767b5bf2af510070ec44ce886bd8d",
+      "baseline": 200,
+      "candidate": 503,
+      "reason": "identity evidence unavailable: trace terminal ancestry violates producer lineage",
+      "winner_hop": "ctx-faedad3df6c2357bd505357836346aa1",
+      "excluded_hop": "ctx-459de5cfdd8f99154f665c6943680410",
+      "mutation_fields": [
+        "terminal.parent_event_id"
+      ]
+    },
+    {
+      "root": "ns13-920T110123362427Z-0002",
+      "attempt": "ns13-920T110123362427Z-0002-attempt",
+      "trace": "knot-c00e2eb82a9bcb26419cad10b2f0a958",
+      "baseline": 200,
+      "candidate": 503,
+      "reason": "identity evidence unavailable: trace terminal ancestry violates producer lineage",
+      "winner_hop": "ctx-1d1a361ec77707321710e79d98b88da0",
+      "excluded_hop": "ctx-90d6d7fa7d02c2642b9c25a2bfd336d8",
+      "mutation_fields": [
+        "terminal.parent_event_id"
+      ]
+    },
+    {
+      "root": "ns13-920T110123362427Z-0003",
+      "attempt": "ns13-920T110123362427Z-0003-attempt",
+      "trace": "knot-05e1b3c1abbb3829837c1713e8c15330",
+      "baseline": 200,
+      "candidate": 503,
+      "reason": "identity evidence unavailable: trace terminal ancestry violates producer lineage",
+      "winner_hop": "ctx-fd6bd9f2da3b5103eddb7efca57fe141",
+      "excluded_hop": "ctx-97a8479f9c1b9b8bfc5c7ec2c2386a51",
+      "mutation_fields": [
+        "terminal.parent_event_id"
+      ]
+    }
+  ],
+  "ready": {
+    "19108": 204,
+    "19109": 204
+  },
+  "registry": 104
+}

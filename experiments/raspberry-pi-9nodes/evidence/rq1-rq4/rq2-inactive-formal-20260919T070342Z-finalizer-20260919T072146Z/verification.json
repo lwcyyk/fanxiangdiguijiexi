@@ -1,0 +1,30 @@
+{
+  "status": "RQ2_INACTIVE_UDP_TCP_FORMAL_INDEPENDENTLY_FINALIZED",
+  "classification": "formal-rq2-signed-semantic-r2-inactive",
+  "mutation_status": "INACTIVE",
+  "campaign": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-inactive-formal-20260919T070342Z",
+  "formal_samples": 100,
+  "udp": 50,
+  "tcp": 50,
+  "identity_rejections": 100,
+  "unique_roots": 100,
+  "unique_root_attempts": 100,
+  "unique_graph_digests": 100,
+  "verified_internal_tcp_lineages": 100,
+  "dnssec_auxiliary_trials_separated_from_graph": 1,
+  "http_422": 0,
+  "wire_status": "MATCHED",
+  "rejection_delivery_trials": 100,
+  "diagnostic_controls": 4,
+  "frozen_scripts_match": true,
+  "frozen_manifest_entries": 1549,
+  "frozen_manifest_mismatches": [],
+  "live_runtime_drift": [],
+  "final_ready": {
+    "19108": 204,
+    "19109": 204
+  },
+  "registry_nodes_match": true,
+  "final_snapshot_version": 42,
+  "created": "2026-09-19T07:22:00.252580+00:00"
+}

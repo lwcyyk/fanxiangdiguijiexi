@@ -1,0 +1,19 @@
+{
+  "status": "STOPPED_WITH_EVIDENCE",
+  "condition": "UDP-fallback",
+  "verified_measured": 0,
+  "completed_batches": 0,
+  "planned_batches": 10,
+  "http_422": null,
+  "endpoint_trials": 0,
+  "wire_response_events": 0,
+  "runtime_drift": [],
+  "final_health": {
+    "19108": 204,
+    "19109": 204
+  },
+  "failure": "RuntimeError('AssertionError()')",
+  "other_RQ1_conditions_complete": false,
+  "records": [],
+  "finished": "2026-09-18T08:03:51.747912+00:00"
+}

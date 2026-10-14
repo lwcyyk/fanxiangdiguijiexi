@@ -1,0 +1,14 @@
+{
+  "status": "COLLECTED_PENDING_INDEPENDENT_RECHECK",
+  "mode": "pilot",
+  "cell": "component-event-reorder",
+  "verified_units": 2,
+  "baseline_accepts": 2,
+  "safe_rejects": 2,
+  "formal_samples": 0,
+  "collected_formal_candidates": 0,
+  "unsafe_or_errors": 0,
+  "physical_trials": 0,
+  "scope": "isolated fresh production Store instances; terminal-before-client sequence followed by complete lineage recovery; unique identifiers; not physical DNS trials or 1000 semantic attack types",
+  "finished": "2026-09-20T03:00:46.356657+00:00"
+}

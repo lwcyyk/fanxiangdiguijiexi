@@ -1,0 +1,24 @@
+{
+  "pair_number": 88,
+  "repeat": 4,
+  "batch_number": 9,
+  "order_label": "AB",
+  "mode_order": [
+    "B0-matched",
+    "B1-pipelined"
+  ],
+  "condition": {
+    "profile_id": "D2-UDP-cold",
+    "depth": 2,
+    "kind": "cold",
+    "nominal_transport": "udp",
+    "offered_rate_qps": "1",
+    "nominal_serial_condition": false,
+    "condition_index": 17,
+    "A": "B0-matched",
+    "B": "B1-pipelined"
+  },
+  "schedule_file": "schedules/pair088.json",
+  "schedule_sha256": "bf54d6998b1523eb11516c41784e78d593d027b3c7bf91f590bf9b15511f6713",
+  "arrival_hash": "2d096d1d40562319e88f3962809dfc339b0defb9a0a3ad4edb2a7d61978da93b"
+}

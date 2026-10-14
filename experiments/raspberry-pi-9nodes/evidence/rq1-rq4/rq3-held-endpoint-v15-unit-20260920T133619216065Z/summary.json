@@ -1,0 +1,11 @@
+{
+  "status": "OFFLINE_ENDPOINT_SUBGATE_UNIT_PASSED",
+  "tests": 36,
+  "failures": 0,
+  "physical_queries": 0,
+  "formal_samples": 0,
+  "online_changes": false,
+  "full_physical_trial_verified": false,
+  "next": "complete Graph/Context/Trace and six-node physical coordinator before pilot",
+  "finished": "2026-09-20T13:36:19.488404+00:00"
+}

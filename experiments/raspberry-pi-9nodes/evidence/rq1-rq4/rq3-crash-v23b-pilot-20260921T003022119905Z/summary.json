@@ -1,0 +1,9 @@
+{
+  "status": "PILOT_COMPLETED",
+  "verified_queries": 4,
+  "attacks": 2,
+  "controls": 2,
+  "formal_attack_trials": 0,
+  "restoration_ok": true,
+  "finished": "2026-09-21T00:34:21.048417+00:00"
+}

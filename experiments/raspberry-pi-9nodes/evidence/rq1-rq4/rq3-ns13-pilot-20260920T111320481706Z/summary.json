@@ -1,0 +1,68 @@
+{
+  "status": "PILOT_VERIFIED",
+  "source": null,
+  "results": [
+    {
+      "root": "ns13-920T111320481706Z-0000",
+      "attempt": "ns13-920T111320481706Z-0000-attempt",
+      "trace": "knot-a64dffc87f6a0efbb61ad108f3c3c719",
+      "baseline": 200,
+      "candidate": 503,
+      "reason": "identity evidence unavailable: trace terminal ancestry violates producer lineage",
+      "winner_hop": "ctx-71601a43ee0a01839f298cf341f6e398",
+      "excluded_hop": "ctx-f7722e843723691aa6729593277b6ebc",
+      "mutation_fields": [
+        "terminal.parent_event_id"
+      ]
+    },
+    {
+      "root": "ns13-920T111320481706Z-0001",
+      "attempt": "ns13-920T111320481706Z-0001-attempt",
+      "trace": "knot-bc60584773bfbcd0510943fe8eb332da",
+      "baseline": 200,
+      "candidate": 503,
+      "reason": "identity evidence unavailable: trace terminal ancestry violates producer lineage",
+      "winner_hop": "ctx-209483e1cb3cc662d887e09fb6d303c8",
+      "excluded_hop": "ctx-18f3dcdc0a7e65984a932432fce168a4",
+      "mutation_fields": [
+        "terminal.parent_event_id"
+      ]
+    },
+    {
+      "root": "ns13-920T111320481706Z-0002",
+      "attempt": "ns13-920T111320481706Z-0002-attempt",
+      "trace": "knot-736a7389eab24d4678c5db25601b8683",
+      "baseline": 200,
+      "candidate": 503,
+      "reason": "identity evidence unavailable: trace terminal ancestry violates producer lineage",
+      "winner_hop": "ctx-afae966e6e665f4b60a7ff031220f810",
+      "excluded_hop": "ctx-acffd8a7a7608e1f3abbc4cdf3002e77",
+      "mutation_fields": [
+        "terminal.parent_event_id"
+      ]
+    },
+    {
+      "root": "ns13-920T111320481706Z-0003",
+      "attempt": "ns13-920T111320481706Z-0003-attempt",
+      "trace": "knot-d65a65235783cf9fb985f9e81965a320",
+      "baseline": 200,
+      "candidate": 503,
+      "reason": "identity evidence unavailable: trace terminal ancestry violates producer lineage",
+      "winner_hop": "ctx-0b806d9b88d9709d8ed1ee8d967e23dc",
+      "excluded_hop": "ctx-43a722dddf384fd9f8a0287ba86b91f9",
+      "mutation_fields": [
+        "terminal.parent_event_id"
+      ]
+    }
+  ],
+  "component_candidates": 4,
+  "baseline_accepts": 4,
+  "exact_rejects": 4,
+  "physical_trials": 0,
+  "new_formal_samples": 0,
+  "ready": {
+    "19108": 204,
+    "19109": 204
+  },
+  "registry": 104
+}

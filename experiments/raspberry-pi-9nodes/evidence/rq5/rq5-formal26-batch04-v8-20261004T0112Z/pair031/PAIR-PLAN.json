@@ -1,0 +1,24 @@
+{
+  "pair_number": 31,
+  "repeat": 2,
+  "batch_number": 4,
+  "order_label": "BA",
+  "mode_order": [
+    "B1-pipelined",
+    "B0-matched"
+  ],
+  "condition": {
+    "profile_id": "D3-TCP-mix",
+    "depth": 3,
+    "kind": "mix",
+    "nominal_transport": "tcp",
+    "offered_rate_qps": "1",
+    "nominal_serial_condition": false,
+    "condition_index": 6,
+    "A": "B0-matched",
+    "B": "B1-pipelined"
+  },
+  "schedule_file": "schedules/pair031.json",
+  "schedule_sha256": "875ed44c1524e5886b51e5e372d1214d7b38b6f19e9bbaaf7fc38d2b3ab55c13",
+  "arrival_hash": "11a738ade76b0cf2ab9dd2939c23d48444ad7f7641c3a0b8a4920a6b89d11cc1"
+}

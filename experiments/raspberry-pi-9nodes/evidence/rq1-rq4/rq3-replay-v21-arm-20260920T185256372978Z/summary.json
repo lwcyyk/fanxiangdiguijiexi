@@ -1,0 +1,11 @@
+{
+  "status": "ARM_REPLAY_SMOKE_PASSED_PILOT_PENDING",
+  "passed": 2,
+  "remote_binary": "/tmp/ri-rq3-v21-unit.aUNgZf/wrapper-tests",
+  "binary_sha256": "c6abae29c715bc5d3dccb7044d475e77cdf138b4599075c948f2a8cd1b0ad0c4",
+  "binary": "D:\\backup\\paper-execution-v20260921-physical-replay-v21\\arm-target\\aarch64-unknown-linux-gnu\\debug\\deps\\ri_wrapper-4def04771b0715ac",
+  "physical_queries": 0,
+  "formal_samples": 0,
+  "source": "D:\\backup\\paper-execution-v20260921-physical-replay-v21\\rust",
+  "finished": "2026-09-20T18:55:39.540510+00:00"
+}

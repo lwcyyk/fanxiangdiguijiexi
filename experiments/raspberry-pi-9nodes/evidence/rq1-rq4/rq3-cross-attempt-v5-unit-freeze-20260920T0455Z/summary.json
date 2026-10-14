@@ -1,0 +1,10 @@
+{
+  "status": "RQ3_CROSS_ATTEMPT_V5_UNIT_FREEZE_PASSED",
+  "rust_tests": 14,
+  "python_tests": 12,
+  "evaluator_sha256": "3014a1fd7bc5b4db8aee695be073fa9138096d835ebfc993f9b6bc1c5bcb8ec3",
+  "source_sha256": "02cdacd52688e76f840bac44899d159e7ab077043f9270ca40dd5d7aa8f49d34",
+  "retained_v2_sha256": "1eafec5d428dbea3bfa5d8e981c80b73e6d973ba7ba62aa37e21fb546bb1a6e1",
+  "formal_samples": 0,
+  "completed": "2026-09-20T04:56:09.979837+00:00"
+}

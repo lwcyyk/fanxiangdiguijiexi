@@ -1,0 +1,17 @@
+{
+  "status": "RQ3_COMPONENT_CROSS_ATTEMPT_CONSUME_COMPLETE",
+  "formal_samples": 1000,
+  "baseline_accepts": 1000,
+  "attack_safe_rejects": 1000,
+  "unsafe_or_errors": 0,
+  "successful_attack_consumptions": 1000,
+  "rejected_attack_consumptions": 7000,
+  "workers_per_attack": 8,
+  "runtime_drift": [],
+  "online_registry_unchanged": true,
+  "health": {
+    "19108": 204,
+    "19109": 204
+  },
+  "completed": "2026-09-19T14:01:28.088575+00:00"
+}

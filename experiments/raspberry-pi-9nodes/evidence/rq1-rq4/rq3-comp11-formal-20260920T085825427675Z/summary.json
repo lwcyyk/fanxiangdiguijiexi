@@ -1,0 +1,19 @@
+{
+  "status": "COLLECTED",
+  "cell": "component-two-candidate-contributions",
+  "count": 1000,
+  "singleton_acceptances": 2000,
+  "exact_competing_rejections": 1000,
+  "production_validator_decisions": 3000,
+  "preparation_graphs": 1000,
+  "unexpected_errors": 0,
+  "physical_trials": 0,
+  "scope": "Synthetic signed competing Graph operations; production EvidenceValidator execution-only; each singleton accepted; combined rejected. Preparation uses isolated Agent/Store loopback. Not physical DNS, Producer, Registry authority, candidate consumption or Wrapper release.",
+  "source_campaign": null,
+  "ready": {
+    "19108": 204,
+    "19109": 204
+  },
+  "registry_version": 104,
+  "finished": "2026-09-20T09:04:11.333547+00:00"
+}

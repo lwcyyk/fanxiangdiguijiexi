@@ -1,0 +1,24 @@
+{
+  "pair_number": 35,
+  "repeat": 1,
+  "batch_number": 4,
+  "order_label": "BA",
+  "mode_order": [
+    "B1-pipelined",
+    "B0-matched"
+  ],
+  "condition": {
+    "profile_id": "D3-TCP-NXDOMAIN",
+    "depth": 3,
+    "kind": "NXDOMAIN",
+    "nominal_transport": "tcp",
+    "offered_rate_qps": "1",
+    "nominal_serial_condition": false,
+    "condition_index": 7,
+    "A": "B0-matched",
+    "B": "B1-pipelined"
+  },
+  "schedule_file": "schedules/pair035.json",
+  "schedule_sha256": "a9b632bf76812b06823c9cea17aee2d4af73b74643ffabc90cfcb94f55327878",
+  "arrival_hash": "06d9c3809bdef66966a6ddaf5cb9761d81ae2a5db58c0cde94e577bc8679eafa"
+}

@@ -1,0 +1,22 @@
+{
+  "status": "COORDINATOR_UNIT_PASSED",
+  "tests": 29,
+  "source_hashes": {
+    "D:\\backup\\paper_rq3_held_v17_pilot_20260920.py": "6a5981c48571ca8dacda6a3e97531f88712e76e6cc7aa912e7ffba6f4f0b0e70",
+    "D:\\backup\\paper_rq3_held_v17_worker_20260920.py": "0be5482f3f2ff9560a89fac6195c99907e1c9e735a124dec069d0b3fb97f0312",
+    "D:\\backup\\paper_rq3_preemit_v16_20260920.py": "224657a56b9db8fdb09619da5417c1dc731b8fcab5f89429ad26b39e52daf958",
+    "D:\\backup\\paper_rq3_held_endpoint_v15_20260920.py": "399fbb52f71682bb1920f7bf3911ec0a40381ae67341737790e6e927f7a658e0",
+    "D:\\backup\\paper_rq3_held_pcap_v15_20260920.py": "725ad3b8c9fbc424a6c8f5fdfac468da05dc861d864fe247854687f6e9f73f9d",
+    "D:\\backup\\paper_rq3_held_v17_preflight_20260920.py": "79dcc72e9ea48f6333283808552385a5c56adc973147e0467ea38b822f34a349",
+    "D:\\backup\\paper_snapshot_query_20260917.py": "b58b04367924325cb4492a3bbd6abf29a80dda01d8048225d828a16a2fbe8570",
+    "D:\\backup\\paper_rq1_topology_20260917.py": "fc2fe3449b28f519d3ee1daeffc3b84e273d3923c5c316667c212cf2e18ed538",
+    "D:\\backup\\paper_rq2_support_20260917.py": "b2b4c56dfa17b602a3a8d9090cd9767c59336c13d75511e8521f4c37ea28e06b",
+    "D:\\backup\\paper_rq3_context_attempt_campaign_20260920.py": "aa0901c31f301d4932939d9ea6148237d306c2723cf1e4ec2e0b0508489543c8",
+    "D:\\backup\\paper_agent_recursive_campaign_20260917.py": "864c3cbe2e550c1875dbbc2e3d1e50931b2521d30a0682e1852c096b57d09aec",
+    "D:\\backup\\paper_rq3_nonselected_formal_v13c_20260920.py": "0996d1728b5abd938247a5bfb851e20c1db32f90ad1f2e63117b67fdc41d691b",
+    "D:\\backup\\paper-execution-v20260917\\rust\\target\\debug\\rq2_wrapper_registry_evaluator.exe": "695539c4f3755624640db0b9d732f6d68e8d7e03674eda85e0cd453935be9d30",
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-key-rotation-old-key-formal-20260919T090205Z\\issuer-keys.json": "8c06d0955eb9e4a7988f4fcd4ad8d475036a03432747bbb718d7258133b3c59c"
+  },
+  "formal_samples": 0,
+  "live_queries": 0
+}

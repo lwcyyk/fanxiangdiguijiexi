@@ -1,0 +1,691 @@
+{
+  "RQ1": [
+    {
+      "condition": "D1",
+      "udp": 100,
+      "tcp": 100,
+      "verified": 200,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-tcp-fixed-matrix-20260918T013346Z\\summary.json"
+    },
+    {
+      "condition": "D2",
+      "udp": 100,
+      "tcp": 100,
+      "verified": 200,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-tcp-fixed-matrix-20260918T013346Z\\summary.json"
+    },
+    {
+      "condition": "D3",
+      "udp": 100,
+      "tcp": 100,
+      "verified": 200,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-tcp-fixed-matrix-20260918T013346Z\\summary.json"
+    },
+    {
+      "condition": "cache-R1",
+      "udp": 100,
+      "tcp": 100,
+      "verified": 200,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-tcp-fixed-matrix-20260918T013346Z\\summary.json"
+    },
+    {
+      "condition": "cache-R2",
+      "udp": 100,
+      "tcp": 100,
+      "verified": 200,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-tcp-fixed-matrix-20260918T013346Z\\summary.json"
+    },
+    {
+      "condition": "cache-R3",
+      "udp": 100,
+      "tcp": 100,
+      "verified": 200,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-tcp-fixed-matrix-20260918T013346Z\\summary.json"
+    },
+    {
+      "condition": "NXDOMAIN",
+      "udp": 100,
+      "tcp": 100,
+      "verified": 200,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-nxdomain-formal-20260918T045433Z-finalizer-20260918T052830Z\\verification.json"
+    },
+    {
+      "condition": "Retry winner",
+      "udp": 100,
+      "tcp": 100,
+      "verified": 200,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-retry-winner-formal-20260918T054617Z-finalizer-20260918T070056Z\\verification.json"
+    },
+    {
+      "condition": "Truncation/fallback",
+      "udp": 100,
+      "tcp": 100,
+      "verified": 200,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-udp-fallback-formal-20260918T082710Z-finalizer-20260918T090345Z\\verification.json"
+    },
+    {
+      "condition": "Profile B",
+      "udp": 100,
+      "tcp": 100,
+      "verified": 200,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-profile-b-formal-20260919T032259Z-finalizer-20260919T034332Z\\verification.json"
+    },
+    {
+      "condition": "Profile A/B switch",
+      "udp": 100,
+      "tcp": 100,
+      "verified": 200,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-profile-switch-formal-20260919T035832Z-finalizer-20260919T042656Z\\verification.json"
+    }
+  ],
+  "RQ2": [
+    {
+      "family": "revoked-R2",
+      "layer": "live-DNS",
+      "cases": 100,
+      "rejects": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-revoked-formal-20260919T062757Z-finalizer-20260919T064600Z\\verification.json",
+      "recorded_verdict": "RQ2_REVOKED_UDP_TCP_FORMAL_INDEPENDENTLY_FINALIZED"
+    },
+    {
+      "family": "inactive-R2",
+      "layer": "live-DNS",
+      "cases": 100,
+      "rejects": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-inactive-formal-20260919T070342Z-finalizer-20260919T072146Z\\verification.json",
+      "recorded_verdict": "RQ2_INACTIVE_UDP_TCP_FORMAL_INDEPENDENTLY_FINALIZED"
+    },
+    {
+      "family": "invalid-signature",
+      "layer": "isolated-production-verifier",
+      "cases": 100,
+      "rejects": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-invalid-signature-formal-20260919T073856Z-finalizer-20260919T074038Z\\verification.json",
+      "recorded_verdict": "RQ2_INVALID_SIGNATURE_FORMAL_INDEPENDENTLY_FINALIZED"
+    },
+    {
+      "family": "invalid-schema-signed-fixture",
+      "layer": "isolated-production-verifier",
+      "cases": 100,
+      "rejects": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-invalid-schema-formal-20260919T074749Z-finalizer-20260919T074845Z\\verification.json",
+      "recorded_verdict": "RQ2_INVALID_SCHEMA_FORMAL_INDEPENDENTLY_FINALIZED"
+    },
+    {
+      "family": "stale-signed-snapshot",
+      "layer": "isolated-production-verifier",
+      "cases": 100,
+      "rejects": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-stale-signed-snapshot-formal-20260919T075050Z-finalizer-20260919T075143Z\\verification.json",
+      "recorded_verdict": "RQ2_STALE_SIGNED_SNAPSHOT_FORMAL_INDEPENDENTLY_FINALIZED"
+    },
+    {
+      "family": "rollback-live",
+      "layer": "isolated-production-verifier",
+      "cases": 100,
+      "rejects": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-rollback-live-formal-20260919T080001Z-finalizer-20260919T080128Z\\verification.json",
+      "recorded_verdict": "RQ2_ROLLBACK_LIVE_FORMAL_INDEPENDENTLY_FINALIZED"
+    },
+    {
+      "family": "rollback-restart",
+      "layer": "isolated-production-verifier",
+      "cases": 100,
+      "rejects": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-rollback-restart-formal-20260919T080232Z-finalizer-20260919T080320Z\\verification.json",
+      "recorded_verdict": "RQ2_ROLLBACK_RESTART_FORMAL_INDEPENDENTLY_FINALIZED"
+    },
+    {
+      "family": "same-height-conflict",
+      "layer": "isolated-production-verifier",
+      "cases": 100,
+      "rejects": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-same-height-conflict-formal-20260919T083247Z-finalizer-20260919T083325Z\\verification.json",
+      "recorded_verdict": "RQ2_SAME_HEIGHT_CONFLICT_FORMAL_INDEPENDENTLY_FINALIZED"
+    },
+    {
+      "family": "unknown-identity",
+      "layer": "isolated-production-wrapper-registry-join",
+      "cases": 100,
+      "rejects": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-unknown-identity-formal-20260919T084624Z-finalizer-20260919T084709Z\\verification.json",
+      "recorded_verdict": "RQ2_UNKNOWN_IDENTITY_FORMAL_INDEPENDENTLY_FINALIZED"
+    },
+    {
+      "family": "wrong-role",
+      "layer": "isolated-production-wrapper-registry-join",
+      "cases": 100,
+      "rejects": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-wrong-role-formal-20260919T085523Z-finalizer-20260919T085624Z\\verification.json",
+      "recorded_verdict": "RQ2_WRONG_ROLE_FORMAL_INDEPENDENTLY_FINALIZED"
+    },
+    {
+      "family": "wrong-DNS-endpoint",
+      "layer": "isolated-production-wrapper-registry-join",
+      "cases": 100,
+      "rejects": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-wrong-DNS-endpoint-formal-20260919T085744Z-finalizer-20260919T085839Z\\verification.json",
+      "recorded_verdict": "RQ2_WRONG_DNS_ENDPOINT_FORMAL_INDEPENDENTLY_FINALIZED"
+    },
+    {
+      "family": "wrong-Agent-endpoint",
+      "layer": "isolated-production-wrapper-registry-join",
+      "cases": 100,
+      "rejects": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-wrong-Agent-endpoint-formal-20260919T085950Z-finalizer-20260919T090049Z\\verification.json",
+      "recorded_verdict": "RQ2_WRONG_AGENT_ENDPOINT_FORMAL_INDEPENDENTLY_FINALIZED"
+    },
+    {
+      "family": "key-rotation-old-key",
+      "layer": "isolated-production-wrapper-registry-join",
+      "cases": 100,
+      "rejects": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-key-rotation-old-key-formal-20260919T090205Z-finalizer-20260919T090311Z\\verification.json",
+      "recorded_verdict": "RQ2_KEY_ROTATION_OLD_KEY_FORMAL_INDEPENDENTLY_FINALIZED"
+    },
+    {
+      "family": "wrong-key",
+      "layer": "isolated-production-identity-signature-verifier",
+      "cases": 100,
+      "rejects": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-wrong-key-formal-20260919T090913Z-finalizer-20260919T090952Z\\verification.json",
+      "recorded_verdict": "RQ2_WRONG_KEY_FORMAL_INDEPENDENTLY_FINALIZED"
+    },
+    {
+      "family": "embedded-Registry",
+      "layer": "isolated-Graph/Wrapper",
+      "cases": 100,
+      "rejects": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-embedded-Registry-formal-20260919T092236Z-finalizer-20260919T092519Z\\verification.json",
+      "recorded_verdict": "RQ2_EMBEDDED_REGISTRY_FORMAL_INDEPENDENTLY_FINALIZED"
+    },
+    {
+      "family": "wrong-terminal-role",
+      "layer": "isolated-Graph/Wrapper",
+      "cases": 100,
+      "rejects": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-wrong-terminal-role-formal-20260919T092648Z-finalizer-20260919T092822Z\\verification.json",
+      "recorded_verdict": "RQ2_WRONG_TERMINAL_ROLE_FORMAL_INDEPENDENTLY_FINALIZED"
+    },
+    {
+      "family": "unauthorized-external-boundary",
+      "layer": "isolated-Graph/Wrapper",
+      "cases": 100,
+      "rejects": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-unauthorized-external-boundary-formal-20260919T092947Z-finalizer-20260919T093108Z\\verification.json",
+      "recorded_verdict": "RQ2_UNAUTHORIZED_EXTERNAL_BOUNDARY_FORMAL_INDEPENDENTLY_FINALIZED"
+    }
+  ],
+  "RQ2_publication": {
+    "status": "RQ2_REVOCATION_PROPAGATION_FORMAL_INDEPENDENTLY_FINALIZED",
+    "campaign": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-revocation-propagation-formal-20260919T094504Z",
+    "formal_publication_episodes": 30,
+    "by_transport": {
+      "udp": 15,
+      "tcp": 15
+    },
+    "unique_revocation_transactions": 30,
+    "unique_restoration_transactions": 30,
+    "verified_identity_rejections": 30,
+    "verified_restored_releases": 30,
+    "manifest_entries": 6511,
+    "manifest_mismatches": [],
+    "unexpected_files": [],
+    "source_drift": {},
+    "runtime_drift": [],
+    "final_snapshot_version": 104,
+    "norn_a_b_identical": true,
+    "r2_status": "ACTIVE",
+    "readiness": {
+      "19108": 204,
+      "19109": 204
+    },
+    "profile_b_target": "operator/L01/r3",
+    "metrics": {
+      "revoked_dual_node_finality_upper_seconds": {
+        "count": 30,
+        "min": 27.10984529997222,
+        "median": 31.690927500021644,
+        "p95": 34.55327760009095,
+        "max": 41.40917919995263
+      },
+      "revoked_sync_accept_upper_seconds": {
+        "count": 30,
+        "min": 52.28421610011719,
+        "median": 56.35963275004178,
+        "p95": 60.46358050010167,
+        "max": 64.76441000006162
+      },
+      "first_identity_reject_seconds": {
+        "count": 30,
+        "min": 59.745728954,
+        "median": 64.3084246935,
+        "p95": 69.770002561,
+        "max": 72.681877552
+      },
+      "active_dual_node_finality_upper_seconds": {
+        "count": 30,
+        "min": 27.68250730005093,
+        "median": 31.157990450039506,
+        "p95": 34.025367700029165,
+        "max": 36.922573199961334
+      },
+      "active_sync_accept_upper_seconds": {
+        "count": 30,
+        "min": 51.598203300032765,
+        "median": 56.24454204994254,
+        "p95": 59.134764099959284,
+        "max": 62.1903297000099
+      },
+      "first_restored_release_seconds": {
+        "count": 30,
+        "min": 59.020075771,
+        "median": 62.9961989715,
+        "p95": 65.847817168,
+        "max": 68.967162575
+      }
+    },
+    "completed": "2026-09-19T11:25:49.044584+00:00"
+  },
+  "RQ3_component_cells": [
+    "component-same-root-same-attempt-race",
+    "component-same-root-different-attempt-race",
+    "component-held-response-substitution",
+    "component-changed-challenge",
+    "component-crash-before-emit-replay",
+    "component-cross-root",
+    "component-wrong-parent",
+    "component-cross-trace",
+    "component-terminal-swap",
+    "component-pre-registration-old-event",
+    "component-CQ-bind-race",
+    "component-event-reorder",
+    "component-expired",
+    "component-closed",
+    "component-event-delay",
+    "component-cross-attempt",
+    "component-failed-retry-branch",
+    "component-same-digest",
+    "component-TXID-reuse",
+    "component-duplicate-nonce-conflict",
+    "component-old-graph",
+    "component-sibling",
+    "component-two-candidate-contributions",
+    "component-non-selected-source"
+  ],
+  "RQ3_physical": [
+    {
+      "condition": "Held-response substitution",
+      "cases": 200,
+      "controls": 20,
+      "campaign": "rq3-held-formal-v20-20260920T155535778291Z",
+      "boundary": "Production emit",
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq3-held-formal-v20-20260920T155535778291Z\\summary.json"
+    },
+    {
+      "condition": "Changed-challenge reconsume",
+      "cases": 100,
+      "controls": 10,
+      "campaign": "rq3-challenge-v21-formal-20260920T200202460575Z",
+      "boundary": "Production Store",
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq3-challenge-v21-formal-20260920T200202460575Z\\summary.json"
+    },
+    {
+      "condition": "Crash before emit / reopen",
+      "cases": 200,
+      "controls": 20,
+      "campaign": "rq3-crash-v24-formal-20260921T023249621896Z",
+      "boundary": "Dedicated process + Store",
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq3-crash-v24-formal-20260921T023249621896Z\\summary.json"
+    },
+    {
+      "condition": "Cross-Root substitution",
+      "cases": 200,
+      "controls": 20,
+      "campaign": "rq3-cross-root-v25c-formal-20260921T085314023062Z",
+      "boundary": "Production Graph validator",
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq3-cross-root-v25c-formal-20260921T085314023062Z\\summary.json"
+    }
+  ],
+  "RQ4": [
+    {
+      "condition": "R1 Agent",
+      "episodes": 50,
+      "explicit_rejects": 50,
+      "expected_continue": 0,
+      "inconclusive": 0,
+      "final_recovery_queries": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2b-r1-agent-unavailable-formal-20260921T131158643690Z\\summary.json",
+      "raw_trial_classifications": {
+        "SAFE_REJECTION": 50
+      }
+    },
+    {
+      "condition": "Selected downstream Agent",
+      "episodes": 50,
+      "explicit_rejects": 1,
+      "expected_continue": 0,
+      "inconclusive": 49,
+      "final_recovery_queries": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2f-selected-downstream-agent-unavailable-formal-20260921T141427604294Z\\summary.json",
+      "raw_trial_classifications": {
+        "INCONCLUSIVE": 49,
+        "SAFE_REJECTION": 1
+      }
+    },
+    {
+      "condition": "Trace Producer",
+      "episodes": 50,
+      "explicit_rejects": 50,
+      "expected_continue": 0,
+      "inconclusive": 0,
+      "final_recovery_queries": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2g-producer-unavailable-formal-20260921T154712494645Z\\summary.json",
+      "raw_trial_classifications": {
+        "SAFE_REJECTION": 50
+      }
+    },
+    {
+      "condition": "Trace Adapter",
+      "episodes": 50,
+      "explicit_rejects": 50,
+      "expected_continue": 0,
+      "inconclusive": 0,
+      "final_recovery_queries": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2g-adapter-unavailable-formal-20260921T164142603902Z\\summary.json",
+      "raw_trial_classifications": {
+        "SAFE_REJECTION": 50
+      }
+    },
+    {
+      "condition": "Norn A, fresh view",
+      "episodes": 50,
+      "explicit_rejects": 0,
+      "expected_continue": 50,
+      "inconclusive": 0,
+      "final_recovery_queries": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2h-norn-a-unavailable-formal-20260921T183310783453Z\\summary.json",
+      "raw_trial_classifications": {
+        "EXPECTED_CONTINUE": 50
+      }
+    },
+    {
+      "condition": "Norn B, fresh view",
+      "episodes": 50,
+      "explicit_rejects": 0,
+      "expected_continue": 50,
+      "inconclusive": 0,
+      "final_recovery_queries": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2h-norn-b-unavailable-formal-20260921T190816153616Z\\summary.json",
+      "raw_trial_classifications": {
+        "EXPECTED_CONTINUE": 50
+      }
+    },
+    {
+      "condition": "Registry Sync, valid cache",
+      "episodes": 2,
+      "explicit_rejects": 0,
+      "expected_continue": 2,
+      "inconclusive": 0,
+      "final_recovery_queries": 100,
+      "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2m-registry-sync-unavailable-valid-cache-formal-20260922T075730206134Z\\summary.json",
+      "raw_trial_classifications": {
+        "EXPECTED_CONTINUE": 2
+      }
+    }
+  ],
+  "RQ4_totals": {
+    "episodes": 302,
+    "explicit_rejects": 151,
+    "expected_continue": 102,
+    "inconclusive": 49,
+    "final_recovery_queries": 700
+  },
+  "RQ5_global": {
+    "conditions": 26,
+    "pairs": 130,
+    "blocks": 260,
+    "AB_BA": {
+      "AB": 65,
+      "BA": 65
+    },
+    "measurement_requests": 30600,
+    "warmup_requests": 15300,
+    "mode_totals": {
+      "B0-matched": {
+        "blocks": 110,
+        "offered": 12900,
+        "success": 12897,
+        "failures": {
+          "success": 12897,
+          "timeout": 3
+        }
+      },
+      "B1-serial": {
+        "blocks": 20,
+        "offered": 2400,
+        "success": 2398,
+        "failures": {
+          "success": 2398,
+          "timeout": 1,
+          "SERVFAIL": 1
+        }
+      },
+      "B1-pipelined": {
+        "blocks": 130,
+        "offered": 15300,
+        "success": 15172,
+        "failures": {
+          "success": 15172,
+          "timeout": 6,
+          "SERVFAIL": 122
+        }
+      }
+    },
+    "zero_success_blocks": [
+      {
+        "pair": 44,
+        "profile": "D3-UDP-near",
+        "mode": "B1-pipelined"
+      }
+    ],
+    "measurement_failures": 133,
+    "warmup_failures": 330,
+    "measured_basic_bound_B1_successes": 17570,
+    "source_versions": {
+      "3c9b61fc8c56889694efeaf9b86ef278c8ea55d6c0e42ed7b410d249ec4fecdb": 10,
+      "b4b701434f8bbacd246f9a49889e15b332c2b9481a5ed89eb3a4e9a0ef5202ee": 10,
+      "b25de73b82e840d56ec6dc93b92222f6767b8f288393cc779505ead29179de92": 10,
+      "442da95772ae2f0d11fc25b7ef59bb7471a73e4081b91cd10fcd1cc79d457d36": 102,
+      "7ed6816e3883bda2623762a7728184d87e858383765c645a613a07edf0d34989": 28,
+      "e11ba23375fc17f21f74fcb13cab8ae3563f577c4cac612cf3c66d9d1321359b": 100
+    },
+    "resource_scope": "Host loadavg/free memory before/after warm+measure+drain only; NOT processCPU/RSS time series",
+    "power_stability_claimed": false,
+    "full_GC_causal_fault_audit": "DEFERRED_NOT_PASS",
+    "statistical_scope": "Post hoc exploratory, paired block unit, within-one-testbed resampling intervals"
+  },
+  "input_sources": {
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\active-work.json": {
+      "bytes": 283229,
+      "sha256": "a4fa16e5701b895a18f8b049a19ec93c691aeaecec27c3eba1a00b8acd545a11"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-tcp-fixed-matrix-20260918T013346Z\\summary.json": {
+      "bytes": 20542,
+      "sha256": "7cd743ef72687666b56e3b1e441188e09576acfe0d0854477ad8065568c46563"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-nxdomain-formal-20260918T045433Z-finalizer-20260918T052830Z\\verification.json": {
+      "bytes": 3528,
+      "sha256": "712e8545e224a38299bed25a3bca1977fb47816c6d84fca331f40db9e8de78e0"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-retry-winner-formal-20260918T054617Z-finalizer-20260918T070056Z\\verification.json": {
+      "bytes": 3479,
+      "sha256": "6fbf25a8b322e6be8d5d42538800d8e0b5d40a0cd035c012828a998ed86aade5"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-udp-fallback-formal-20260918T082710Z-finalizer-20260918T090345Z\\verification.json": {
+      "bytes": 3964,
+      "sha256": "cd628b73af1a69e21c175fb1f6c55a6b8820407329d79851aa288e43f3c56ae0"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-profile-b-formal-20260919T032259Z-finalizer-20260919T034332Z\\verification.json": {
+      "bytes": 3553,
+      "sha256": "0dd4cafa9b930ae2f118efe5f7a63d0cbe4549780d07849cedbe677fe5bffd6a"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-profile-switch-formal-20260919T035832Z-finalizer-20260919T042656Z\\verification.json": {
+      "bytes": 11298,
+      "sha256": "e68d6a8ad8baf8ffdddcab3ca6e48b7bfa0236f4793e97b2d1fd09b6d7a4ec89"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-revoked-formal-20260919T062757Z-finalizer-20260919T064600Z\\verification.json": {
+      "bytes": 982,
+      "sha256": "55cfc92d90e114a09213956f52d9423fb0ac8fbfae51a703c8f95880ab2ab793"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-inactive-formal-20260919T070342Z-finalizer-20260919T072146Z\\verification.json": {
+      "bytes": 1016,
+      "sha256": "afca023110f0dd3589574c7e02daf9ba922740def6ff95c03433c90ef7af2175"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-invalid-signature-formal-20260919T073856Z-finalizer-20260919T074038Z\\verification.json": {
+      "bytes": 1113,
+      "sha256": "4cf49d5765dba2b9ec52f3bc703b0ec1e2b5d95161141cef097b7167503be2f3"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-invalid-schema-formal-20260919T074749Z-finalizer-20260919T074845Z\\verification.json": {
+      "bytes": 1149,
+      "sha256": "fd3d5ea501629e40a4178a506bf1e5d67091cd526efca199fdc23c9484f389c6"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-stale-signed-snapshot-formal-20260919T075050Z-finalizer-20260919T075143Z\\verification.json": {
+      "bytes": 1170,
+      "sha256": "e004a23ef44636927ab5795a40a29c5c6126db287ae40a37e0e915558cf11dbe"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-rollback-live-formal-20260919T080001Z-finalizer-20260919T080128Z\\verification.json": {
+      "bytes": 830,
+      "sha256": "0407af49b02a312cc75646a31eded090bab7e4b189deaec199fc27bcc41f7a20"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-rollback-restart-formal-20260919T080232Z-finalizer-20260919T080320Z\\verification.json": {
+      "bytes": 841,
+      "sha256": "1cc191177737643823d7c70d216c6863474fe58bab9c9b68cb781ec7e7824b67"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-same-height-conflict-formal-20260919T083247Z-finalizer-20260919T083325Z\\verification.json": {
+      "bytes": 851,
+      "sha256": "37a420aaee321845ca09d5bffc1fd0e52ba5a6bf715a7b14c6fded8f96d1e78e"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-unknown-identity-formal-20260919T084624Z-finalizer-20260919T084709Z\\verification.json": {
+      "bytes": 868,
+      "sha256": "09d360a30aec8c7547b2864ccc8597c914567e6fae223b9e62b8f520237fe542"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-wrong-role-formal-20260919T085523Z-finalizer-20260919T085624Z\\verification.json": {
+      "bytes": 917,
+      "sha256": "e78eee1681d2515bb0dd20ddd7313ba4ba1a2212ce38a08410d6b6b98ff0f465"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-wrong-DNS-endpoint-formal-20260919T085744Z-finalizer-20260919T085839Z\\verification.json": {
+      "bytes": 941,
+      "sha256": "bf1724736501da674caaff527a16a6fb4feca4d3695626e42140592a1244ccda"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-wrong-Agent-endpoint-formal-20260919T085950Z-finalizer-20260919T090049Z\\verification.json": {
+      "bytes": 947,
+      "sha256": "98fa095e783946f14ac56a6ad468bcb5be6496d05d84195caaa0d53a9c4f431e"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-key-rotation-old-key-formal-20260919T090205Z-finalizer-20260919T090311Z\\verification.json": {
+      "bytes": 947,
+      "sha256": "69c741bc5245668741c624b172cb977b50533aa1e83dfd3962b77c154187f417"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-wrong-key-formal-20260919T090913Z-finalizer-20260919T090952Z\\verification.json": {
+      "bytes": 822,
+      "sha256": "457ef6fb23f0ea2269b226a9d1faae0f836b993541612f21808900529ce1a3b0"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-embedded-Registry-formal-20260919T092236Z-finalizer-20260919T092519Z\\verification.json": {
+      "bytes": 847,
+      "sha256": "dc679982cd30a0a9d3207e393d3f4b067a7925557fc5376bb1fca0a2d95c8778"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-wrong-terminal-role-formal-20260919T092648Z-finalizer-20260919T092822Z\\verification.json": {
+      "bytes": 853,
+      "sha256": "9368e0c80fde51913086add5b7903235568978b4ace090d279529231396a1a19"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-unauthorized-external-boundary-formal-20260919T092947Z-finalizer-20260919T093108Z\\verification.json": {
+      "bytes": 886,
+      "sha256": "fc19b40a33570218a16c2a44fc8177b8138f0a4291341600d31fd69b273726be"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-revocation-propagation-formal-20260919T094504Z-finalizer-20260919T112532Z\\verification.json": {
+      "bytes": 2106,
+      "sha256": "e6e277759a8c313ad7fa54ffffa550cf329780a2e5af88514be0ea5bf7cf1cdc"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq3-held-formal-v20-20260920T155535778291Z\\summary.json": {
+      "bytes": 234,
+      "sha256": "8248b41d20b45fb8933f8ee9eaaba3b1a8ce089250e072ceec23b1c36a3d6b18"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq3-challenge-v21-formal-20260920T200202460575Z\\summary.json": {
+      "bytes": 212,
+      "sha256": "b4a2e00026bee9191d5e29a4965f5be2da581ade02f761a940e44e85cb3a0de8"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq3-crash-v24-formal-20260921T023249621896Z\\summary.json": {
+      "bytes": 220,
+      "sha256": "ca0aa32a9fbd017e9a1730e955b35e2adc1a34d12558aa7794cab1bdf2afcca6"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq3-cross-root-v25c-formal-20260921T085314023062Z\\summary.json": {
+      "bytes": 571,
+      "sha256": "7a3234e6016bb72ecc581ffef1ec3d65bce7e5c6a137b5e244a5e23a6751a54d"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2b-r1-agent-unavailable-formal-20260921T131158643690Z\\summary.json": {
+      "bytes": 383,
+      "sha256": "cd1828f560ce95cd81e59d8d18996db0cc4f563e60a945099407d56d7452ccfc"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2b-r1-agent-unavailable-formal-20260921T131158643690Z\\trials.jsonl": {
+      "bytes": 5056997,
+      "sha256": "51c491bdf6c9b0c1cc3b6aa6e7cb78506eb73771b22044542d5e3907c3c37b89"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2f-selected-downstream-agent-unavailable-formal-20260921T141427604294Z\\summary.json": {
+      "bytes": 400,
+      "sha256": "2d10ab36fecf73cfc9288534a53fabd0cc2538c73a04503ead565d2e99f7599f"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2f-selected-downstream-agent-unavailable-formal-20260921T141427604294Z\\trials.jsonl": {
+      "bytes": 4967343,
+      "sha256": "3b9676b95161f01566fd9ad85b1f1cd1958c08aaee9776c82c67b51f813528fd"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2g-producer-unavailable-formal-20260921T154712494645Z\\summary.json": {
+      "bytes": 383,
+      "sha256": "abed6397468bb2926660430d0995994a9224ed0ecd7fd2bfee5a2348b107fa8e"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2g-producer-unavailable-formal-20260921T154712494645Z\\trials.jsonl": {
+      "bytes": 4988315,
+      "sha256": "a2eedbc8cdc60dd9bb7bd7dd82688881b86f32465287729d8463b96e08fd5503"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2g-adapter-unavailable-formal-20260921T164142603902Z\\summary.json": {
+      "bytes": 382,
+      "sha256": "133df2b47500db16b031bfbc5a6f3cb19cc2dc5c311abe9ef8cb989f425f6177"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2g-adapter-unavailable-formal-20260921T164142603902Z\\trials.jsonl": {
+      "bytes": 4982197,
+      "sha256": "63fa54eb462eac2e4d2526e5aae643d0e321588127442bbc3ffc9c29de52db74"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2h-norn-a-unavailable-formal-20260921T183310783453Z\\summary.json": {
+      "bytes": 381,
+      "sha256": "8c72e283f487e3cf52f3fc20a047125432b29028e39ee240b248eb92e14a319e"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2h-norn-a-unavailable-formal-20260921T183310783453Z\\trials.jsonl": {
+      "bytes": 7704256,
+      "sha256": "524737a6d8d03db7c3d948f24aa1bea5f7bcdde525e30db5d7d99c062df9f6e4"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2h-norn-b-unavailable-formal-20260921T190816153616Z\\summary.json": {
+      "bytes": 381,
+      "sha256": "4a810a415307ecc4e9f546b7b37f3cc2cb185bb1b9f8103c6f2399335969320c"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2h-norn-b-unavailable-formal-20260921T190816153616Z\\trials.jsonl": {
+      "bytes": 7682443,
+      "sha256": "69e7487ce29399d422c63d5fe781e6d04f1c8dc3661533c72b7508f7d75a4c23"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2m-registry-sync-unavailable-valid-cache-formal-20260922T075730206134Z\\summary.json": {
+      "bytes": 396,
+      "sha256": "079661908ed73a66116b9bcad20f0cbe9f930002a0f6746eb37c4ad205da7637"
+    },
+    "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq4-service-v2m-registry-sync-unavailable-valid-cache-formal-20260922T075730206134Z\\trials.jsonl": {
+      "bytes": 307512,
+      "sha256": "05c37cf02071479a3a45ac19664b55138a2e2919a18ff19cdc9f2f15f3a32d43"
+    },
+    "D:\\backup\\outputs\\rq5-paper-results-20261006-v1\\condition_summary.json": {
+      "bytes": 72722,
+      "sha256": "db846ac4d32b0772198a6759fc654886b6a5e3a8dd05df34d60e6777e30fb906"
+    },
+    "D:\\backup\\outputs\\rq5-paper-results-20261006-v1\\global_summary.json": {
+      "bytes": 1767,
+      "sha256": "1d99c15f06c8e5620ec7939ef2d599a85e30e728631fea7c5fa4ece6e9a651aa"
+    }
+  },
+  "verification_scope": "Recorded archived finalizer assertions plus local summary/raw row accounting; no new physical or all-history crypto replay"
+}

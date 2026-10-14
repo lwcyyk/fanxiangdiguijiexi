@@ -1,0 +1,14 @@
+{
+  "status": "COLLECTED_PENDING_INDEPENDENT_RECHECK",
+  "mode": "pilot",
+  "cell": "component-cross-attempt",
+  "verified_units": 2,
+  "baseline_accepts": 2,
+  "safe_rejects": 2,
+  "formal_samples": 0,
+  "collected_formal_candidates": 0,
+  "unsafe_or_errors": 0,
+  "physical_trials": 0,
+  "scope": "isolated local production Store: identical positive and candidate Trace objects in separate databases; only terminal attempt_id differs; no retry, expiry, physical DNS, Graph signature, or Wrapper release test",
+  "finished": "2026-09-20T04:56:44.080789+00:00"
+}

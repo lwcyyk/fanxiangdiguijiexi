@@ -1,0 +1,15 @@
+{
+  "status": "INCOMPLETE_PRESERVED",
+  "cell": "norn-a-unavailable",
+  "mode": "pilot",
+  "episodes_planned": 2,
+  "episodes_completed": 1,
+  "episodes_passed": 0,
+  "safe_rejections": 0,
+  "expected_continues": 1,
+  "inconclusive": 0,
+  "final_recovery_queries": 0,
+  "restoration_ok": false,
+  "failure": true,
+  "finished": "2026-09-21T17:33:51.786724+00:00"
+}

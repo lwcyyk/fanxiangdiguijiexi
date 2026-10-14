@@ -1,0 +1,15 @@
+{
+  "status": "ARM_CRASH_SMOKE_PASSED_PILOT_PENDING",
+  "passed": 3,
+  "failed": 0,
+  "ignored": 2,
+  "remote_binary": "/var/tmp/ri-rq3-v23-unit.nWUHE2/wrapper-tests",
+  "binary_sha256": "2aef8ff959f3fe1445d93969d3a32b125577d4acd87019b0928c0a563ea42ca2",
+  "binary": "D:\\backup\\paper-execution-v20260921-physical-crash-v23\\arm-target\\aarch64-unknown-linux-gnu\\debug\\deps\\ri_wrapper-4def04771b0715ac",
+  "storage_gate": "Filesystem     1024-blocks     Used Available Capacity Mounted on\ntmpfs               463416   463416         0     100% /tmp\n/dev/mmcblk0p2    30078744 21388644   7393888      75% /\n",
+  "prior_v22_failure": "management /tmp tmpfs full; preserved; v23 uses version-confined /var/tmp",
+  "physical_queries": 0,
+  "formal_samples": 0,
+  "source": "D:\\backup\\paper-execution-v20260921-physical-crash-v23\\rust",
+  "finished": "2026-09-21T00:20:49.037266+00:00"
+}

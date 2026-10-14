@@ -1,0 +1,145 @@
+{
+  "status": "COMPLETED_CONDITION_INDEPENDENTLY_FINALIZED",
+  "classification": "formal-rq1-udp-fallback-condition",
+  "campaign": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-udp-fallback-formal-20260918T082710Z",
+  "verified_measured": 200,
+  "udp": 100,
+  "tcp": 100,
+  "unique_roots": 200,
+  "unique_attempts": 200,
+  "unique_graph_digests": 200,
+  "fallback_invariants": {
+    "same_root_attempt_r3_udp_and_tcp_contexts": true,
+    "r3_udp_query_tc_response_tcp_query_full_response": true,
+    "full_client_response_released": true
+  },
+  "accepted_path_counts": {
+    "r1->r2": 177,
+    "r1->r2->r3": 23
+  },
+  "accepted_terminal_counts": {
+    "current-r2-CACHE_HIT": 177,
+    "current-r3-CACHE_HIT": 23
+  },
+  "http_422": 0,
+  "endpoint_trials": 200,
+  "wire_response_events": 1189,
+  "fallback_names_proven": 200,
+  "frozen_manifest_files_verified": 2036,
+  "frozen_manifest_mismatches": [],
+  "frozen_scripts_match": true,
+  "runtime_drift": [],
+  "final_health": {
+    "19108": 204,
+    "19109": 204
+  },
+  "registry_checkpoint": [
+    814817,
+    "0x752f6e8083899768a5ed7f53c86df7766ba7507491e6f34cf0c7f1197dbc73ea"
+  ],
+  "norn_checkpoint_match": true,
+  "registry_nodes_match": true,
+  "phase_records": [
+    {
+      "phase": "udp-fallback-udp-p1",
+      "transport": "udp",
+      "results": 20,
+      "http_422": 0,
+      "endpoint_trials": 20,
+      "wire_status": "MATCHED",
+      "wire_response_events": 129,
+      "fallback_names_proven": 20
+    },
+    {
+      "phase": "udp-fallback-udp-p2",
+      "transport": "udp",
+      "results": 20,
+      "http_422": 0,
+      "endpoint_trials": 20,
+      "wire_status": "MATCHED",
+      "wire_response_events": 120,
+      "fallback_names_proven": 20
+    },
+    {
+      "phase": "udp-fallback-udp-p3",
+      "transport": "udp",
+      "results": 20,
+      "http_422": 0,
+      "endpoint_trials": 20,
+      "wire_status": "MATCHED",
+      "wire_response_events": 119,
+      "fallback_names_proven": 20
+    },
+    {
+      "phase": "udp-fallback-udp-p4",
+      "transport": "udp",
+      "results": 20,
+      "http_422": 0,
+      "endpoint_trials": 20,
+      "wire_status": "MATCHED",
+      "wire_response_events": 114,
+      "fallback_names_proven": 20
+    },
+    {
+      "phase": "udp-fallback-udp-p5",
+      "transport": "udp",
+      "results": 20,
+      "http_422": 0,
+      "endpoint_trials": 20,
+      "wire_status": "MATCHED",
+      "wire_response_events": 113,
+      "fallback_names_proven": 20
+    },
+    {
+      "phase": "udp-fallback-tcp-p1",
+      "transport": "tcp",
+      "results": 20,
+      "http_422": 0,
+      "endpoint_trials": 20,
+      "wire_status": "MATCHED",
+      "wire_response_events": 115,
+      "fallback_names_proven": 20
+    },
+    {
+      "phase": "udp-fallback-tcp-p2",
+      "transport": "tcp",
+      "results": 20,
+      "http_422": 0,
+      "endpoint_trials": 20,
+      "wire_status": "MATCHED",
+      "wire_response_events": 120,
+      "fallback_names_proven": 20
+    },
+    {
+      "phase": "udp-fallback-tcp-p3",
+      "transport": "tcp",
+      "results": 20,
+      "http_422": 0,
+      "endpoint_trials": 20,
+      "wire_status": "MATCHED",
+      "wire_response_events": 119,
+      "fallback_names_proven": 20
+    },
+    {
+      "phase": "udp-fallback-tcp-p4",
+      "transport": "tcp",
+      "results": 20,
+      "http_422": 0,
+      "endpoint_trials": 20,
+      "wire_status": "MATCHED",
+      "wire_response_events": 120,
+      "fallback_names_proven": 20
+    },
+    {
+      "phase": "udp-fallback-tcp-p5",
+      "transport": "tcp",
+      "results": 20,
+      "http_422": 0,
+      "endpoint_trials": 20,
+      "wire_status": "MATCHED",
+      "wire_response_events": 120,
+      "fallback_names_proven": 20
+    }
+  ],
+  "created": "2026-09-18T09:04:02.302086+00:00"
+}

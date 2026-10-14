@@ -1,0 +1,106 @@
+[
+  {
+    "artifact_id": "fig1_depth_latency",
+    "title": "Depth and client latency",
+    "caption": "UDP at1QPS, five paired repeats per depth/cache state. Lines join the median block P50 of successful valid answers; whiskers show observed min–max across five blocks, not confidence intervals. Small markers are individual block summaries. No per-request independence or isolated per-hop cryptographic cost is inferred.",
+    "source_data": {
+      "file": "condition_summary.json",
+      "sha256": "db846ac4d32b0772198a6759fc654886b6a5e3a8dd05df34d60e6777e30fb906"
+    },
+    "transformation": {
+      "script": "rq5_paper_figures_v1.py",
+      "sha256": "ea27fbacfce280ce3513f2cd5327e233e61e2d61f4bbf5e14ae1f97300dcc3c8"
+    },
+    "supported_manuscript_claims": [
+      "Cold valid-answer block P50 increased across the configured depths, while hot authenticated latency stayed near200ms in this testbed."
+    ],
+    "limitations": [
+      "Five paired repeats per condition, one physical testbed",
+      "Persistent undervoltage confound",
+      "Conditional-success latency may omit zero-success blocks; reliability retains all offered requests"
+    ],
+    "files": {
+      "pdf": "750414c59900324d78ae64ea450a2370a8d1dec022fe71cfea288a0dfb40dd17",
+      "svg": "8f218e77e1998532b5d365363100cf1a1c5a474b4ddd446bfc725f476e9a12d4",
+      "png": "100ddcf88d6a1ecb2efe1dd8a005b9fb54e4ef61967256da29f76422bc2e4f7a"
+    }
+  },
+  {
+    "artifact_id": "fig2_rate_latency_success",
+    "title": "Offered-rate sweep",
+    "caption": "Depth3 UDP; 120s offered measurement windows with 30/60/120/240 requests at 0.25/0.5/1/2QPS. Top: median of conditional-success block P50; bottom: mean block valid-answer proportion. Whiskers are observed min–max across five paired repeats, not inferential intervals. The sweep does not establish a capacity ceiling or maximum throughput.",
+    "source_data": {
+      "file": "condition_summary.json",
+      "sha256": "db846ac4d32b0772198a6759fc654886b6a5e3a8dd05df34d60e6777e30fb906"
+    },
+    "transformation": {
+      "script": "rq5_paper_figures_v1.py",
+      "sha256": "ea27fbacfce280ce3513f2cd5327e233e61e2d61f4bbf5e14ae1f97300dcc3c8"
+    },
+    "supported_manuscript_claims": [
+      "At2QPS cold block latency of the authenticated prototype increased while both modes retained1197/1200 successful measured requests across five blocks."
+    ],
+    "limitations": [
+      "Five paired repeats per condition, one physical testbed",
+      "Persistent undervoltage confound",
+      "Conditional-success latency may omit zero-success blocks; reliability retains all offered requests"
+    ],
+    "files": {
+      "pdf": "97bf55b29506860f3e212f0cb85762e85e09df59e492d7d9db3028bfa4ea8d4f",
+      "svg": "8bdae7bd102f32d4307cf8ca9f1bf6934fedf42a8e098455db9f2454b31a3dbb",
+      "png": "14c2101b27d8454a6f126d89e20a9706135d6eb9dea2987353366c9b02f222ff"
+    }
+  },
+  {
+    "artifact_id": "fig3_serial_paired_effect",
+    "title": "Pipelined versus serial",
+    "caption": "Five within-condition paired repeats;positive values mean smaller conditional-success latency under pipelining. Diamonds equal100*(1-geometric mean of paired block-quantile ratios). Bars enumerate the empirical paired bootstrap2.5–97.5 percentiles, describing within-testbed repeat variability only. Small dots are all individual paired effects. These are not confirmatory randomized-test intervals;no condition-level significance claim is made.",
+    "source_data": {
+      "file": "condition_summary.json",
+      "sha256": "db846ac4d32b0772198a6759fc654886b6a5e3a8dd05df34d60e6777e30fb906"
+    },
+    "transformation": {
+      "script": "rq5_paper_figures_v1.py",
+      "sha256": "ea27fbacfce280ce3513f2cd5327e233e61e2d61f4bbf5e14ae1f97300dcc3c8"
+    },
+    "supported_manuscript_claims": [
+      "Pipelining had limited and condition-dependent changes versus the authenticated serial mode;UDP hot did not show a uniform gain."
+    ],
+    "limitations": [
+      "Five paired repeats per condition, one physical testbed",
+      "Persistent undervoltage confound",
+      "Conditional-success latency may omit zero-success blocks; reliability retains all offered requests"
+    ],
+    "files": {
+      "pdf": "890cdb062330413f2813f450af53d27cded69d6a1af25c22f1635cb8bd3fa18a",
+      "svg": "8aebe49c1cfdc7267dbf0aeee1d773c085107b63f1a688492d4dfdb87f6d1393",
+      "png": "9829ec8d166d736963632a6c90e2dd531cfdc76b73c3641afaafdcaf46dc955c"
+    }
+  },
+  {
+    "artifact_id": "figA1_all_block_success",
+    "title": "All block success proportions",
+    "caption": "Every completed formal block is shown, including the depth3 UDP-near pipelined block with0/120 successful valid answers. Correct NXDOMAIN replies count as success. Latency undefined for that block does not remove it from this offered-denominator outcome. For S3 rows A is authenticated serial rather than native;do not pool the two comparison families.",
+    "source_data": {
+      "file": "condition_summary.json",
+      "sha256": "db846ac4d32b0772198a6759fc654886b6a5e3a8dd05df34d60e6777e30fb906"
+    },
+    "transformation": {
+      "script": "rq5_paper_figures_v1.py",
+      "sha256": "ea27fbacfce280ce3513f2cd5327e233e61e2d61f4bbf5e14ae1f97300dcc3c8"
+    },
+    "supported_manuscript_claims": [
+      "Most request failures were concentrated in one near-response pipelined block, and that zero-success block remains visible rather than being discarded."
+    ],
+    "limitations": [
+      "Five paired repeats per condition, one physical testbed",
+      "Persistent undervoltage confound",
+      "Conditional-success latency may omit zero-success blocks; reliability retains all offered requests"
+    ],
+    "files": {
+      "pdf": "1caf87ac56879182fdb95f85a52b33e76c8f0e4f0ef2dd6f1506f2aad04ce85e",
+      "svg": "bda587be2881e74bdd4d81c63eeaea817f6a7f070a23b9ae6145aa89023bf9f9",
+      "png": "f7e308d310e2b49d04953b92a7013ddd561241dc64fedd208cb20c4111d47065"
+    }
+  }
+]

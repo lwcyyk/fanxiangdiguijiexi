@@ -1,0 +1,29 @@
+\begin{table*}[t]
+\centering\small
+\setlength{\tabcolsep}{3.5pt}
+\caption{RQ2 negative families. Each of the 17 families has 100 candidates and 100 expected rejections. Live-DNS rows contain 50 UDP and 50 TCP decisions; other rows invoke isolated production functions. Valid baselines and signature controls are counted separately.}
+\label{tab:rq2-all}
+\begin{tabularx}{\textwidth}{@{}X X r@{}}
+\toprule
+Family & Test boundary & Rejected/candidates \\
+\midrule
+revoked-R2 & Live DNS & 100/100 \\
+inactive-R2 & Live DNS & 100/100 \\
+invalid-signature & Snapshot/Store & 100/100 \\
+invalid-schema-signed-fixture & Snapshot/Store & 100/100 \\
+stale-signed-snapshot & Snapshot/Store & 100/100 \\
+rollback-live & Snapshot/Store & 100/100 \\
+rollback-restart & Snapshot/Store & 100/100 \\
+same-height-conflict & Snapshot/Store & 100/100 \\
+unknown-identity & Wrapper identity join & 100/100 \\
+wrong-role & Wrapper identity join & 100/100 \\
+wrong-DNS-endpoint & Wrapper identity join & 100/100 \\
+wrong-Agent-endpoint & Wrapper identity join & 100/100 \\
+key-rotation-old-key & Wrapper identity join & 100/100 \\
+wrong-key & Identity signature & 100/100 \\
+embedded-Registry & Graph/Wrapper policy & 100/100 \\
+wrong-terminal-role & Graph/Wrapper policy & 100/100 \\
+unauthorized-external-boundary & Graph/Wrapper policy & 100/100 \\
+\bottomrule
+\end{tabularx}
+\end{table*}

@@ -1,0 +1,15 @@
+{
+  "status": "FORMAL_COMPLETED",
+  "cell": "registry-sync-unavailable-valid-cache",
+  "mode": "formal",
+  "episodes_planned": 2,
+  "episodes_completed": 2,
+  "episodes_passed": 2,
+  "safe_rejections": 0,
+  "expected_continues": 2,
+  "inconclusive": 0,
+  "final_recovery_queries": 100,
+  "restoration_ok": true,
+  "failure": false,
+  "finished": "2026-09-22T09:51:38.653706+00:00"
+}

@@ -1,0 +1,19 @@
+{
+  "status": "COLLECTED",
+  "cell": "component-sibling",
+  "count": 1000,
+  "baselines": 1000,
+  "exact_causal_rejections": 1000,
+  "selected_first": 500,
+  "selected_second": 500,
+  "unexpected_errors": 0,
+  "physical_trials": 0,
+  "scope": "Fresh production Agent/Store; two successful sibling hops, same Root/Attempt/parent/query/response/endpoint; selected response Context/Hop alone spliced. No DNS, mTLS, Registry authority or Wrapper release.",
+  "source_campaign": null,
+  "ready": {
+    "19108": 204,
+    "19109": 204
+  },
+  "registry_version": 104,
+  "finished": "2026-09-20T08:23:45.486763+00:00"
+}

@@ -1,0 +1,367 @@
+{
+  "status": "FORMAL_RQ1_PROFILE_SWITCH_COMPLETE_INDEPENDENTLY_VERIFIED",
+  "classification": "formal-rq1-explicit-profile-switch-condition",
+  "campaign": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-profile-switch-formal-20260919T035832Z",
+  "verified_measured": 200,
+  "profile_a": 100,
+  "profile_b": 100,
+  "udp": 100,
+  "tcp": 100,
+  "unique_trials": 200,
+  "unique_roots": 200,
+  "unique_root_attempts": 200,
+  "unique_graph_digests": 200,
+  "profile_paths": {
+    "profile-a": [
+      "r1",
+      "r2",
+      "r3",
+      "authdns"
+    ],
+    "profile-b": [
+      "r1",
+      "r3",
+      "authdns"
+    ]
+  },
+  "http_422": 0,
+  "endpoint_trials": 200,
+  "wire_response_events": 505,
+  "explicit_switch_receipts": 10,
+  "original_runtime_drift": [],
+  "independent_runtime_drift": [],
+  "final_profile": "profile-b",
+  "final_health": {
+    "19108": 204,
+    "19109": 204
+  },
+  "registry_checkpoint": [
+    826532,
+    "0x451dc295f323faf96e3870c6616515e7144a2a64d57297b8d78928929dd8ba94"
+  ],
+  "norn_checkpoint_match": true,
+  "registry_nodes_match": true,
+  "frozen_scripts_match": true,
+  "frozen_manifest_entries": 2513,
+  "frozen_manifest_mismatches": [],
+  "campaign_file_count": 2514,
+  "batch_records": [
+    {
+      "batch": "profile-a-p1",
+      "profile": "profile-a",
+      "repetition": 1,
+      "results": 20,
+      "udp": 10,
+      "tcp": 10,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 60,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "batch": "profile-b-p1",
+      "profile": "profile-b",
+      "repetition": 1,
+      "results": 20,
+      "udp": 10,
+      "tcp": 10,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 40,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "batch": "profile-a-p2",
+      "profile": "profile-a",
+      "repetition": 2,
+      "results": 20,
+      "udp": 10,
+      "tcp": 10,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 60,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "batch": "profile-b-p2",
+      "profile": "profile-b",
+      "repetition": 2,
+      "results": 20,
+      "udp": 10,
+      "tcp": 10,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 40,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "batch": "profile-a-p3",
+      "profile": "profile-a",
+      "repetition": 3,
+      "results": 20,
+      "udp": 10,
+      "tcp": 10,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 65,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "batch": "profile-b-p3",
+      "profile": "profile-b",
+      "repetition": 3,
+      "results": 20,
+      "udp": 10,
+      "tcp": 10,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 40,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "batch": "profile-a-p4",
+      "profile": "profile-a",
+      "repetition": 4,
+      "results": 20,
+      "udp": 10,
+      "tcp": 10,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 60,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "batch": "profile-b-p4",
+      "profile": "profile-b",
+      "repetition": 4,
+      "results": 20,
+      "udp": 10,
+      "tcp": 10,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 40,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "batch": "profile-a-p5",
+      "profile": "profile-a",
+      "repetition": 5,
+      "results": 20,
+      "udp": 10,
+      "tcp": 10,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 60,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "batch": "profile-b-p5",
+      "profile": "profile-b",
+      "repetition": 5,
+      "results": 20,
+      "udp": 10,
+      "tcp": 10,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 40,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    }
+  ],
+  "switch_records": [
+    {
+      "batch": "profile-a-p1",
+      "profile": "profile-a",
+      "endpoint": "192.168.10.254@5353",
+      "target": "operator/L01/r2",
+      "ports": {
+        "5353": "OPEN",
+        "8443": "OPEN"
+      },
+      "before_hashes": {
+        "kresd": "42a74b2c057329f935efb94deea40cf7a9b542615435fc3c4b0b1b654967ccca",
+        "compose": "6642192959687fa6af0a96bcbb572fc671b914f939e9691473427be532ebcd89"
+      },
+      "after_hashes": {
+        "kresd": "7321a6b4c03bf3a58e4a28fc178444f194cebfbf8c2abf8fb4c52386684a5290",
+        "compose": "8b0f25524f7b11582abbf37095b86d5e4cc6f6eabd65db5542edb85f1fe75c87"
+      }
+    },
+    {
+      "batch": "profile-b-p1",
+      "profile": "profile-b",
+      "endpoint": "192.168.20.254@5353",
+      "target": "operator/L01/r3",
+      "ports": {
+        "5355": "OPEN",
+        "8445": "OPEN"
+      },
+      "before_hashes": {
+        "kresd": "7321a6b4c03bf3a58e4a28fc178444f194cebfbf8c2abf8fb4c52386684a5290",
+        "compose": "8b0f25524f7b11582abbf37095b86d5e4cc6f6eabd65db5542edb85f1fe75c87"
+      },
+      "after_hashes": {
+        "kresd": "42a74b2c057329f935efb94deea40cf7a9b542615435fc3c4b0b1b654967ccca",
+        "compose": "6642192959687fa6af0a96bcbb572fc671b914f939e9691473427be532ebcd89"
+      }
+    },
+    {
+      "batch": "profile-a-p2",
+      "profile": "profile-a",
+      "endpoint": "192.168.10.254@5353",
+      "target": "operator/L01/r2",
+      "ports": {
+        "5353": "OPEN",
+        "8443": "OPEN"
+      },
+      "before_hashes": {
+        "kresd": "42a74b2c057329f935efb94deea40cf7a9b542615435fc3c4b0b1b654967ccca",
+        "compose": "6642192959687fa6af0a96bcbb572fc671b914f939e9691473427be532ebcd89"
+      },
+      "after_hashes": {
+        "kresd": "7321a6b4c03bf3a58e4a28fc178444f194cebfbf8c2abf8fb4c52386684a5290",
+        "compose": "8b0f25524f7b11582abbf37095b86d5e4cc6f6eabd65db5542edb85f1fe75c87"
+      }
+    },
+    {
+      "batch": "profile-b-p2",
+      "profile": "profile-b",
+      "endpoint": "192.168.20.254@5353",
+      "target": "operator/L01/r3",
+      "ports": {
+        "5355": "OPEN",
+        "8445": "OPEN"
+      },
+      "before_hashes": {
+        "kresd": "7321a6b4c03bf3a58e4a28fc178444f194cebfbf8c2abf8fb4c52386684a5290",
+        "compose": "8b0f25524f7b11582abbf37095b86d5e4cc6f6eabd65db5542edb85f1fe75c87"
+      },
+      "after_hashes": {
+        "kresd": "42a74b2c057329f935efb94deea40cf7a9b542615435fc3c4b0b1b654967ccca",
+        "compose": "6642192959687fa6af0a96bcbb572fc671b914f939e9691473427be532ebcd89"
+      }
+    },
+    {
+      "batch": "profile-a-p3",
+      "profile": "profile-a",
+      "endpoint": "192.168.10.254@5353",
+      "target": "operator/L01/r2",
+      "ports": {
+        "5353": "OPEN",
+        "8443": "OPEN"
+      },
+      "before_hashes": {
+        "kresd": "42a74b2c057329f935efb94deea40cf7a9b542615435fc3c4b0b1b654967ccca",
+        "compose": "6642192959687fa6af0a96bcbb572fc671b914f939e9691473427be532ebcd89"
+      },
+      "after_hashes": {
+        "kresd": "7321a6b4c03bf3a58e4a28fc178444f194cebfbf8c2abf8fb4c52386684a5290",
+        "compose": "8b0f25524f7b11582abbf37095b86d5e4cc6f6eabd65db5542edb85f1fe75c87"
+      }
+    },
+    {
+      "batch": "profile-b-p3",
+      "profile": "profile-b",
+      "endpoint": "192.168.20.254@5353",
+      "target": "operator/L01/r3",
+      "ports": {
+        "5355": "OPEN",
+        "8445": "OPEN"
+      },
+      "before_hashes": {
+        "kresd": "7321a6b4c03bf3a58e4a28fc178444f194cebfbf8c2abf8fb4c52386684a5290",
+        "compose": "8b0f25524f7b11582abbf37095b86d5e4cc6f6eabd65db5542edb85f1fe75c87"
+      },
+      "after_hashes": {
+        "kresd": "42a74b2c057329f935efb94deea40cf7a9b542615435fc3c4b0b1b654967ccca",
+        "compose": "6642192959687fa6af0a96bcbb572fc671b914f939e9691473427be532ebcd89"
+      }
+    },
+    {
+      "batch": "profile-a-p4",
+      "profile": "profile-a",
+      "endpoint": "192.168.10.254@5353",
+      "target": "operator/L01/r2",
+      "ports": {
+        "5353": "OPEN",
+        "8443": "OPEN"
+      },
+      "before_hashes": {
+        "kresd": "42a74b2c057329f935efb94deea40cf7a9b542615435fc3c4b0b1b654967ccca",
+        "compose": "6642192959687fa6af0a96bcbb572fc671b914f939e9691473427be532ebcd89"
+      },
+      "after_hashes": {
+        "kresd": "7321a6b4c03bf3a58e4a28fc178444f194cebfbf8c2abf8fb4c52386684a5290",
+        "compose": "8b0f25524f7b11582abbf37095b86d5e4cc6f6eabd65db5542edb85f1fe75c87"
+      }
+    },
+    {
+      "batch": "profile-b-p4",
+      "profile": "profile-b",
+      "endpoint": "192.168.20.254@5353",
+      "target": "operator/L01/r3",
+      "ports": {
+        "5355": "OPEN",
+        "8445": "OPEN"
+      },
+      "before_hashes": {
+        "kresd": "7321a6b4c03bf3a58e4a28fc178444f194cebfbf8c2abf8fb4c52386684a5290",
+        "compose": "8b0f25524f7b11582abbf37095b86d5e4cc6f6eabd65db5542edb85f1fe75c87"
+      },
+      "after_hashes": {
+        "kresd": "42a74b2c057329f935efb94deea40cf7a9b542615435fc3c4b0b1b654967ccca",
+        "compose": "6642192959687fa6af0a96bcbb572fc671b914f939e9691473427be532ebcd89"
+      }
+    },
+    {
+      "batch": "profile-a-p5",
+      "profile": "profile-a",
+      "endpoint": "192.168.10.254@5353",
+      "target": "operator/L01/r2",
+      "ports": {
+        "5353": "OPEN",
+        "8443": "OPEN"
+      },
+      "before_hashes": {
+        "kresd": "42a74b2c057329f935efb94deea40cf7a9b542615435fc3c4b0b1b654967ccca",
+        "compose": "6642192959687fa6af0a96bcbb572fc671b914f939e9691473427be532ebcd89"
+      },
+      "after_hashes": {
+        "kresd": "7321a6b4c03bf3a58e4a28fc178444f194cebfbf8c2abf8fb4c52386684a5290",
+        "compose": "8b0f25524f7b11582abbf37095b86d5e4cc6f6eabd65db5542edb85f1fe75c87"
+      }
+    },
+    {
+      "batch": "profile-b-p5",
+      "profile": "profile-b",
+      "endpoint": "192.168.20.254@5353",
+      "target": "operator/L01/r3",
+      "ports": {
+        "5355": "OPEN",
+        "8445": "OPEN"
+      },
+      "before_hashes": {
+        "kresd": "7321a6b4c03bf3a58e4a28fc178444f194cebfbf8c2abf8fb4c52386684a5290",
+        "compose": "8b0f25524f7b11582abbf37095b86d5e4cc6f6eabd65db5542edb85f1fe75c87"
+      },
+      "after_hashes": {
+        "kresd": "42a74b2c057329f935efb94deea40cf7a9b542615435fc3c4b0b1b654967ccca",
+        "compose": "6642192959687fa6af0a96bcbb572fc671b914f939e9691473427be532ebcd89"
+      }
+    }
+  ],
+  "limitations": [
+    "This condition proves explicit frozen configuration switching, not dynamic multi-candidate load selection",
+    "No latency or throughput claim is made from this instrumented functional campaign"
+  ],
+  "created": "2026-09-19T04:27:13.162815+00:00"
+}

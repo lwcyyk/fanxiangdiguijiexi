@@ -1,0 +1,100 @@
+{
+  "status": "COMPLETED_CONDITION",
+  "condition": "UDP-fallback",
+  "verified_measured": 200,
+  "completed_batches": 10,
+  "planned_batches": 10,
+  "http_422": 0,
+  "endpoint_trials": 200,
+  "wire_response_events": 1189,
+  "runtime_drift": [],
+  "final_health": {
+    "19108": 204,
+    "19109": 204
+  },
+  "failure": null,
+  "other_RQ1_conditions_complete": false,
+  "records": [
+    {
+      "key": "udp-fallback-udp-p1",
+      "transport": "udp",
+      "repetition": 1,
+      "measured": 20,
+      "wire_response_events": 129,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-udp-fallback-formal-20260918T082710Z\\udp-fallback-udp-p1"
+    },
+    {
+      "key": "udp-fallback-udp-p2",
+      "transport": "udp",
+      "repetition": 2,
+      "measured": 20,
+      "wire_response_events": 120,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-udp-fallback-formal-20260918T082710Z\\udp-fallback-udp-p2"
+    },
+    {
+      "key": "udp-fallback-udp-p3",
+      "transport": "udp",
+      "repetition": 3,
+      "measured": 20,
+      "wire_response_events": 119,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-udp-fallback-formal-20260918T082710Z\\udp-fallback-udp-p3"
+    },
+    {
+      "key": "udp-fallback-udp-p4",
+      "transport": "udp",
+      "repetition": 4,
+      "measured": 20,
+      "wire_response_events": 114,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-udp-fallback-formal-20260918T082710Z\\udp-fallback-udp-p4"
+    },
+    {
+      "key": "udp-fallback-udp-p5",
+      "transport": "udp",
+      "repetition": 5,
+      "measured": 20,
+      "wire_response_events": 113,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-udp-fallback-formal-20260918T082710Z\\udp-fallback-udp-p5"
+    },
+    {
+      "key": "udp-fallback-tcp-p1",
+      "transport": "tcp",
+      "repetition": 1,
+      "measured": 20,
+      "wire_response_events": 115,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-udp-fallback-formal-20260918T082710Z\\udp-fallback-tcp-p1"
+    },
+    {
+      "key": "udp-fallback-tcp-p2",
+      "transport": "tcp",
+      "repetition": 2,
+      "measured": 20,
+      "wire_response_events": 120,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-udp-fallback-formal-20260918T082710Z\\udp-fallback-tcp-p2"
+    },
+    {
+      "key": "udp-fallback-tcp-p3",
+      "transport": "tcp",
+      "repetition": 3,
+      "measured": 20,
+      "wire_response_events": 119,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-udp-fallback-formal-20260918T082710Z\\udp-fallback-tcp-p3"
+    },
+    {
+      "key": "udp-fallback-tcp-p4",
+      "transport": "tcp",
+      "repetition": 4,
+      "measured": 20,
+      "wire_response_events": 120,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-udp-fallback-formal-20260918T082710Z\\udp-fallback-tcp-p4"
+    },
+    {
+      "key": "udp-fallback-tcp-p5",
+      "transport": "tcp",
+      "repetition": 5,
+      "measured": 20,
+      "wire_response_events": 120,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-udp-fallback-formal-20260918T082710Z\\udp-fallback-tcp-p5"
+    }
+  ],
+  "finished": "2026-09-18T08:49:38.559405+00:00"
+}

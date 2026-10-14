@@ -1,0 +1,9 @@
+{
+  "status": "FORMAL_COMPLETED",
+  "verified_queries": 220,
+  "negative_cases": 200,
+  "controls": 20,
+  "formal_negative_cases": 200,
+  "restoration_ok": true,
+  "finished": "2026-09-21T04:20:46.676226+00:00"
+}

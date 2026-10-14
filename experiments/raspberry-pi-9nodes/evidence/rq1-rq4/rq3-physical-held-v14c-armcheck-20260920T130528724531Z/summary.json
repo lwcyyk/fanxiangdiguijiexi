@@ -1,0 +1,24 @@
+{
+  "status": "ARM_UNIT_VERIFIED_LIVE_PILOT_PENDING",
+  "passed": 22,
+  "ignored": 1,
+  "physical_queries": 0,
+  "formal_samples": 0,
+  "online_services_changed": false,
+  "remote_binary": "/tmp/ri-rq3-v14b-unit.QFb0Fi/wrapper-tests",
+  "binary_sha256": "fc9e1b609e913f6b272f84ed41eba1a2c6a968f347120ba39a211d6c3b7e4100",
+  "agent_resolution": {
+    "ips": [
+      "192.168.10.108"
+    ],
+    "routes": [
+      "192.168.10.108 dev wlan0 src 192.168.10.105 uid 0 \n    cache \n"
+    ]
+  },
+  "ready": {
+    "19108": 204,
+    "19109": 204
+  },
+  "registry": 104,
+  "finished": "2026-09-20T13:06:25.322397+00:00"
+}

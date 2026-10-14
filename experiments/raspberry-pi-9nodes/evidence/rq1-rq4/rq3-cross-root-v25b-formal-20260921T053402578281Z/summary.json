@@ -1,0 +1,20 @@
+{
+  "status": "INCOMPLETE_PRESERVED",
+  "verified_units": 5,
+  "negative_cases": 4,
+  "controls": 1,
+  "formal_negative_cases": 4,
+  "formal_controls": 1,
+  "udp_negative_cases": 4,
+  "tcp_negative_cases": 0,
+  "udp_controls": 1,
+  "tcp_controls": 0,
+  "physical_dns_queries": 9,
+  "unique_source_roots": 9,
+  "unique_source_attempts": 9,
+  "unique_source_graphs": 9,
+  "candidate_store_consume_invocations": 0,
+  "candidate_wrapper_release_invocations": 0,
+  "restoration_ok": true,
+  "finished": "2026-09-21T05:41:14.689448+00:00"
+}

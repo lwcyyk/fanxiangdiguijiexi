@@ -1,0 +1,23 @@
+{
+  "status": "RQ3_GRAPH_MUTATION_COMPONENT_COMPLETE",
+  "mode": "formal",
+  "families": [
+    "terminal-swap"
+  ],
+  "trials": 1000,
+  "formal_samples": 1000,
+  "baseline_accepts": 1000,
+  "safe_rejects": 1000,
+  "unsafe_or_errors": 0,
+  "signature_preserving_candidates": 1000,
+  "unique_candidates": 1000,
+  "unique_source_graphs": 200,
+  "private_key_exported": false,
+  "online_registry_mutated": false,
+  "runtime_drift": [],
+  "health": {
+    "19108": 204,
+    "19109": 204
+  },
+  "completed": "2026-09-20T01:46:39.749299+00:00"
+}

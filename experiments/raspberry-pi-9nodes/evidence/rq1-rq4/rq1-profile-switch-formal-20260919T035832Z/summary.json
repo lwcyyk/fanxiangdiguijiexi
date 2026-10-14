@@ -1,0 +1,112 @@
+{
+  "status": "COMPLETED_CONDITION",
+  "condition": "Profile-A<->Profile-B-switch",
+  "verified_measured": 200,
+  "profile_a_verified": 100,
+  "profile_b_verified": 100,
+  "udp_verified": 100,
+  "tcp_verified": 100,
+  "verified_preparatory": 0,
+  "completed_batches": 10,
+  "planned_batches": 10,
+  "failure": null,
+  "restore_failure": null,
+  "final_profile": "profile-b",
+  "final_health": {
+    "19108": 204,
+    "19109": 204
+  },
+  "records": [
+    {
+      "key": "profile-a-p1",
+      "profile": "profile-a",
+      "repetition": 1,
+      "measured": 20,
+      "udp": 10,
+      "tcp": 10,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-profile-switch-formal-20260919T035832Z\\profile-a-p1"
+    },
+    {
+      "key": "profile-b-p1",
+      "profile": "profile-b",
+      "repetition": 1,
+      "measured": 20,
+      "udp": 10,
+      "tcp": 10,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-profile-switch-formal-20260919T035832Z\\profile-b-p1"
+    },
+    {
+      "key": "profile-a-p2",
+      "profile": "profile-a",
+      "repetition": 2,
+      "measured": 20,
+      "udp": 10,
+      "tcp": 10,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-profile-switch-formal-20260919T035832Z\\profile-a-p2"
+    },
+    {
+      "key": "profile-b-p2",
+      "profile": "profile-b",
+      "repetition": 2,
+      "measured": 20,
+      "udp": 10,
+      "tcp": 10,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-profile-switch-formal-20260919T035832Z\\profile-b-p2"
+    },
+    {
+      "key": "profile-a-p3",
+      "profile": "profile-a",
+      "repetition": 3,
+      "measured": 20,
+      "udp": 10,
+      "tcp": 10,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-profile-switch-formal-20260919T035832Z\\profile-a-p3"
+    },
+    {
+      "key": "profile-b-p3",
+      "profile": "profile-b",
+      "repetition": 3,
+      "measured": 20,
+      "udp": 10,
+      "tcp": 10,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-profile-switch-formal-20260919T035832Z\\profile-b-p3"
+    },
+    {
+      "key": "profile-a-p4",
+      "profile": "profile-a",
+      "repetition": 4,
+      "measured": 20,
+      "udp": 10,
+      "tcp": 10,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-profile-switch-formal-20260919T035832Z\\profile-a-p4"
+    },
+    {
+      "key": "profile-b-p4",
+      "profile": "profile-b",
+      "repetition": 4,
+      "measured": 20,
+      "udp": 10,
+      "tcp": 10,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-profile-switch-formal-20260919T035832Z\\profile-b-p4"
+    },
+    {
+      "key": "profile-a-p5",
+      "profile": "profile-a",
+      "repetition": 5,
+      "measured": 20,
+      "udp": 10,
+      "tcp": 10,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-profile-switch-formal-20260919T035832Z\\profile-a-p5"
+    },
+    {
+      "key": "profile-b-p5",
+      "profile": "profile-b",
+      "repetition": 5,
+      "measured": 20,
+      "udp": 10,
+      "tcp": 10,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-profile-switch-formal-20260919T035832Z\\profile-b-p5"
+    }
+  ],
+  "finished": "2026-09-19T04:23:20.772843+00:00"
+}

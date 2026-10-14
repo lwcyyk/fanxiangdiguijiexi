@@ -1,0 +1,14 @@
+{
+  "status": "INCOMPLETE",
+  "verified_measured": 0,
+  "verified_preparatory": 0,
+  "remaining_RQ1_conditions": 6,
+  "all_RQ1_RQ5_complete": false,
+  "restored": true,
+  "final_health": {
+    "19108": 204,
+    "19109": 204
+  },
+  "failure": "AssertionError('unexpected Registry identity/view drift')",
+  "records": []
+}

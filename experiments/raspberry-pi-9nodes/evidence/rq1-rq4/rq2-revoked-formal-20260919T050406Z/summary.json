@@ -1,0 +1,22 @@
+{
+  "status": "INCOMPLETE_ENGINEERING_EVIDENCE",
+  "planned_formal_samples": 100,
+  "formal_samples": 0,
+  "udp": 0,
+  "tcp": 0,
+  "diagnostic_controls": 0,
+  "unique_roots": 0,
+  "unique_root_attempts": 0,
+  "unique_graph_digests": 0,
+  "failure": "AssertionError()",
+  "recovery_failure": null,
+  "registry_restored": true,
+  "profile_b_restored": true,
+  "runtime_drift": [],
+  "final_ready": {
+    "19108": 204,
+    "19109": 204
+  },
+  "final_snapshot_version": 18,
+  "finished": "2026-09-19T05:09:17.444897+00:00"
+}

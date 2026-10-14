@@ -1,0 +1,24 @@
+{
+  "status": "RQ2_REVOKED_UDP_TCP_FORMAL_CANDIDATE_COMPLETE",
+  "planned_formal_samples": 100,
+  "formal_samples": 100,
+  "udp": 50,
+  "tcp": 50,
+  "diagnostic_controls": 4,
+  "unique_roots": 100,
+  "unique_root_attempts": 100,
+  "unique_graph_digests": 100,
+  "failure": null,
+  "recovery_failure": null,
+  "registry_restored": true,
+  "internal_tcp_restored": true,
+  "profile_b_restored": true,
+  "verified_internal_tcp_lineages": 100,
+  "runtime_drift": [],
+  "final_ready": {
+    "19108": 204,
+    "19109": 204
+  },
+  "final_snapshot_version": 36,
+  "finished": "2026-09-19T06:45:20.412996+00:00"
+}

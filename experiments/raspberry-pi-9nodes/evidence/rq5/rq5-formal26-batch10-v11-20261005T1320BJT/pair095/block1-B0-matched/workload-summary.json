@@ -1,0 +1,18 @@
+{
+  "arrival_hash": "752e393b31c4b4de5bc2beacc8bacc580af38bf774b41f747396183eeb1b5434",
+  "completed_ok": 45,
+  "endpoint": {
+    "host": "192.168.10.105",
+    "port": 10053
+  },
+  "failed_after_send": 0,
+  "max_send_lag_ms": 12.426,
+  "not_sent": 0,
+  "offered": 45,
+  "output": "/var/tmp/rq5-formal-client-rq5f-e506f0488fd3-workload/raw.jsonl",
+  "schedule_schema": "qbrp-rq5-openloop-schedule-v2",
+  "schedule_start_utc_ns": 1791196355079043151,
+  "schema": "qbrp-rq5-openloop-summary-v2",
+  "sent": 45,
+  "transport": "udp"
+}

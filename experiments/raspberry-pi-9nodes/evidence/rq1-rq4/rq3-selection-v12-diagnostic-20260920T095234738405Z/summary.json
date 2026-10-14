@@ -1,0 +1,469 @@
+{
+  "status": "DIAGNOSTIC_COMPLETED",
+  "results": [
+    {
+      "order": "main-last",
+      "repeat": 0,
+      "context_registrations": [
+        {
+          "registration": {
+            "attempt_id": "probe12-920T095234738405Z-0-main-last-attempt",
+            "expected_endpoint": {
+              "ip": "192.0.2.54",
+              "port": 53,
+              "transport": "udp"
+            },
+            "hop_context_id": "ctx-b53a3278ad0768dc430d7222e57e6bf9",
+            "internal_transaction_id": 41,
+            "parent_context_id": "probe12-920T095234738405Z-0-main-last",
+            "query_context_id": "ctx-b53a3278ad0768dc430d7222e57e6bf9",
+            "query_digest": "0xe0a692ab9b41642052449b0aa806a43410cc96aa3fff3c77ef72756e6d655033",
+            "root_query_context_id": "probe12-920T095234738405Z-0-main-last",
+            "source_server_id": "operator/r1",
+            "target_server_id": "lab/auth",
+            "ttl_seconds": 120
+          },
+          "result": {
+            "ack": {
+              "attempt_id": "probe12-920T095234738405Z-0-main-last-attempt",
+              "expires_at": 1789898086,
+              "hop_context_id": "ctx-b53a3278ad0768dc430d7222e57e6bf9",
+              "min_event_rowid": 2,
+              "parent_context_id": "probe12-920T095234738405Z-0-main-last",
+              "query_context_id": "ctx-b53a3278ad0768dc430d7222e57e6bf9",
+              "registered_at": 1789897966,
+              "root_query_context_id": "probe12-920T095234738405Z-0-main-last",
+              "state": "REGISTERED"
+            }
+          }
+        },
+        {
+          "registration": {
+            "attempt_id": "ctx-70f1c8d5466d8a49deee16fbbe7c92e1",
+            "expected_endpoint": {
+              "ip": "192.0.2.54",
+              "port": 53,
+              "transport": "udp"
+            },
+            "hop_context_id": "ctx-89a02ae12ce56e9d8b504331ad483a51",
+            "internal_transaction_id": 40,
+            "parent_context_id": "probe12-920T095234738405Z-0-main-last",
+            "query_context_id": "ctx-89a02ae12ce56e9d8b504331ad483a51",
+            "query_digest": "0xe0a692ab9b41642052449b0aa806a43410cc96aa3fff3c77ef72756e6d655033",
+            "root_query_context_id": "probe12-920T095234738405Z-0-main-last",
+            "source_server_id": "operator/r1",
+            "target_server_id": "lab/auth",
+            "ttl_seconds": 120
+          },
+          "result": {
+            "ack": {
+              "attempt_id": "ctx-70f1c8d5466d8a49deee16fbbe7c92e1",
+              "expires_at": 1789898086,
+              "hop_context_id": "ctx-89a02ae12ce56e9d8b504331ad483a51",
+              "min_event_rowid": 3,
+              "parent_context_id": "probe12-920T095234738405Z-0-main-last",
+              "query_context_id": "ctx-89a02ae12ce56e9d8b504331ad483a51",
+              "registered_at": 1789897966,
+              "root_query_context_id": "probe12-920T095234738405Z-0-main-last",
+              "state": "REGISTERED"
+            }
+          }
+        }
+      ],
+      "terminal_sequence": 6,
+      "parent_sequence": 5,
+      "store_selected": "0xadf7f07267e989d2108467f1674b6436176fbe798d34bf010d944acfc5d24bec",
+      "agent_status": 200,
+      "agent_error": null,
+      "graph_persisted": true
+    },
+    {
+      "order": "aux-last",
+      "repeat": 0,
+      "context_registrations": [
+        {
+          "registration": {
+            "attempt_id": "probe12-920T095234738405Z-0-aux-last-attempt",
+            "expected_endpoint": {
+              "ip": "192.0.2.54",
+              "port": 53,
+              "transport": "udp"
+            },
+            "hop_context_id": "ctx-36af6e0ad278bf36b49f92a700b4c4c9",
+            "internal_transaction_id": 41,
+            "parent_context_id": "probe12-920T095234738405Z-0-aux-last",
+            "query_context_id": "ctx-36af6e0ad278bf36b49f92a700b4c4c9",
+            "query_digest": "0xe0a692ab9b41642052449b0aa806a43410cc96aa3fff3c77ef72756e6d655033",
+            "root_query_context_id": "probe12-920T095234738405Z-0-aux-last",
+            "source_server_id": "operator/r1",
+            "target_server_id": "lab/auth",
+            "ttl_seconds": 120
+          },
+          "result": {
+            "ack": {
+              "attempt_id": "probe12-920T095234738405Z-0-aux-last-attempt",
+              "expires_at": 1789898086,
+              "hop_context_id": "ctx-36af6e0ad278bf36b49f92a700b4c4c9",
+              "min_event_rowid": 2,
+              "parent_context_id": "probe12-920T095234738405Z-0-aux-last",
+              "query_context_id": "ctx-36af6e0ad278bf36b49f92a700b4c4c9",
+              "registered_at": 1789897966,
+              "root_query_context_id": "probe12-920T095234738405Z-0-aux-last",
+              "state": "REGISTERED"
+            }
+          }
+        },
+        {
+          "registration": {
+            "attempt_id": "ctx-a97dc120dde6d93897a18963b5db6584",
+            "expected_endpoint": {
+              "ip": "192.0.2.54",
+              "port": 53,
+              "transport": "udp"
+            },
+            "hop_context_id": "ctx-e2692bd06f6a9a1eebc27785ec1fb5d3",
+            "internal_transaction_id": 40,
+            "parent_context_id": "probe12-920T095234738405Z-0-aux-last",
+            "query_context_id": "ctx-e2692bd06f6a9a1eebc27785ec1fb5d3",
+            "query_digest": "0xe0a692ab9b41642052449b0aa806a43410cc96aa3fff3c77ef72756e6d655033",
+            "root_query_context_id": "probe12-920T095234738405Z-0-aux-last",
+            "source_server_id": "operator/r1",
+            "target_server_id": "lab/auth",
+            "ttl_seconds": 120
+          },
+          "result": {
+            "ack": {
+              "attempt_id": "ctx-a97dc120dde6d93897a18963b5db6584",
+              "expires_at": 1789898086,
+              "hop_context_id": "ctx-e2692bd06f6a9a1eebc27785ec1fb5d3",
+              "min_event_rowid": 3,
+              "parent_context_id": "probe12-920T095234738405Z-0-aux-last",
+              "query_context_id": "ctx-e2692bd06f6a9a1eebc27785ec1fb5d3",
+              "registered_at": 1789897966,
+              "root_query_context_id": "probe12-920T095234738405Z-0-aux-last",
+              "state": "REGISTERED"
+            }
+          }
+        }
+      ],
+      "terminal_sequence": 6,
+      "parent_sequence": 4,
+      "store_selected": "0x51bc6b07dbf04c2d5744cfcba3615dbf9055140971384243a68d847088280e1e",
+      "agent_status": 503,
+      "agent_error": "identity evidence unavailable: trace terminal ancestry violates producer lineage",
+      "graph_persisted": false
+    },
+    {
+      "order": "main-last",
+      "repeat": 1,
+      "context_registrations": [
+        {
+          "registration": {
+            "attempt_id": "probe12-920T095234738405Z-1-main-last-attempt",
+            "expected_endpoint": {
+              "ip": "192.0.2.54",
+              "port": 53,
+              "transport": "udp"
+            },
+            "hop_context_id": "ctx-cbc38b80a5ebefd5863dac1d1a3f98fb",
+            "internal_transaction_id": 41,
+            "parent_context_id": "probe12-920T095234738405Z-1-main-last",
+            "query_context_id": "ctx-cbc38b80a5ebefd5863dac1d1a3f98fb",
+            "query_digest": "0xe0a692ab9b41642052449b0aa806a43410cc96aa3fff3c77ef72756e6d655033",
+            "root_query_context_id": "probe12-920T095234738405Z-1-main-last",
+            "source_server_id": "operator/r1",
+            "target_server_id": "lab/auth",
+            "ttl_seconds": 120
+          },
+          "result": {
+            "ack": {
+              "attempt_id": "probe12-920T095234738405Z-1-main-last-attempt",
+              "expires_at": 1789898086,
+              "hop_context_id": "ctx-cbc38b80a5ebefd5863dac1d1a3f98fb",
+              "min_event_rowid": 2,
+              "parent_context_id": "probe12-920T095234738405Z-1-main-last",
+              "query_context_id": "ctx-cbc38b80a5ebefd5863dac1d1a3f98fb",
+              "registered_at": 1789897966,
+              "root_query_context_id": "probe12-920T095234738405Z-1-main-last",
+              "state": "REGISTERED"
+            }
+          }
+        },
+        {
+          "registration": {
+            "attempt_id": "ctx-c3af33c0d8a45cccbeb1cad35660d27e",
+            "expected_endpoint": {
+              "ip": "192.0.2.54",
+              "port": 53,
+              "transport": "udp"
+            },
+            "hop_context_id": "ctx-60d03af7c13bdd3bf7f1b26572ecc580",
+            "internal_transaction_id": 40,
+            "parent_context_id": "probe12-920T095234738405Z-1-main-last",
+            "query_context_id": "ctx-60d03af7c13bdd3bf7f1b26572ecc580",
+            "query_digest": "0xe0a692ab9b41642052449b0aa806a43410cc96aa3fff3c77ef72756e6d655033",
+            "root_query_context_id": "probe12-920T095234738405Z-1-main-last",
+            "source_server_id": "operator/r1",
+            "target_server_id": "lab/auth",
+            "ttl_seconds": 120
+          },
+          "result": {
+            "ack": {
+              "attempt_id": "ctx-c3af33c0d8a45cccbeb1cad35660d27e",
+              "expires_at": 1789898086,
+              "hop_context_id": "ctx-60d03af7c13bdd3bf7f1b26572ecc580",
+              "min_event_rowid": 3,
+              "parent_context_id": "probe12-920T095234738405Z-1-main-last",
+              "query_context_id": "ctx-60d03af7c13bdd3bf7f1b26572ecc580",
+              "registered_at": 1789897966,
+              "root_query_context_id": "probe12-920T095234738405Z-1-main-last",
+              "state": "REGISTERED"
+            }
+          }
+        }
+      ],
+      "terminal_sequence": 6,
+      "parent_sequence": 5,
+      "store_selected": "0xff9bdb43969037842280744e372dc8715bb7401f6fce352ce2187caf77aaf04a",
+      "agent_status": 200,
+      "agent_error": null,
+      "graph_persisted": true
+    },
+    {
+      "order": "aux-last",
+      "repeat": 1,
+      "context_registrations": [
+        {
+          "registration": {
+            "attempt_id": "probe12-920T095234738405Z-1-aux-last-attempt",
+            "expected_endpoint": {
+              "ip": "192.0.2.54",
+              "port": 53,
+              "transport": "udp"
+            },
+            "hop_context_id": "ctx-705847a67c7ef2f5c9e62f167df2ff79",
+            "internal_transaction_id": 41,
+            "parent_context_id": "probe12-920T095234738405Z-1-aux-last",
+            "query_context_id": "ctx-705847a67c7ef2f5c9e62f167df2ff79",
+            "query_digest": "0xe0a692ab9b41642052449b0aa806a43410cc96aa3fff3c77ef72756e6d655033",
+            "root_query_context_id": "probe12-920T095234738405Z-1-aux-last",
+            "source_server_id": "operator/r1",
+            "target_server_id": "lab/auth",
+            "ttl_seconds": 120
+          },
+          "result": {
+            "ack": {
+              "attempt_id": "probe12-920T095234738405Z-1-aux-last-attempt",
+              "expires_at": 1789898087,
+              "hop_context_id": "ctx-705847a67c7ef2f5c9e62f167df2ff79",
+              "min_event_rowid": 2,
+              "parent_context_id": "probe12-920T095234738405Z-1-aux-last",
+              "query_context_id": "ctx-705847a67c7ef2f5c9e62f167df2ff79",
+              "registered_at": 1789897967,
+              "root_query_context_id": "probe12-920T095234738405Z-1-aux-last",
+              "state": "REGISTERED"
+            }
+          }
+        },
+        {
+          "registration": {
+            "attempt_id": "ctx-b412ddf950612e4d4d795cc784ba9376",
+            "expected_endpoint": {
+              "ip": "192.0.2.54",
+              "port": 53,
+              "transport": "udp"
+            },
+            "hop_context_id": "ctx-10f06a293a3a0630775dc8dc7c28764a",
+            "internal_transaction_id": 40,
+            "parent_context_id": "probe12-920T095234738405Z-1-aux-last",
+            "query_context_id": "ctx-10f06a293a3a0630775dc8dc7c28764a",
+            "query_digest": "0xe0a692ab9b41642052449b0aa806a43410cc96aa3fff3c77ef72756e6d655033",
+            "root_query_context_id": "probe12-920T095234738405Z-1-aux-last",
+            "source_server_id": "operator/r1",
+            "target_server_id": "lab/auth",
+            "ttl_seconds": 120
+          },
+          "result": {
+            "ack": {
+              "attempt_id": "ctx-b412ddf950612e4d4d795cc784ba9376",
+              "expires_at": 1789898087,
+              "hop_context_id": "ctx-10f06a293a3a0630775dc8dc7c28764a",
+              "min_event_rowid": 3,
+              "parent_context_id": "probe12-920T095234738405Z-1-aux-last",
+              "query_context_id": "ctx-10f06a293a3a0630775dc8dc7c28764a",
+              "registered_at": 1789897967,
+              "root_query_context_id": "probe12-920T095234738405Z-1-aux-last",
+              "state": "REGISTERED"
+            }
+          }
+        }
+      ],
+      "terminal_sequence": 6,
+      "parent_sequence": 4,
+      "store_selected": "0xe77f1b7be3505d456fc28474d48bc660ce9d1ce2f52fc352ad26ee7a7bf7d933",
+      "agent_status": 503,
+      "agent_error": "identity evidence unavailable: trace terminal ancestry violates producer lineage",
+      "graph_persisted": false
+    },
+    {
+      "order": "main-last",
+      "repeat": 2,
+      "context_registrations": [
+        {
+          "registration": {
+            "attempt_id": "probe12-920T095234738405Z-2-main-last-attempt",
+            "expected_endpoint": {
+              "ip": "192.0.2.54",
+              "port": 53,
+              "transport": "udp"
+            },
+            "hop_context_id": "ctx-e5557109a47d8dfc29234c6448178ca7",
+            "internal_transaction_id": 41,
+            "parent_context_id": "probe12-920T095234738405Z-2-main-last",
+            "query_context_id": "ctx-e5557109a47d8dfc29234c6448178ca7",
+            "query_digest": "0xe0a692ab9b41642052449b0aa806a43410cc96aa3fff3c77ef72756e6d655033",
+            "root_query_context_id": "probe12-920T095234738405Z-2-main-last",
+            "source_server_id": "operator/r1",
+            "target_server_id": "lab/auth",
+            "ttl_seconds": 120
+          },
+          "result": {
+            "ack": {
+              "attempt_id": "probe12-920T095234738405Z-2-main-last-attempt",
+              "expires_at": 1789898087,
+              "hop_context_id": "ctx-e5557109a47d8dfc29234c6448178ca7",
+              "min_event_rowid": 2,
+              "parent_context_id": "probe12-920T095234738405Z-2-main-last",
+              "query_context_id": "ctx-e5557109a47d8dfc29234c6448178ca7",
+              "registered_at": 1789897967,
+              "root_query_context_id": "probe12-920T095234738405Z-2-main-last",
+              "state": "REGISTERED"
+            }
+          }
+        },
+        {
+          "registration": {
+            "attempt_id": "ctx-5cb6ee7403bc68eb272e46aa2d4dac9b",
+            "expected_endpoint": {
+              "ip": "192.0.2.54",
+              "port": 53,
+              "transport": "udp"
+            },
+            "hop_context_id": "ctx-438a229f257c9fcac11bffbdb23e0167",
+            "internal_transaction_id": 40,
+            "parent_context_id": "probe12-920T095234738405Z-2-main-last",
+            "query_context_id": "ctx-438a229f257c9fcac11bffbdb23e0167",
+            "query_digest": "0xe0a692ab9b41642052449b0aa806a43410cc96aa3fff3c77ef72756e6d655033",
+            "root_query_context_id": "probe12-920T095234738405Z-2-main-last",
+            "source_server_id": "operator/r1",
+            "target_server_id": "lab/auth",
+            "ttl_seconds": 120
+          },
+          "result": {
+            "ack": {
+              "attempt_id": "ctx-5cb6ee7403bc68eb272e46aa2d4dac9b",
+              "expires_at": 1789898087,
+              "hop_context_id": "ctx-438a229f257c9fcac11bffbdb23e0167",
+              "min_event_rowid": 3,
+              "parent_context_id": "probe12-920T095234738405Z-2-main-last",
+              "query_context_id": "ctx-438a229f257c9fcac11bffbdb23e0167",
+              "registered_at": 1789897967,
+              "root_query_context_id": "probe12-920T095234738405Z-2-main-last",
+              "state": "REGISTERED"
+            }
+          }
+        }
+      ],
+      "terminal_sequence": 6,
+      "parent_sequence": 5,
+      "store_selected": "0xf06b76d63e4d18b5b9888a9dd8f8551a30074379dbca47d7a4f4aff46fd73b8a",
+      "agent_status": 200,
+      "agent_error": null,
+      "graph_persisted": true
+    },
+    {
+      "order": "aux-last",
+      "repeat": 2,
+      "context_registrations": [
+        {
+          "registration": {
+            "attempt_id": "probe12-920T095234738405Z-2-aux-last-attempt",
+            "expected_endpoint": {
+              "ip": "192.0.2.54",
+              "port": 53,
+              "transport": "udp"
+            },
+            "hop_context_id": "ctx-66fadfbb978360c906030bec35ff7a53",
+            "internal_transaction_id": 41,
+            "parent_context_id": "probe12-920T095234738405Z-2-aux-last",
+            "query_context_id": "ctx-66fadfbb978360c906030bec35ff7a53",
+            "query_digest": "0xe0a692ab9b41642052449b0aa806a43410cc96aa3fff3c77ef72756e6d655033",
+            "root_query_context_id": "probe12-920T095234738405Z-2-aux-last",
+            "source_server_id": "operator/r1",
+            "target_server_id": "lab/auth",
+            "ttl_seconds": 120
+          },
+          "result": {
+            "ack": {
+              "attempt_id": "probe12-920T095234738405Z-2-aux-last-attempt",
+              "expires_at": 1789898087,
+              "hop_context_id": "ctx-66fadfbb978360c906030bec35ff7a53",
+              "min_event_rowid": 2,
+              "parent_context_id": "probe12-920T095234738405Z-2-aux-last",
+              "query_context_id": "ctx-66fadfbb978360c906030bec35ff7a53",
+              "registered_at": 1789897967,
+              "root_query_context_id": "probe12-920T095234738405Z-2-aux-last",
+              "state": "REGISTERED"
+            }
+          }
+        },
+        {
+          "registration": {
+            "attempt_id": "ctx-fc3adeff5d72b0383d888fcd4c15fe74",
+            "expected_endpoint": {
+              "ip": "192.0.2.54",
+              "port": 53,
+              "transport": "udp"
+            },
+            "hop_context_id": "ctx-53c769e0a10f4a1e8e1e2d29d962f66a",
+            "internal_transaction_id": 40,
+            "parent_context_id": "probe12-920T095234738405Z-2-aux-last",
+            "query_context_id": "ctx-53c769e0a10f4a1e8e1e2d29d962f66a",
+            "query_digest": "0xe0a692ab9b41642052449b0aa806a43410cc96aa3fff3c77ef72756e6d655033",
+            "root_query_context_id": "probe12-920T095234738405Z-2-aux-last",
+            "source_server_id": "operator/r1",
+            "target_server_id": "lab/auth",
+            "ttl_seconds": 120
+          },
+          "result": {
+            "ack": {
+              "attempt_id": "ctx-fc3adeff5d72b0383d888fcd4c15fe74",
+              "expires_at": 1789898087,
+              "hop_context_id": "ctx-53c769e0a10f4a1e8e1e2d29d962f66a",
+              "min_event_rowid": 3,
+              "parent_context_id": "probe12-920T095234738405Z-2-aux-last",
+              "query_context_id": "ctx-53c769e0a10f4a1e8e1e2d29d962f66a",
+              "registered_at": 1789897967,
+              "root_query_context_id": "probe12-920T095234738405Z-2-aux-last",
+              "state": "REGISTERED"
+            }
+          }
+        }
+      ],
+      "terminal_sequence": 6,
+      "parent_sequence": 4,
+      "store_selected": "0xb9514dda353e824253c118e69df2ee65f33aef3ea74f4c8108d6ed372d7a6348",
+      "agent_status": 503,
+      "agent_error": "identity evidence unavailable: trace terminal ancestry violates producer lineage",
+      "graph_persisted": false
+    }
+  ],
+  "formal_samples": 0,
+  "physical_trials": 0,
+  "ready": {
+    "19108": 204,
+    "19109": 204
+  },
+  "registry": 104,
+  "finished": "2026-09-20T09:52:56.950956+00:00"
+}

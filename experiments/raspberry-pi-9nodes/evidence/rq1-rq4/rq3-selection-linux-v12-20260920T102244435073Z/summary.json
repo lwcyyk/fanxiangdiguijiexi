@@ -1,0 +1,114 @@
+{
+  "status": "LINUX_ISOLATED_REGRESSION_VERIFIED",
+  "tests": [
+    {
+      "label": "gap-unit",
+      "result": "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
+    },
+    {
+      "label": "agent-regression",
+      "result": "test result: ok. 25 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 5.43s"
+    },
+    {
+      "label": "sibling-regression",
+      "result": "test result: ok. 4 passed; 0 failed; 1 ignored; 0 measured; 26 filtered out; finished in 0.84s"
+    },
+    {
+      "label": "competing-regression",
+      "result": "test result: ok. 4 passed; 0 failed; 1 ignored; 0 measured; 31 filtered out; finished in 1.82s"
+    }
+  ],
+  "cases": [
+    {
+      "repeat": 0,
+      "order": "main-last",
+      "mutation": "none",
+      "status": 200,
+      "graph": true
+    },
+    {
+      "repeat": 0,
+      "order": "main-last",
+      "mutation": "non-selected-parent",
+      "status": 503,
+      "graph": false
+    },
+    {
+      "repeat": 0,
+      "order": "aux-last",
+      "mutation": "none",
+      "status": 200,
+      "graph": true
+    },
+    {
+      "repeat": 0,
+      "order": "aux-last",
+      "mutation": "non-selected-parent",
+      "status": 503,
+      "graph": false
+    },
+    {
+      "repeat": 1,
+      "order": "main-last",
+      "mutation": "none",
+      "status": 200,
+      "graph": true
+    },
+    {
+      "repeat": 1,
+      "order": "main-last",
+      "mutation": "non-selected-parent",
+      "status": 503,
+      "graph": false
+    },
+    {
+      "repeat": 1,
+      "order": "aux-last",
+      "mutation": "none",
+      "status": 200,
+      "graph": true
+    },
+    {
+      "repeat": 1,
+      "order": "aux-last",
+      "mutation": "non-selected-parent",
+      "status": 503,
+      "graph": false
+    },
+    {
+      "repeat": 2,
+      "order": "main-last",
+      "mutation": "none",
+      "status": 200,
+      "graph": true
+    },
+    {
+      "repeat": 2,
+      "order": "main-last",
+      "mutation": "non-selected-parent",
+      "status": 503,
+      "graph": false
+    },
+    {
+      "repeat": 2,
+      "order": "aux-last",
+      "mutation": "none",
+      "status": 200,
+      "graph": true
+    },
+    {
+      "repeat": 2,
+      "order": "aux-last",
+      "mutation": "non-selected-parent",
+      "status": 503,
+      "graph": false
+    }
+  ],
+  "positive": 6,
+  "negative": 6,
+  "formal_samples": 0,
+  "physical_trials": 0,
+  "online_deployment": false,
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "finished": "2026-09-20T10:29:39.155772+00:00"
+}

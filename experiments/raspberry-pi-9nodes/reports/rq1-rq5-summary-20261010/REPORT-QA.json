@@ -1,0 +1,89 @@
+{
+  "created_utc": "2026-10-10T03:09:44.190646+00:00",
+  "client_date": "2026-10-10",
+  "pdf_pages": 9,
+  "page_limit": 10,
+  "sections": [
+    "1. 实验目标、平台与计数方式",
+    "2. RQ1：功能行为与候选解析器关联",
+    "3. RQ2：身份认证与身份状态变化",
+    "4. RQ3：响应绑定与授权非复用",
+    "5. RQ4：服务依赖、故障表现与恢复",
+    "6. RQ5：比较设计、工作负载与指标",
+    "7. RQ5：主要结果与服务代价",
+    "8. RQ5：26条件完整结果表",
+    "9. 已支持的结论、完成范围与材料依据"
+  ],
+  "page_openings": [
+    "递归解析器身份认证 | RQ1-RQ5实验报告\n2026-10-10  /  现有实验结果整理\n1\n递归解析器身份认证：RQ1-RQ5实验报告\n报告日期：2026-10-10。依据当前Computer Communica",
+    "递归解析器身份认证 | RQ1-RQ5实验报告\n2026-10-10  /  现有实验结果整理\n2\n2. RQ1：功能行为与候选解析器关联\n为什么做\n缓存、转发、重试和传输回退会改变一次查询涉及的解析器。身份认证需要先确",
+    "递归解析器身份认证 | RQ1-RQ5实验报告\n2026-10-10  /  现有实验结果整理\n3\n3. RQ2：身份认证与身份状态变化\n为什么做\n已撤销或停用的解析器可能仍被旧转发配置选中。RQ2检查独立身份视图能否拒",
+    "递归解析器身份认证 | RQ1-RQ5实验报告\n2026-10-10  /  现有实验结果整理\n4\n4. RQ3：响应绑定与授权非复用\n为什么做\n身份接受之后，认证决定还需约束同一查询的最终响应。RQ3检查能否替换响应字",
+    "递归解析器身份认证 | RQ1-RQ5实验报告\n2026-10-10  /  现有实验结果整理\n5\n5. RQ4：服务依赖、故障表现与恢复\n为什么做\n证据生成、Agent控制路径和独立身份后台具有不同职责。RQ4通过依赖",
+    "递归解析器身份认证 | RQ1-RQ5实验报告\n2026-10-10  /  现有实验结果整理\n6\n6. RQ5：比较设计、工作负载与指标\n为什么做\n身份认证增加登记、证据处理、身份验证和响应授权步骤。RQ5量化完整认证",
+    "递归解析器身份认证 | RQ1-RQ5实验报告\n2026-10-10  /  现有实验结果整理\n7\n7. RQ5：主要结果与服务代价\n原生与流水线认证部署\n下表列出默认1 QPS下D3 hot/cold主要结果。时延列是",
+    "递归解析器身份认证 | RQ1-RQ5实验报告\n2026-10-10  /  现有实验结果整理\n8\n8. RQ5：26条件完整结果表\n每行五对。D1/D2/D3及速率行的A为native，S3行的A为serial；B均为",
+    "递归解析器身份认证 | RQ1-RQ5实验报告\n2026-10-10  /  现有实验结果整理\n9\n9. 已支持的结论、完成范围与材料依据\n五组结果如何共同支撑研究\nRQ1说明候选记录在指定DNS行为下满足功能关联检查。"
+  ],
+  "all_26_condition_rows_source_exact": true,
+  "scientific_source_files": {
+    "D:\\backup\\reports\\cc-final-submission\\source\\sections\\06-evaluation.tex": "61ec5c14cd828132ad8bf2d8c15ca21849694f03fe9de5f253b2fe08b13c5c1c",
+    "D:\\backup\\reports\\cc-final-submission\\source\\sections\\supplement-technical.tex": "6808ca64cb7f8a79f44dcf4a5360796c6ad3d5b4317846340122320dbd42e6f1",
+    "D:\\backup\\reports\\cc-final-submission\\source\\sections\\supplement-results.tex": "397bdbe65798546765c717f61169521f50a5466ae701b90cd6ca961865307054",
+    "D:\\backup\\reports\\cc-final-submission\\source\\data\\analysis_plan.json": "48c1f5b93741055f9e11b256bcad9c10542c77cb6870fb1c35a72e7772d7ba0d",
+    "D:\\backup\\reports\\cc-final-submission\\source\\data\\global_summary.json": "1d99c15f06c8e5620ec7939ef2d599a85e30e728631fea7c5fa4ece6e9a651aa",
+    "D:\\backup\\reports\\cc-final-submission\\source\\tables\\table_revocation.tex": "f3366758fa47ef08545173b683b004953f3846eb14aa07f7e12587409b9c1fa1",
+    "D:\\backup\\reports\\cc-final-submission\\source\\tables\\table_rq1.tex": "dbea13733e1183454d9e5304d119f2a89a5e7286749187275ae05d610495a182",
+    "D:\\backup\\reports\\cc-final-submission\\source\\tables\\table_rq2_all.tex": "5650427dddedbe357305faddc24cae33317c35d2545517e1a458ec34b82c6c82",
+    "D:\\backup\\reports\\cc-final-submission\\source\\tables\\table_rq3_components.tex": "dc5d0f620845ef1924f656c7af4e5d2b0a188ea860d157dc0821a13d1c9e7994",
+    "D:\\backup\\reports\\cc-final-submission\\source\\tables\\table_rq3_physical.tex": "e70d351b4ba2bcf70df2b41bcc27efbdabc55656a7337af46d2424530a265f85",
+    "D:\\backup\\reports\\cc-final-submission\\source\\tables\\table_rq4.tex": "0d69e48b632b34d49c56567e68ffde3425e03dd681c853816c4e4c30d9060086",
+    "D:\\backup\\reports\\cc-final-submission\\source\\tables\\table_rq5_all.tex": "acf139bff06131f66ab4e48d671a4621e27745c45a1c627be125ce8cbcbafb0e",
+    "D:\\backup\\reports\\cc-final-submission\\source\\tables\\table_rq5_selected.tex": "d03208901036c76df1c6081d3fef39c6c602d9a063c9a003d3b7d1515ac62775",
+    "D:\\backup\\reports\\cc-final-submission\\source\\tables\\table_rq5_serial.tex": "ec63fd242070cf34cdcda9ba6d305dbbbf859efd7d9ad52ee171012731760a08"
+  },
+  "outputs": {
+    "RQ1-RQ5-实验报告.md": "df3bd1e2ea2712571cb96726c3b77ecb0f605118ce476e4be620a1354057557f",
+    "RQ1-RQ5-实验报告.pdf": "91f2ff8d18d7b0dd32196764df60377246c6f4229761e3cf85e4eb0785eba397"
+  },
+  "new_experiments": false,
+  "statistical_recomputation": false,
+  "original_source_modified": false,
+  "visual_review": "COMPLETE",
+  "visual_pages_inspected": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "final_layout_pages_reinspected": [
+    2,
+    3,
+    9
+  ],
+  "unchanged_render_pages_pixel_exact": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "all_fonts_embedded": true,
+  "fonts": {
+    "/AAAAAA+SimSun-0": true,
+    "/AAAAAB+SimSun-0": true,
+    "/AAAAAC+SimSun-0": true,
+    "/AAAAAA+MicrosoftYaHei-Bold-0": true,
+    "/AAAAAB+MicrosoftYaHei-Bold-0": true
+  },
+  "original_sources_match_candidate_manifest": true,
+  "structural_preflight": "PASS / STRUCTURE_ONLY",
+  "delivery_pdf_sha256": "91f2ff8d18d7b0dd32196764df60377246c6f4229761e3cf85e4eb0785eba397",
+  "checks_scope": "Document QA only; no new experiments or statistical computation"
+}

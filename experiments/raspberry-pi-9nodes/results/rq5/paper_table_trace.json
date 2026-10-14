@@ -1,0 +1,103 @@
+[
+  {
+    "file": "rq5_table_native.tex",
+    "sha256": "7ff8aa2651baab347ab9a432dbde897bcbc3322870f57cccb9b1dbf52b99b620",
+    "source": "condition_summary.json",
+    "source_sha256": "db846ac4d32b0772198a6759fc654886b6a5e3a8dd05df34d60e6777e30fb906",
+    "profile_ids": [
+      "D3-UDP-hot",
+      "D3-UDP-cold",
+      "D3-TCP-hot",
+      "D3-TCP-cold",
+      "D3-UDP-near",
+      "D3-UDP-fallback"
+    ],
+    "fields": [
+      "A/B.p50_block_median_ms",
+      "A/B.p95_block_median_ms",
+      "B.measure_success/offered",
+      "paired_p50_ratio.n"
+    ],
+    "rounding": "latency2 decimals, paired ratio/interval3 decimals; unrounded JSON retained",
+    "claim_ids": [
+      "RQ5-C03",
+      "RQ5-C07"
+    ],
+    "transform_code": "rq5_paper_tables_v1.py",
+    "transform_sha256": "57a9e29a258e075a7eb3e4f0c4f9e8d264eb52e50beaccba5a6df8e35057f928"
+  },
+  {
+    "file": "rq5_table_serial.tex",
+    "sha256": "139b69e406dd2f20ef7a2257af40214f97722398da4a27a3f96184f539db1d50",
+    "source": "condition_summary.json",
+    "source_sha256": "db846ac4d32b0772198a6759fc654886b6a5e3a8dd05df34d60e6777e30fb906",
+    "profile_ids": [
+      "D3-serial-UDP-hot",
+      "D3-serial-UDP-cold",
+      "D3-serial-TCP-hot",
+      "D3-serial-TCP-cold"
+    ],
+    "fields": [
+      "A/B.p50_block_median_ms",
+      "A/B.p95_block_median_ms",
+      "paired_p50_ratio.estimate/lo/hi"
+    ],
+    "rounding": "latency2 decimals, paired ratio/interval3 decimals; unrounded JSON retained",
+    "claim_ids": [
+      "RQ5-C06"
+    ],
+    "transform_code": "rq5_paper_tables_v1.py",
+    "transform_sha256": "57a9e29a258e075a7eb3e4f0c4f9e8d264eb52e50beaccba5a6df8e35057f928"
+  },
+  {
+    "file": "rq5_tables_all26.tex",
+    "sha256": "77df50f58d9ba9510637ad4a68cc74655542a2411932d69b8cf79ec7f8a65544",
+    "source": "condition_summary.json",
+    "source_sha256": "db846ac4d32b0772198a6759fc654886b6a5e3a8dd05df34d60e6777e30fb906",
+    "profile_ids": [
+      "D3-UDP-hot",
+      "D3-UDP-cold",
+      "D3-UDP-mix",
+      "D3-UDP-NXDOMAIN",
+      "D3-TCP-hot",
+      "D3-TCP-cold",
+      "D3-TCP-mix",
+      "D3-TCP-NXDOMAIN",
+      "D3-UDP-near",
+      "D3-UDP-fallback",
+      "D3-serial-UDP-hot",
+      "D3-serial-UDP-cold",
+      "D3-serial-TCP-hot",
+      "D3-serial-TCP-cold",
+      "D1-UDP-hot",
+      "D1-UDP-cold",
+      "D2-UDP-hot",
+      "D2-UDP-cold",
+      "D3-rate025-UDP-hot",
+      "D3-rate025-UDP-cold",
+      "D3-rate050-UDP-hot",
+      "D3-rate050-UDP-cold",
+      "D3-rate100-UDP-hot",
+      "D3-rate100-UDP-cold",
+      "D3-rate200-UDP-hot",
+      "D3-rate200-UDP-cold"
+    ],
+    "fields": [
+      "A/B.measure_success/offered",
+      "A/B.p50_block_median_ms",
+      "A/B.p95_block_median_ms",
+      "paired_p50_ratio.n"
+    ],
+    "rounding": "latency2 decimals, paired ratio/interval3 decimals; unrounded JSON retained",
+    "claim_ids": [
+      "RQ5-C01",
+      "RQ5-C03",
+      "RQ5-C04",
+      "RQ5-C05",
+      "RQ5-C06",
+      "RQ5-C07"
+    ],
+    "transform_code": "rq5_paper_tables_v1.py",
+    "transform_sha256": "57a9e29a258e075a7eb3e4f0c4f9e8d264eb52e50beaccba5a6df8e35057f928"
+  }
+]

@@ -1,0 +1,132 @@
+{
+  "scope": "normal DNS recovery verification only; not formal cross-root results",
+  "queries": [
+    {
+      "trial_id": "rq3-normal-dns-recovery-20260921T083312013979Z-udp",
+      "transport": "udp",
+      "qname": "p0201.ri-test.invalid.",
+      "query_hex": "3857010000010000000000000570303230310772692d7465737407696e76616c69640000010001",
+      "query_digest": "0x273e724dd1847a754487ccffbccec8f76079bbf5175191955492309723a37e63",
+      "start_ns": 1789979595804151411,
+      "expected_peer": [
+        "192.168.10.105",
+        10053
+      ],
+      "timeout_s": 12,
+      "send_calls": 1,
+      "delivery_observation": "RESPONSE_RECEIVED",
+      "probe_version": "single-send-v2",
+      "send_start_ns": 1789979595804179952,
+      "client_socket": [
+        "0.0.0.0",
+        50580
+      ],
+      "query_bytes_sent": 39,
+      "send_end_ns": 1789979595804558231,
+      "receive_ns": 1789979596077559964,
+      "response_hex": "3857818000010001000000000570303230310772692d7465737407696e76616c69640000010001c00c0001000100004ddf0004c000020a",
+      "peer": [
+        "192.168.10.105",
+        10053
+      ],
+      "response_digest": "0x28154396bbe2cf6a04e97d8eabe8072740f11de74f8a67685c9b75d1ea1d0e6d",
+      "peer_match": true,
+      "rcode": 0,
+      "answers": 1,
+      "txid_match": true,
+      "elapsed_ms": 273.83105095941573,
+      "end_ns": 1789979596077793869
+    },
+    {
+      "trial_id": "rq3-normal-dns-recovery-20260921T083312013979Z-tcp",
+      "transport": "tcp",
+      "qname": "p0202.ri-test.invalid.",
+      "query_hex": "372f010000010000000000000570303230320772692d7465737407696e76616c69640000010001",
+      "query_digest": "0xebf832ced2c22cb36df45003410149a9d9a634e37ca26cca07c7da763445f503",
+      "start_ns": 1789979597180372615,
+      "expected_peer": [
+        "192.168.10.105",
+        10053
+      ],
+      "timeout_s": 12,
+      "send_calls": 1,
+      "delivery_observation": "RESPONSE_RECEIVED",
+      "probe_version": "single-send-v2",
+      "client_socket": [
+        "192.168.10.100",
+        42616
+      ],
+      "send_start_ns": 1789979597194546910,
+      "send_end_ns": 1789979597194743523,
+      "receive_ns": 1789979597405194465,
+      "response_hex": "372f818000010001000000000570303230320772692d7465737407696e76616c69640000010001c00c0001000100004dfc0004c000020a",
+      "peer": [
+        "192.168.10.105",
+        10053
+      ],
+      "response_digest": "0xc192e526068c010528027efa81f44fdbd7733000040bb333d98665aa1f8846ce",
+      "peer_match": true,
+      "rcode": 0,
+      "answers": 1,
+      "txid_match": true,
+      "elapsed_ms": 225.1990350196138,
+      "end_ns": 1789979597405390557
+    }
+  ],
+  "captures": {
+    "r3": {
+      "ok": false,
+      "bytes": 24
+    },
+    "management": {
+      "ok": true,
+      "bytes": 414790
+    },
+    "authdns": {
+      "ok": true,
+      "bytes": 12456
+    },
+    "client": {
+      "ok": true,
+      "bytes": 1416
+    },
+    "r1": {
+      "ok": true,
+      "bytes": 110890
+    },
+    "r2": {
+      "ok": true,
+      "bytes": 1137361
+    }
+  },
+  "errors": [],
+  "store_rows": {
+    "management": {
+      "ri_v3_wrapper_proofs": 2,
+      "ri_v3_wrapper_root_authorizations": 2,
+      "ri_v3_wrapper_registry_views": 1,
+      "ri_v3_wrapper_emit_receipts": 2
+    },
+    "r1": {
+      "ri_v3_query_contexts": 2,
+      "ri_v2_trace_events": 6,
+      "ri_v2_evidence_graphs": 2
+    },
+    "r2": {
+      "ri_v3_query_contexts": 0,
+      "ri_v2_trace_events": 0,
+      "ri_v2_evidence_graphs": 0
+    },
+    "r3": {
+      "ri_v3_query_contexts": 0,
+      "ri_v2_trace_events": 0,
+      "ri_v2_evidence_graphs": 0
+    },
+    "authdns": {
+      "ri_v3_query_contexts": 0,
+      "ri_v2_trace_events": 0,
+      "ri_v2_evidence_graphs": 0
+    }
+  },
+  "formal_negative_cases_added": 0
+}

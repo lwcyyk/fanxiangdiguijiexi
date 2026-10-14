@@ -1,0 +1,9 @@
+{
+  "status": "FORMAL_COMPLETED",
+  "verified_queries": 220,
+  "verified_attack_trials": 200,
+  "verified_controls": 20,
+  "complete_campaign": true,
+  "restoration_ok": true,
+  "finished": "2026-09-20T17:46:17.816194+00:00"
+}

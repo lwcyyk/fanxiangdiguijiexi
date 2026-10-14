@@ -1,0 +1,3122 @@
+{
+  "status": "VALID_FORMAL_BLOCK",
+  "tag": "rq5f-b14b70ee9cb4",
+  "mode": "B1-pipelined",
+  "pair_number": 44,
+  "condition": {
+    "profile_id": "D3-UDP-near",
+    "depth": 3,
+    "kind": "near",
+    "nominal_transport": "udp",
+    "offered_rate_qps": "1",
+    "nominal_serial_condition": false,
+    "condition_index": 8,
+    "A": "B0-matched",
+    "B": "B1-pipelined"
+  },
+  "source_sha256": "442da95772ae2f0d11fc25b7ef59bb7471a73e4081b91cd10fcd1cc79d457d36",
+  "start_epoch_ns": 1791111541108722500,
+  "schedule_sha256": "5b04f7bc19390b23ba052c87dfc2964915500e585692d9a67e958f47e8c6c095",
+  "restore_errors": [],
+  "evidence_errors": [],
+  "power_stability_claimed": false,
+  "storage_before": {
+    "free_bytes": 2411483136,
+    "throttled_raw": "throttled=0x50005",
+    "power_stability_claimed": false,
+    "warning": false,
+    "archive_trigger": false,
+    "hard_stop": false,
+    "reserve_bytes": 512000000
+  },
+  "node_prepare": {
+    "authdns": {
+      "state": "PREPARED_NOT_ACTIVE",
+      "folder": "/var/tmp/rq5-f0-c-node-rq5f-b14b70ee9cb4-authdns"
+    },
+    "r3": {
+      "state": "PREPARED_NOT_ACTIVE",
+      "folder": "/var/tmp/rq5-f0-c-node-rq5f-b14b70ee9cb4-r3"
+    },
+    "r1": {
+      "state": "PREPARED_NOT_ACTIVE",
+      "folder": "/var/tmp/rq5-f0-c-node-rq5f-b14b70ee9cb4-r1"
+    },
+    "r2": {
+      "state": "PREPARED_NOT_ACTIVE",
+      "folder": "/var/tmp/rq5-f0-c-node-rq5f-b14b70ee9cb4-r2"
+    }
+  },
+  "node_activate": {
+    "r3": {
+      "state": "ACTIVE_ONE_BOUNDED_F0_C_GROUP_NOT_PASS",
+      "active_at": "2026-10-04T10:59:56.626964+00:00",
+      "guard_seconds": 1200,
+      "maximum_group_active_seconds": 720
+    },
+    "r1": {
+      "state": "ACTIVE_ONE_BOUNDED_F0_C_GROUP_NOT_PASS",
+      "active_at": "2026-10-04T11:00:02.657214+00:00",
+      "guard_seconds": 1200,
+      "maximum_group_active_seconds": 720
+    },
+    "r2": {
+      "state": "ACTIVE_ONE_BOUNDED_F0_C_GROUP_NOT_PASS",
+      "active_at": "2026-10-04T11:00:03.916738+00:00",
+      "guard_seconds": 1200,
+      "maximum_group_active_seconds": 720
+    },
+    "authdns": {
+      "state": "ACTIVE_ONE_BOUNDED_F0_C_GROUP_NOT_PASS",
+      "active_at": "2026-10-04T11:00:11.383541+00:00",
+      "guard_seconds": 1200,
+      "maximum_group_active_seconds": 720
+    }
+  },
+  "cache_reset": {
+    "r3": {
+      "exact_cache": "/var/lib/resolver-identity/ri-r3/knot-cache",
+      "removed_only_derived_entries": [
+        {
+          "name": ".ri-rq5-cache-epoch",
+          "directory": false,
+          "bytes": 18
+        },
+        {
+          "name": "control",
+          "directory": true,
+          "bytes": 4096
+        },
+        {
+          "name": "data.mdb",
+          "directory": false,
+          "bytes": 251654144
+        },
+        {
+          "name": "defer",
+          "directory": false,
+          "bytes": 0
+        },
+        {
+          "name": "lock.mdb",
+          "directory": false,
+          "bytes": 8256
+        },
+        {
+          "name": "ruledb",
+          "directory": true,
+          "bytes": 4096
+        },
+        {
+          "name": "top",
+          "directory": false,
+          "bytes": 16777472
+        }
+      ],
+      "epoch": "rq5f-b14b70ee9cb4",
+      "candidate_ready": {
+        "status": "CONFIGURED_SERVER_COMPLETE_SECURITY_STABLE_NOT_F0_PASS",
+        "timeline": [
+          {
+            "at": "2026-10-04T11:00:22.903133+00:00",
+            "observed": {
+              "agent": {
+                "pid": 239919,
+                "started_at": "2026-10-04T10:59:55.025909129Z",
+                "image_id": "sha256:08db15490fc1f593183fc4fdee5c0836b05da58cf06121fe9b61d2a37b782ba0"
+              },
+              "agent_ready": {
+                "HTTP": 200,
+                "json_ok": true,
+                "hostname_verified": true,
+                "mTLS": true,
+                "client": "PINNED_EXISTING_CURL_NO_INSECURE_NO_KEYLOG_NO_PROXY_NO_RETRY",
+                "production_TLS_policy_changed": false,
+                "CA_sha256": "c0973a3bd318cdb7db98392ff0aeb0be5506436f1276a8d5220947602c819686",
+                "certificate_change_authorization": "RQ5-USER-AUTHORIZATION-20261003-ALL.json",
+                "production_TLS_verification_policy_changed": false
+              },
+              "resolver": {
+                "pid": 240366,
+                "started_at": "2026-10-04T11:00:21.40613377Z",
+                "image_id": "sha256:c26149fd9b9fe05f9ab910394bbbd1bae27f68b6bbbeb2cd56134fb2d396da0e"
+              },
+              "trace-adapter": {
+                "pid": 240039,
+                "started_at": "2026-10-04T10:59:56.483751704Z",
+                "image_id": "sha256:32089f9d04d5ed26663103558c9dd6e327971b8933b7319b62d5c7967e58578a"
+              },
+              "trace-producer": {
+                "pid": 239831,
+                "started_at": "2026-10-04T10:59:54.535599806Z",
+                "image_id": "sha256:01aceb97fc44ff01cf823815a72edc1aaf6c67cef6c5ca96d1d7dbc54e9929a8"
+              }
+            },
+            "consecutive": 1
+          },
+          {
+            "at": "2026-10-04T11:00:26.798834+00:00",
+            "observed": {
+              "agent": {
+                "pid": 239919,
+                "started_at": "2026-10-04T10:59:55.025909129Z",
+                "image_id": "sha256:08db15490fc1f593183fc4fdee5c0836b05da58cf06121fe9b61d2a37b782ba0"
+              },
+              "agent_ready": {
+                "HTTP": 200,
+                "json_ok": true,
+                "hostname_verified": true,
+                "mTLS": true,
+                "client": "PINNED_EXISTING_CURL_NO_INSECURE_NO_KEYLOG_NO_PROXY_NO_RETRY",
+                "production_TLS_policy_changed": false,
+                "CA_sha256": "c0973a3bd318cdb7db98392ff0aeb0be5506436f1276a8d5220947602c819686",
+                "certificate_change_authorization": "RQ5-USER-AUTHORIZATION-20261003-ALL.json",
+                "production_TLS_verification_policy_changed": false
+              },
+              "resolver": {
+                "pid": 240366,
+                "started_at": "2026-10-04T11:00:21.40613377Z",
+                "image_id": "sha256:c26149fd9b9fe05f9ab910394bbbd1bae27f68b6bbbeb2cd56134fb2d396da0e"
+              },
+              "trace-adapter": {
+                "pid": 240039,
+                "started_at": "2026-10-04T10:59:56.483751704Z",
+                "image_id": "sha256:32089f9d04d5ed26663103558c9dd6e327971b8933b7319b62d5c7967e58578a"
+              },
+              "trace-producer": {
+                "pid": 239831,
+                "started_at": "2026-10-04T10:59:54.535599806Z",
+                "image_id": "sha256:01aceb97fc44ff01cf823815a72edc1aaf6c67cef6c5ca96d1d7dbc54e9929a8"
+              }
+            },
+            "consecutive": 2
+          },
+          {
+            "at": "2026-10-04T11:00:30.196165+00:00",
+            "observed": {
+              "agent": {
+                "pid": 239919,
+                "started_at": "2026-10-04T10:59:55.025909129Z",
+                "image_id": "sha256:08db15490fc1f593183fc4fdee5c0836b05da58cf06121fe9b61d2a37b782ba0"
+              },
+              "agent_ready": {
+                "HTTP": 200,
+                "json_ok": true,
+                "hostname_verified": true,
+                "mTLS": true,
+                "client": "PINNED_EXISTING_CURL_NO_INSECURE_NO_KEYLOG_NO_PROXY_NO_RETRY",
+                "production_TLS_policy_changed": false,
+                "CA_sha256": "c0973a3bd318cdb7db98392ff0aeb0be5506436f1276a8d5220947602c819686",
+                "certificate_change_authorization": "RQ5-USER-AUTHORIZATION-20261003-ALL.json",
+                "production_TLS_verification_policy_changed": false
+              },
+              "resolver": {
+                "pid": 240366,
+                "started_at": "2026-10-04T11:00:21.40613377Z",
+                "image_id": "sha256:c26149fd9b9fe05f9ab910394bbbd1bae27f68b6bbbeb2cd56134fb2d396da0e"
+              },
+              "trace-adapter": {
+                "pid": 240039,
+                "started_at": "2026-10-04T10:59:56.483751704Z",
+                "image_id": "sha256:32089f9d04d5ed26663103558c9dd6e327971b8933b7319b62d5c7967e58578a"
+              },
+              "trace-producer": {
+                "pid": 239831,
+                "started_at": "2026-10-04T10:59:54.535599806Z",
+                "image_id": "sha256:01aceb97fc44ff01cf823815a72edc1aaf6c67cef6c5ca96d1d7dbc54e9929a8"
+              }
+            },
+            "consecutive": 3
+          }
+        ]
+      },
+      "identity_data_removed": false
+    },
+    "r1": {
+      "exact_cache": "/var/lib/resolver-identity/ri-r1/knot-cache",
+      "removed_only_derived_entries": [
+        {
+          "name": ".ri-rq5-cache-epoch",
+          "directory": false,
+          "bytes": 18
+        },
+        {
+          "name": "control",
+          "directory": true,
+          "bytes": 4096
+        },
+        {
+          "name": "data.mdb",
+          "directory": false,
+          "bytes": 251654144
+        },
+        {
+          "name": "defer",
+          "directory": false,
+          "bytes": 0
+        },
+        {
+          "name": "lock.mdb",
+          "directory": false,
+          "bytes": 8256
+        },
+        {
+          "name": "ruledb",
+          "directory": true,
+          "bytes": 4096
+        },
+        {
+          "name": "top",
+          "directory": false,
+          "bytes": 16777472
+        }
+      ],
+      "epoch": "rq5f-b14b70ee9cb4",
+      "candidate_ready": {
+        "status": "CONFIGURED_SERVER_COMPLETE_SECURITY_STABLE_NOT_F0_PASS",
+        "timeline": [
+          {
+            "at": "2026-10-04T11:00:25.669621+00:00",
+            "observed": {
+              "agent": {
+                "pid": 305377,
+                "started_at": "2026-10-04T11:00:00.327406834Z",
+                "image_id": "sha256:08db15490fc1f593183fc4fdee5c0836b05da58cf06121fe9b61d2a37b782ba0"
+              },
+              "agent_ready": {
+                "HTTP": 200,
+                "json_ok": true,
+                "hostname_verified": true,
+                "mTLS": true,
+                "client": "PINNED_EXISTING_CURL_NO_INSECURE_NO_KEYLOG_NO_PROXY_NO_RETRY",
+                "production_TLS_policy_changed": false,
+                "CA_sha256": "c0973a3bd318cdb7db98392ff0aeb0be5506436f1276a8d5220947602c819686",
+                "certificate_change_authorization": "RQ5-USER-AUTHORIZATION-20261003-ALL.json",
+                "production_TLS_verification_policy_changed": false
+              },
+              "resolver": {
+                "pid": 305829,
+                "started_at": "2026-10-04T11:00:23.072620032Z",
+                "image_id": "sha256:c26149fd9b9fe05f9ab910394bbbd1bae27f68b6bbbeb2cd56134fb2d396da0e"
+              },
+              "trace-adapter": {
+                "pid": 305500,
+                "started_at": "2026-10-04T11:00:02.554842783Z",
+                "image_id": "sha256:32089f9d04d5ed26663103558c9dd6e327971b8933b7319b62d5c7967e58578a"
+              },
+              "trace-producer": {
+                "pid": 305271,
+                "started_at": "2026-10-04T10:59:59.36358332Z",
+                "image_id": "sha256:01aceb97fc44ff01cf823815a72edc1aaf6c67cef6c5ca96d1d7dbc54e9929a8"
+              }
+            },
+            "consecutive": 1
+          },
+          {
+            "at": "2026-10-04T11:00:30.093841+00:00",
+            "observed": {
+              "agent": {
+                "pid": 305377,
+                "started_at": "2026-10-04T11:00:00.327406834Z",
+                "image_id": "sha256:08db15490fc1f593183fc4fdee5c0836b05da58cf06121fe9b61d2a37b782ba0"
+              },
+              "agent_ready": {
+                "HTTP": 200,
+                "json_ok": true,
+                "hostname_verified": true,
+                "mTLS": true,
+                "client": "PINNED_EXISTING_CURL_NO_INSECURE_NO_KEYLOG_NO_PROXY_NO_RETRY",
+                "production_TLS_policy_changed": false,
+                "CA_sha256": "c0973a3bd318cdb7db98392ff0aeb0be5506436f1276a8d5220947602c819686",
+                "certificate_change_authorization": "RQ5-USER-AUTHORIZATION-20261003-ALL.json",
+                "production_TLS_verification_policy_changed": false
+              },
+              "resolver": {
+                "pid": 305829,
+                "started_at": "2026-10-04T11:00:23.072620032Z",
+                "image_id": "sha256:c26149fd9b9fe05f9ab910394bbbd1bae27f68b6bbbeb2cd56134fb2d396da0e"
+              },
+              "trace-adapter": {
+                "pid": 305500,
+                "started_at": "2026-10-04T11:00:02.554842783Z",
+                "image_id": "sha256:32089f9d04d5ed26663103558c9dd6e327971b8933b7319b62d5c7967e58578a"
+              },
+              "trace-producer": {
+                "pid": 305271,
+                "started_at": "2026-10-04T10:59:59.36358332Z",
+                "image_id": "sha256:01aceb97fc44ff01cf823815a72edc1aaf6c67cef6c5ca96d1d7dbc54e9929a8"
+              }
+            },
+            "consecutive": 2
+          },
+          {
+            "at": "2026-10-04T11:00:34.604477+00:00",
+            "observed": {
+              "agent": {
+                "pid": 305377,
+                "started_at": "2026-10-04T11:00:00.327406834Z",
+                "image_id": "sha256:08db15490fc1f593183fc4fdee5c0836b05da58cf06121fe9b61d2a37b782ba0"
+              },
+              "agent_ready": {
+                "HTTP": 200,
+                "json_ok": true,
+                "hostname_verified": true,
+                "mTLS": true,
+                "client": "PINNED_EXISTING_CURL_NO_INSECURE_NO_KEYLOG_NO_PROXY_NO_RETRY",
+                "production_TLS_policy_changed": false,
+                "CA_sha256": "c0973a3bd318cdb7db98392ff0aeb0be5506436f1276a8d5220947602c819686",
+                "certificate_change_authorization": "RQ5-USER-AUTHORIZATION-20261003-ALL.json",
+                "production_TLS_verification_policy_changed": false
+              },
+              "resolver": {
+                "pid": 305829,
+                "started_at": "2026-10-04T11:00:23.072620032Z",
+                "image_id": "sha256:c26149fd9b9fe05f9ab910394bbbd1bae27f68b6bbbeb2cd56134fb2d396da0e"
+              },
+              "trace-adapter": {
+                "pid": 305500,
+                "started_at": "2026-10-04T11:00:02.554842783Z",
+                "image_id": "sha256:32089f9d04d5ed26663103558c9dd6e327971b8933b7319b62d5c7967e58578a"
+              },
+              "trace-producer": {
+                "pid": 305271,
+                "started_at": "2026-10-04T10:59:59.36358332Z",
+                "image_id": "sha256:01aceb97fc44ff01cf823815a72edc1aaf6c67cef6c5ca96d1d7dbc54e9929a8"
+              }
+            },
+            "consecutive": 3
+          }
+        ]
+      },
+      "identity_data_removed": false
+    },
+    "r2": {
+      "exact_cache": "/var/lib/resolver-identity/ri-r2/knot-cache",
+      "removed_only_derived_entries": [
+        {
+          "name": ".ri-rq5-cache-epoch",
+          "directory": false,
+          "bytes": 18
+        },
+        {
+          "name": "control",
+          "directory": true,
+          "bytes": 4096
+        },
+        {
+          "name": "data.mdb",
+          "directory": false,
+          "bytes": 251654144
+        },
+        {
+          "name": "defer",
+          "directory": false,
+          "bytes": 0
+        },
+        {
+          "name": "lock.mdb",
+          "directory": false,
+          "bytes": 8256
+        },
+        {
+          "name": "ruledb",
+          "directory": true,
+          "bytes": 4096
+        },
+        {
+          "name": "top",
+          "directory": false,
+          "bytes": 16777472
+        }
+      ],
+      "epoch": "rq5f-b14b70ee9cb4",
+      "candidate_ready": {
+        "status": "CONFIGURED_SERVER_COMPLETE_SECURITY_STABLE_NOT_F0_PASS",
+        "timeline": [
+          {
+            "at": "2026-10-04T11:00:26.133006+00:00",
+            "observed": {
+              "agent": {
+                "pid": 286990,
+                "started_at": "2026-10-04T11:00:01.271993689Z",
+                "image_id": "sha256:08db15490fc1f593183fc4fdee5c0836b05da58cf06121fe9b61d2a37b782ba0"
+              },
+              "agent_ready": {
+                "HTTP": 200,
+                "json_ok": true,
+                "hostname_verified": true,
+                "mTLS": true,
+                "client": "PINNED_EXISTING_CURL_NO_INSECURE_NO_KEYLOG_NO_PROXY_NO_RETRY",
+                "production_TLS_policy_changed": false,
+                "CA_sha256": "c0973a3bd318cdb7db98392ff0aeb0be5506436f1276a8d5220947602c819686",
+                "certificate_change_authorization": "RQ5-USER-AUTHORIZATION-20261003-ALL.json",
+                "production_TLS_verification_policy_changed": false
+              },
+              "resolver": {
+                "pid": 287439,
+                "started_at": "2026-10-04T11:00:23.377261239Z",
+                "image_id": "sha256:c26149fd9b9fe05f9ab910394bbbd1bae27f68b6bbbeb2cd56134fb2d396da0e"
+              },
+              "trace-adapter": {
+                "pid": 287110,
+                "started_at": "2026-10-04T11:00:03.802470214Z",
+                "image_id": "sha256:32089f9d04d5ed26663103558c9dd6e327971b8933b7319b62d5c7967e58578a"
+              },
+              "trace-producer": {
+                "pid": 286904,
+                "started_at": "2026-10-04T11:00:00.359735589Z",
+                "image_id": "sha256:01aceb97fc44ff01cf823815a72edc1aaf6c67cef6c5ca96d1d7dbc54e9929a8"
+              }
+            },
+            "consecutive": 1
+          },
+          {
+            "at": "2026-10-04T11:00:30.696504+00:00",
+            "observed": {
+              "agent": {
+                "pid": 286990,
+                "started_at": "2026-10-04T11:00:01.271993689Z",
+                "image_id": "sha256:08db15490fc1f593183fc4fdee5c0836b05da58cf06121fe9b61d2a37b782ba0"
+              },
+              "agent_ready": {
+                "HTTP": 200,
+                "json_ok": true,
+                "hostname_verified": true,
+                "mTLS": true,
+                "client": "PINNED_EXISTING_CURL_NO_INSECURE_NO_KEYLOG_NO_PROXY_NO_RETRY",
+                "production_TLS_policy_changed": false,
+                "CA_sha256": "c0973a3bd318cdb7db98392ff0aeb0be5506436f1276a8d5220947602c819686",
+                "certificate_change_authorization": "RQ5-USER-AUTHORIZATION-20261003-ALL.json",
+                "production_TLS_verification_policy_changed": false
+              },
+              "resolver": {
+                "pid": 287439,
+                "started_at": "2026-10-04T11:00:23.377261239Z",
+                "image_id": "sha256:c26149fd9b9fe05f9ab910394bbbd1bae27f68b6bbbeb2cd56134fb2d396da0e"
+              },
+              "trace-adapter": {
+                "pid": 287110,
+                "started_at": "2026-10-04T11:00:03.802470214Z",
+                "image_id": "sha256:32089f9d04d5ed26663103558c9dd6e327971b8933b7319b62d5c7967e58578a"
+              },
+              "trace-producer": {
+                "pid": 286904,
+                "started_at": "2026-10-04T11:00:00.359735589Z",
+                "image_id": "sha256:01aceb97fc44ff01cf823815a72edc1aaf6c67cef6c5ca96d1d7dbc54e9929a8"
+              }
+            },
+            "consecutive": 2
+          },
+          {
+            "at": "2026-10-04T11:00:35.290177+00:00",
+            "observed": {
+              "agent": {
+                "pid": 286990,
+                "started_at": "2026-10-04T11:00:01.271993689Z",
+                "image_id": "sha256:08db15490fc1f593183fc4fdee5c0836b05da58cf06121fe9b61d2a37b782ba0"
+              },
+              "agent_ready": {
+                "HTTP": 200,
+                "json_ok": true,
+                "hostname_verified": true,
+                "mTLS": true,
+                "client": "PINNED_EXISTING_CURL_NO_INSECURE_NO_KEYLOG_NO_PROXY_NO_RETRY",
+                "production_TLS_policy_changed": false,
+                "CA_sha256": "c0973a3bd318cdb7db98392ff0aeb0be5506436f1276a8d5220947602c819686",
+                "certificate_change_authorization": "RQ5-USER-AUTHORIZATION-20261003-ALL.json",
+                "production_TLS_verification_policy_changed": false
+              },
+              "resolver": {
+                "pid": 287439,
+                "started_at": "2026-10-04T11:00:23.377261239Z",
+                "image_id": "sha256:c26149fd9b9fe05f9ab910394bbbd1bae27f68b6bbbeb2cd56134fb2d396da0e"
+              },
+              "trace-adapter": {
+                "pid": 287110,
+                "started_at": "2026-10-04T11:00:03.802470214Z",
+                "image_id": "sha256:32089f9d04d5ed26663103558c9dd6e327971b8933b7319b62d5c7967e58578a"
+              },
+              "trace-producer": {
+                "pid": 286904,
+                "started_at": "2026-10-04T11:00:00.359735589Z",
+                "image_id": "sha256:01aceb97fc44ff01cf823815a72edc1aaf6c67cef6c5ca96d1d7dbc54e9929a8"
+              }
+            },
+            "consecutive": 3
+          }
+        ]
+      },
+      "identity_data_removed": false
+    }
+  },
+  "Wrapper": {
+    "pid": 114568,
+    "mode": "controlled-pipelined",
+    "ready": [
+      204,
+      204
+    ],
+    "inflight": 0
+  },
+  "resources_before": {
+    "client": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-04T11:00:52Z\n0.01 0.02 0.00 1/272 48850\nMem:       949071872   320454656   141627392    29847552   584089600   628617216\n23356006400"
+    },
+    "management": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-04T11:00:52Z\n0.26 0.53 0.64 2/323 114632\nMem:       949071872   348692480    45113344    26017792   648560640   600379392\n3539918848"
+    },
+    "r1": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-04T11:00:52Z\n0.94 0.51 0.44 1/427 306033\nMem:       949071872   366612480   274616320    23101440   394579968   582459392\n15724457984"
+    },
+    "r2": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-04T11:00:52Z\n1.96 1.01 0.76 1/488 287644\nMem:       949071872   392699904   223543296    20008960   417402880   556371968\n2411749376"
+    },
+    "r3": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-04T11:00:52Z\n0.87 0.37 0.27 1/421 240572\nMem:       949071872   343130112   298459136    23523328   392949760   605941760\n14422413312"
+    },
+    "authdns": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-04T11:00:52Z\n0.11 0.07 0.07 1/341 137832\nMem:       949071872   370524160    80359424    28979200   594452480   578547712\n19409567744"
+    }
+  },
+  "workload": {
+    "remote": "/var/tmp/rq5-formal-client-rq5f-b14b70ee9cb4-workload",
+    "summary": {
+      "arrival_hash": "579b268936f3dfe6ca9b50e6092c024aed620146a87ebd8596b1d1b8ee5628fc",
+      "completed_ok": 0,
+      "endpoint": {
+        "host": "192.168.10.105",
+        "port": 10053
+      },
+      "failed_after_send": 180,
+      "max_send_lag_ms": 12.246,
+      "not_sent": 0,
+      "offered": 180,
+      "output": "/var/tmp/rq5-formal-client-rq5f-b14b70ee9cb4-workload/raw.jsonl",
+      "schedule_schema": "qbrp-rq5-openloop-schedule-v2",
+      "schedule_start_utc_ns": 1791111655248973446,
+      "schema": "qbrp-rq5-openloop-summary-v2",
+      "sent": 180,
+      "transport": "udp"
+    }
+  },
+  "drain": {
+    "literal_fixed_seconds": 180,
+    "actual_seconds": 180.00023110001348,
+    "observations": [
+      {
+        "observed_utc_ns": 1791111879743707200,
+        "inflight": 0
+      },
+      {
+        "observed_utc_ns": 1791111890191877800,
+        "inflight": 0
+      },
+      {
+        "observed_utc_ns": 1791111900835903400,
+        "inflight": 0
+      },
+      {
+        "observed_utc_ns": 1791111911477512000,
+        "inflight": 0
+      },
+      {
+        "observed_utc_ns": 1791111922475561400,
+        "inflight": 0
+      },
+      {
+        "observed_utc_ns": 1791111933184625600,
+        "inflight": 0
+      },
+      {
+        "observed_utc_ns": 1791111943831366900,
+        "inflight": 0
+      },
+      {
+        "observed_utc_ns": 1791111955024590500,
+        "inflight": 0
+      },
+      {
+        "observed_utc_ns": 1791111965925495800,
+        "inflight": 0
+      },
+      {
+        "observed_utc_ns": 1791111976900130800,
+        "inflight": 0
+      },
+      {
+        "observed_utc_ns": 1791111987589167500,
+        "inflight": 0
+      },
+      {
+        "observed_utc_ns": 1791111998479680200,
+        "inflight": 0
+      },
+      {
+        "observed_utc_ns": 1791112009280767100,
+        "inflight": 0
+      },
+      {
+        "observed_utc_ns": 1791112019941060200,
+        "inflight": 0
+      },
+      {
+        "observed_utc_ns": 1791112030771758500,
+        "inflight": 0
+      },
+      {
+        "observed_utc_ns": 1791112041778677100,
+        "inflight": 0
+      },
+      {
+        "observed_utc_ns": 1791112052434956200,
+        "inflight": 0
+      }
+    ],
+    "origin": "AFTER_CLIENT_TERMINAL_ROWS_OR_180S_OFFER_WINDOW_WHICHEVER_LATER",
+    "adaptive_extension": false,
+    "backlog_is_performance_outcome_not_automatic_INVALID": true
+  },
+  "resources_after": {
+    "client": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-04T11:07:40Z\n0.00 0.01 0.00 1/273 48968\nMem:       949071872   315920384   145465344    29933568   584867840   633151488\n23355604992"
+    },
+    "management": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-04T11:07:40Z\n0.89 0.80 0.73 2/320 114879\nMem:       949071872   335462400    55472128    26025984   651440128   613609472\n3537068032"
+    },
+    "r1": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-04T11:07:40Z\n0.10 0.15 0.28 2/422 306115\nMem:       949071872   347418624   290963456    23101440   397430784   601653248\n15724085248"
+    },
+    "r2": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-04T11:07:40Z\n0.22 0.40 0.55 1/482 287696\nMem:       949071872   377458688   229453824    20078592   426758144   571613184\n2403856384"
+    },
+    "r3": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-04T11:07:40Z\n0.08 0.12 0.17 2/418 240599\nMem:       949071872   325902336   314339328    23531520   394321920   623169536\n14422310912"
+    },
+    "authdns": {
+      "status": "OBSERVED",
+      "stdout": "2026-10-04T11:07:40Z\n0.03 0.03 0.04 1/339 137854\nMem:       949071872   370515968    80252928    28905472   594497536   578555904\n19409457152"
+    }
+  },
+  "observer_errors": [],
+  "captures": {
+    "client": {
+      "remote": {
+        "pid": 48834,
+        "starttime": "53366325",
+        "directory": "/var/tmp/rq5f-b14b70ee9cb4-client",
+        "pcap": "/var/tmp/rq5f-b14b70ee9cb4-client/capture.pcap",
+        "log": "/var/tmp/rq5f-b14b70ee9cb4-client/capture.log",
+        "command": [
+          "timeout",
+          "-s",
+          "INT",
+          "900",
+          "tcpdump",
+          "-i",
+          "any",
+          "-nn",
+          "-s",
+          "0",
+          "-U",
+          "-Z",
+          "root",
+          "-w",
+          "/var/tmp/rq5f-b14b70ee9cb4-client/capture.pcap",
+          "port 53 or port 5353 or port 5354 or port 10053 or port 8443 or port 8444 or port 8446 or port 18443 or (ip[6:2] & 0x1fff != 0)"
+        ],
+        "boot_id": "0ea5e534-fc94-4a93-929b-0b5198b4c85f",
+        "power_start": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "undervoltage_risk_waived": true
+      },
+      "stop": {
+        "stopped": true,
+        "log_text": "tcpdump: WARNING: any: That device doesn't support promiscuous mode\n(Promiscuous mode not supported on the \"any\" device)\ntcpdump: listening on any, link-type LINUX_SLL2 (Linux cooked v2), snapshot length 262144 bytes\n360 packets captured\n360 packets received by filter\n0 packets dropped by kernel\n",
+        "boot_id": "0ea5e534-fc94-4a93-929b-0b5198b4c85f",
+        "pcap_bytes": 47724,
+        "log_bytes": 297,
+        "power_stop": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "source_pcap_sha256": "a73f3ccbb682c20e93f35d3af7f7b4c63ff826073825773462e532c2f4ed934d",
+        "source_log_sha256": "431076faaaf1cd389f9436952d8bfe56ec3ac9be5d58e7f8bac707fd0645b054"
+      },
+      "pcap": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.11:/var/tmp/rq5f-b14b70ee9cb4-client/capture.pcap",
+          "D:\\backup\\.rq4-v2l-45580-client-pcap.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 47724,
+        "sha256": "a73f3ccbb682c20e93f35d3af7f7b4c63ff826073825773462e532c2f4ed934d"
+      },
+      "log": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.11:/var/tmp/rq5f-b14b70ee9cb4-client/capture.log",
+          "D:\\backup\\.rq4-v2l-45580-client-log.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 297,
+        "sha256": "431076faaaf1cd389f9436952d8bfe56ec3ac9be5d58e7f8bac707fd0645b054"
+      }
+    },
+    "management": {
+      "remote": {
+        "pid": 114602,
+        "starttime": "53366411",
+        "directory": "/var/tmp/rq5f-b14b70ee9cb4-management",
+        "pcap": "/var/tmp/rq5f-b14b70ee9cb4-management/capture.pcap",
+        "log": "/var/tmp/rq5f-b14b70ee9cb4-management/capture.log",
+        "command": [
+          "timeout",
+          "-s",
+          "INT",
+          "900",
+          "tcpdump",
+          "-i",
+          "any",
+          "-nn",
+          "-s",
+          "0",
+          "-U",
+          "-Z",
+          "root",
+          "-w",
+          "/var/tmp/rq5f-b14b70ee9cb4-management/capture.pcap",
+          "port 53 or port 5353 or port 5354 or port 10053 or port 8443 or port 8444 or port 8446 or port 18443 or (ip[6:2] & 0x1fff != 0)"
+        ],
+        "boot_id": "b0ad88c4-3af4-4a31-8ffd-d10e170192b5",
+        "power_start": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "undervoltage_risk_waived": true
+      },
+      "stop": {
+        "stopped": true,
+        "log_text": "tcpdump: WARNING: any: That device doesn't support promiscuous mode\n(Promiscuous mode not supported on the \"any\" device)\ntcpdump: listening on any, link-type LINUX_SLL2 (Linux cooked v2), snapshot length 262144 bytes\n14904 packets captured\n14904 packets received by filter\n0 packets dropped by kernel\n",
+        "boot_id": "b0ad88c4-3af4-4a31-8ffd-d10e170192b5",
+        "pcap_bytes": 3408733,
+        "log_bytes": 301,
+        "power_stop": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "source_pcap_sha256": "0848d33cfe0669f9574b3d9071033c052e417bfb3764182325806809435d8337",
+        "source_log_sha256": "d45ed56abc18b17b65d5454e98ffa8243278403ac2117c6a9e60c7ac563c2ab7"
+      },
+      "pcap": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.12:/var/tmp/rq5f-b14b70ee9cb4-management/capture.pcap",
+          "D:\\backup\\.rq4-v2l-45580-management-pcap.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 3408733,
+        "sha256": "0848d33cfe0669f9574b3d9071033c052e417bfb3764182325806809435d8337"
+      },
+      "log": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.12:/var/tmp/rq5f-b14b70ee9cb4-management/capture.log",
+          "D:\\backup\\.rq4-v2l-45580-management-log.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 301,
+        "sha256": "d45ed56abc18b17b65d5454e98ffa8243278403ac2117c6a9e60c7ac563c2ab7"
+      }
+    },
+    "r1": {
+      "remote": {
+        "pid": 306002,
+        "starttime": "53366559",
+        "directory": "/var/tmp/rq5f-b14b70ee9cb4-r1",
+        "pcap": "/var/tmp/rq5f-b14b70ee9cb4-r1/capture.pcap",
+        "log": "/var/tmp/rq5f-b14b70ee9cb4-r1/capture.log",
+        "command": [
+          "timeout",
+          "-s",
+          "INT",
+          "900",
+          "tcpdump",
+          "-i",
+          "any",
+          "-nn",
+          "-s",
+          "0",
+          "-U",
+          "-Z",
+          "root",
+          "-w",
+          "/var/tmp/rq5f-b14b70ee9cb4-r1/capture.pcap",
+          "port 53 or port 5353 or port 5354 or port 10053 or port 8443 or port 8444 or port 8446 or port 18443 or (ip[6:2] & 0x1fff != 0)"
+        ],
+        "boot_id": "845f3f40-dd9b-44ba-9d68-ae4a164442e2",
+        "power_start": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "undervoltage_risk_waived": true
+      },
+      "stop": {
+        "stopped": true,
+        "log_text": "tcpdump: WARNING: any: That device doesn't support promiscuous mode\n(Promiscuous mode not supported on the \"any\" device)\ntcpdump: listening on any, link-type LINUX_SLL2 (Linux cooked v2), snapshot length 262144 bytes\n4199 packets captured\n4199 packets received by filter\n0 packets dropped by kernel\n",
+        "boot_id": "845f3f40-dd9b-44ba-9d68-ae4a164442e2",
+        "pcap_bytes": 463906,
+        "log_bytes": 299,
+        "power_stop": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "source_pcap_sha256": "e80475e4f773c50fff422550635e37141558ee4197611e71d2638e86bbf19919",
+        "source_log_sha256": "f19027030ff7e5896c4f98ef32133ec74313ece35edb239f01f1003884b8f4ed"
+      },
+      "pcap": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.15:/var/tmp/rq5f-b14b70ee9cb4-r1/capture.pcap",
+          "D:\\backup\\.rq4-v2l-45580-r1-pcap.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 463906,
+        "sha256": "e80475e4f773c50fff422550635e37141558ee4197611e71d2638e86bbf19919"
+      },
+      "log": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.15:/var/tmp/rq5f-b14b70ee9cb4-r1/capture.log",
+          "D:\\backup\\.rq4-v2l-45580-r1-log.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 299,
+        "sha256": "f19027030ff7e5896c4f98ef32133ec74313ece35edb239f01f1003884b8f4ed"
+      }
+    },
+    "r2": {
+      "remote": {
+        "pid": 287614,
+        "starttime": "53366031",
+        "directory": "/var/tmp/rq5f-b14b70ee9cb4-r2",
+        "pcap": "/var/tmp/rq5f-b14b70ee9cb4-r2/capture.pcap",
+        "log": "/var/tmp/rq5f-b14b70ee9cb4-r2/capture.log",
+        "command": [
+          "timeout",
+          "-s",
+          "INT",
+          "900",
+          "tcpdump",
+          "-i",
+          "any",
+          "-nn",
+          "-s",
+          "0",
+          "-U",
+          "-Z",
+          "root",
+          "-w",
+          "/var/tmp/rq5f-b14b70ee9cb4-r2/capture.pcap",
+          "port 53 or port 5353 or port 5354 or port 10053 or port 8443 or port 8444 or port 8446 or port 18443 or (ip[6:2] & 0x1fff != 0)"
+        ],
+        "boot_id": "b8a83f40-848a-41cb-9bb2-88622bf8a929",
+        "power_start": {
+          "throttled_raw": "throttled=0x50005",
+          "throttled_mask": 327685,
+          "current_fault_bits": 5,
+          "undervoltage_events": 21,
+          "risk_waived": true
+        },
+        "capture_scheme": "v2l-in-place-single-hash",
+        "undervoltage_risk_waived": true
+      },
+      "stop": {
+        "stopped": true,
+        "log_text": "tcpdump: WARNING: any: That device doesn't support promiscuous mode\n(Promiscuous mode not supported on the \"any\" device)\ntcpdump: listening on any, link-type LINUX_SLL2 (Linux cooked v2), snapshot length 262144 bytes\n34944 packets captured\n35121 packets received by filter\n0 packets dropped by kernel\n",
+        "boot_id": "b8a83f40-848a-41cb-9bb2-88622bf8a929",
+        "pcap_bytes": 9358249,
+        "log_bytes": 301,
+        "power_stop": {
+          "throttled_raw": "throttled=0x50005",
+          "throttled_mask": 327685,
+          "current_fault_bits": 5,
+          "undervoltage_events": 23
+        },
+        "capture_scheme": "v2l-in-place-single-hash",
+        "source_pcap_sha256": "ed460e7b1ddc970bbe279ceee0927e1784a88678fb823e5551072ebefe1806d8",
+        "source_log_sha256": "39013bed1280f56afdd35e10d2c4b2f85899321ca34f36553bbde04870ce07f5"
+      },
+      "pcap": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.16:/var/tmp/rq5f-b14b70ee9cb4-r2/capture.pcap",
+          "D:\\backup\\.rq4-v2l-45580-r2-pcap.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 9358249,
+        "sha256": "ed460e7b1ddc970bbe279ceee0927e1784a88678fb823e5551072ebefe1806d8"
+      },
+      "log": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.16:/var/tmp/rq5f-b14b70ee9cb4-r2/capture.log",
+          "D:\\backup\\.rq4-v2l-45580-r2-log.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 301,
+        "sha256": "39013bed1280f56afdd35e10d2c4b2f85899321ca34f36553bbde04870ce07f5"
+      }
+    },
+    "r3": {
+      "remote": {
+        "pid": 240543,
+        "starttime": "53366670",
+        "directory": "/var/tmp/rq5f-b14b70ee9cb4-r3",
+        "pcap": "/var/tmp/rq5f-b14b70ee9cb4-r3/capture.pcap",
+        "log": "/var/tmp/rq5f-b14b70ee9cb4-r3/capture.log",
+        "command": [
+          "timeout",
+          "-s",
+          "INT",
+          "900",
+          "tcpdump",
+          "-i",
+          "any",
+          "-nn",
+          "-s",
+          "0",
+          "-U",
+          "-Z",
+          "root",
+          "-w",
+          "/var/tmp/rq5f-b14b70ee9cb4-r3/capture.pcap",
+          "port 53 or port 5353 or port 5354 or port 10053 or port 8443 or port 8444 or port 8446 or port 18443 or (ip[6:2] & 0x1fff != 0)"
+        ],
+        "boot_id": "8afc812e-b7a6-4181-94e1-9ecea2c7ec8b",
+        "power_start": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "undervoltage_risk_waived": true
+      },
+      "stop": {
+        "stopped": true,
+        "log_text": "tcpdump: WARNING: any: That device doesn't support promiscuous mode\n(Promiscuous mode not supported on the \"any\" device)\ntcpdump: listening on any, link-type LINUX_SLL2 (Linux cooked v2), snapshot length 262144 bytes\n1031 packets captured\n1031 packets received by filter\n0 packets dropped by kernel\n",
+        "boot_id": "8afc812e-b7a6-4181-94e1-9ecea2c7ec8b",
+        "pcap_bytes": 136909,
+        "log_bytes": 299,
+        "power_stop": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "source_pcap_sha256": "98fc90c8be87e0a4217d1eee10c2abe972331cc54c250d863d23b7436ce90aee",
+        "source_log_sha256": "c5a4720cf7ea3b239bd81ddbddb57138dd2cd6bccc9cc5cead73e8cb9fbc3af1"
+      },
+      "pcap": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.17:/var/tmp/rq5f-b14b70ee9cb4-r3/capture.pcap",
+          "D:\\backup\\.rq4-v2l-45580-r3-pcap.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 136909,
+        "sha256": "98fc90c8be87e0a4217d1eee10c2abe972331cc54c250d863d23b7436ce90aee"
+      },
+      "log": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.17:/var/tmp/rq5f-b14b70ee9cb4-r3/capture.log",
+          "D:\\backup\\.rq4-v2l-45580-r3-log.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 299,
+        "sha256": "c5a4720cf7ea3b239bd81ddbddb57138dd2cd6bccc9cc5cead73e8cb9fbc3af1"
+      }
+    },
+    "authdns": {
+      "remote": {
+        "pid": 137803,
+        "starttime": "53366892",
+        "directory": "/var/tmp/rq5f-b14b70ee9cb4-authdns",
+        "pcap": "/var/tmp/rq5f-b14b70ee9cb4-authdns/capture.pcap",
+        "log": "/var/tmp/rq5f-b14b70ee9cb4-authdns/capture.log",
+        "command": [
+          "timeout",
+          "-s",
+          "INT",
+          "900",
+          "tcpdump",
+          "-i",
+          "any",
+          "-nn",
+          "-s",
+          "0",
+          "-U",
+          "-Z",
+          "root",
+          "-w",
+          "/var/tmp/rq5f-b14b70ee9cb4-authdns/capture.pcap",
+          "port 53 or port 5353 or port 5354 or port 10053 or port 8443 or port 8444 or port 8446 or port 18443 or (ip[6:2] & 0x1fff != 0)"
+        ],
+        "boot_id": "c64d72a1-9240-4f75-8503-052a70bc694b",
+        "power_start": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "undervoltage_risk_waived": true
+      },
+      "stop": {
+        "stopped": true,
+        "log_text": "tcpdump: WARNING: any: That device doesn't support promiscuous mode\n(Promiscuous mode not supported on the \"any\" device)\ntcpdump: listening on any, link-type LINUX_SLL2 (Linux cooked v2), snapshot length 262144 bytes\n866 packets captured\n1732 packets received by filter\n0 packets dropped by kernel\n",
+        "boot_id": "c64d72a1-9240-4f75-8503-052a70bc694b",
+        "pcap_bytes": 162210,
+        "log_bytes": 298,
+        "power_stop": {},
+        "capture_scheme": "v2l-in-place-single-hash",
+        "source_pcap_sha256": "e831179c8a8a6ff37aab7d71d6c3394893accf0447d12db2bbf8ac8d119afc6c",
+        "source_log_sha256": "26130eee067cff19857cc13c95ce3085110fbc2d158dea2358fe22754e2467fb"
+      },
+      "pcap": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.18:/var/tmp/rq5f-b14b70ee9cb4-authdns/capture.pcap",
+          "D:\\backup\\.rq4-v2l-45580-authdns-pcap.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 162210,
+        "sha256": "e831179c8a8a6ff37aab7d71d6c3394893accf0447d12db2bbf8ac8d119afc6c"
+      },
+      "log": {
+        "command": [
+          "scp",
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=30",
+          "-o",
+          "StrictHostKeyChecking=yes",
+          "-o",
+          "ServerAliveInterval=15",
+          "-o",
+          "ServerAliveCountMax=80",
+          "-o",
+          "IPQoS=throughput",
+          "-i",
+          "C:/Users/a1887/.ssh/id_ed25519",
+          "b1304@10.250.0.18:/var/tmp/rq5f-b14b70ee9cb4-authdns/capture.log",
+          "D:\\backup\\.rq4-v2l-45580-authdns-log.part"
+        ],
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "bytes": 298,
+        "sha256": "26130eee067cff19857cc13c95ce3085110fbc2d158dea2358fe22754e2467fb"
+      }
+    }
+  },
+  "capture_errors": [],
+  "verification": {
+    "status": "VALID_FORMAL_BLOCK_BASIC_SEMANTICS",
+    "offered": 180,
+    "measure_offered": 120,
+    "measure_sent": 120,
+    "measure_success": 0,
+    "measure_not_sent": 0,
+    "measure_failed_after_send": 120,
+    "effective_success_qps": 0.0,
+    "p50_success_ms": null,
+    "p95_success_ms": null,
+    "path_counts": {
+      "r1": 0,
+      "r2": 0,
+      "r3": 0,
+      "authdns": 0
+    },
+    "native_cache": null,
+    "row_checks": [
+      {
+        "index": 0,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 1,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 2,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 3,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 4,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 5,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 6,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 7,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 8,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 9,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 10,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 11,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 12,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 13,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 14,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 15,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 16,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 17,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 18,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 19,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 20,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 21,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 22,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 23,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 24,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 25,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 26,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 27,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 28,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 29,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 30,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 31,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 32,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 33,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 34,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 35,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 36,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 37,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 38,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 39,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 40,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 41,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 42,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 43,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 44,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 45,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 46,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 47,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 48,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 49,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 50,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 51,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 52,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 53,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 54,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 55,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 56,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 57,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 58,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 59,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 60,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 61,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 62,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 63,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 64,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 65,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 66,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 67,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 68,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 69,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 70,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 71,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 72,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 73,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 74,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 75,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 76,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 77,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 78,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 79,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 80,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 81,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 82,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 83,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 84,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 85,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 86,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 87,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 88,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 89,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 90,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 91,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 92,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 93,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 94,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 95,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 96,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 97,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 98,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 99,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 100,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 101,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 102,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 103,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 104,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 105,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 106,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 107,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 108,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 109,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 110,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 111,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 112,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 113,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 114,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 115,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 116,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 117,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 118,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 119,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 120,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 121,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 122,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 123,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 124,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 125,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 126,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 127,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 128,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 129,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 130,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 131,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 132,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 133,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 134,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 135,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 136,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 137,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 138,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 139,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 140,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 141,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 142,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 143,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 144,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 145,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 146,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 147,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 148,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 149,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 150,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 151,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 152,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 153,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 154,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 155,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 156,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 157,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 158,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 159,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 160,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 161,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 162,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 163,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 164,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 165,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 166,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 167,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 168,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 169,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 170,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 171,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 172,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 173,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 174,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 175,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 176,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 177,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 178,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      },
+      {
+        "index": 179,
+        "success": false,
+        "failed_after_send": true,
+        "wire_oracle": null,
+        "basic_bindings": [],
+        "actual_response_rcodes": [
+          2
+        ]
+      }
+    ],
+    "packet_decode_errors_disclosed": {
+      "client": [],
+      "management": [],
+      "r1": [],
+      "r2": [],
+      "r3": [],
+      "authdns": []
+    },
+    "full_causal_GC_fault_checks": "DEFERRED_NOT_PASS",
+    "power_stability_claimed": false
+  },
+  "end_epoch_ns": 1791112203426751200
+}

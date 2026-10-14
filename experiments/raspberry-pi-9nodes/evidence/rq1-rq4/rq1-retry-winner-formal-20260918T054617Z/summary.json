@@ -1,0 +1,100 @@
+{
+  "status": "COMPLETED_CONDITION",
+  "condition": "retry-winner",
+  "verified_measured": 200,
+  "completed_batches": 10,
+  "planned_batches": 10,
+  "http_422": 0,
+  "endpoint_trials": 200,
+  "wire_response_events": 603,
+  "runtime_drift": [],
+  "final_health": {
+    "19108": 204,
+    "19109": 204
+  },
+  "failure": null,
+  "other_RQ1_conditions_complete": false,
+  "records": [
+    {
+      "key": "retry-winner-udp-p1",
+      "transport": "udp",
+      "repetition": 1,
+      "measured": 20,
+      "wire_response_events": 63,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-retry-winner-formal-20260918T054617Z\\retry-winner-udp-p1"
+    },
+    {
+      "key": "retry-winner-udp-p2",
+      "transport": "udp",
+      "repetition": 2,
+      "measured": 20,
+      "wire_response_events": 60,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-retry-winner-formal-20260918T054617Z\\retry-winner-udp-p2"
+    },
+    {
+      "key": "retry-winner-udp-p3",
+      "transport": "udp",
+      "repetition": 3,
+      "measured": 20,
+      "wire_response_events": 60,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-retry-winner-formal-20260918T054617Z\\retry-winner-udp-p3"
+    },
+    {
+      "key": "retry-winner-udp-p4",
+      "transport": "udp",
+      "repetition": 4,
+      "measured": 20,
+      "wire_response_events": 60,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-retry-winner-formal-20260918T054617Z\\retry-winner-udp-p4"
+    },
+    {
+      "key": "retry-winner-udp-p5",
+      "transport": "udp",
+      "repetition": 5,
+      "measured": 20,
+      "wire_response_events": 60,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-retry-winner-formal-20260918T054617Z\\retry-winner-udp-p5"
+    },
+    {
+      "key": "retry-winner-tcp-p1",
+      "transport": "tcp",
+      "repetition": 1,
+      "measured": 20,
+      "wire_response_events": 60,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-retry-winner-formal-20260918T054617Z\\retry-winner-tcp-p1"
+    },
+    {
+      "key": "retry-winner-tcp-p2",
+      "transport": "tcp",
+      "repetition": 2,
+      "measured": 20,
+      "wire_response_events": 60,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-retry-winner-formal-20260918T054617Z\\retry-winner-tcp-p2"
+    },
+    {
+      "key": "retry-winner-tcp-p3",
+      "transport": "tcp",
+      "repetition": 3,
+      "measured": 20,
+      "wire_response_events": 60,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-retry-winner-formal-20260918T054617Z\\retry-winner-tcp-p3"
+    },
+    {
+      "key": "retry-winner-tcp-p4",
+      "transport": "tcp",
+      "repetition": 4,
+      "measured": 20,
+      "wire_response_events": 60,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-retry-winner-formal-20260918T054617Z\\retry-winner-tcp-p4"
+    },
+    {
+      "key": "retry-winner-tcp-p5",
+      "transport": "tcp",
+      "repetition": 5,
+      "measured": 20,
+      "wire_response_events": 60,
+      "evidence": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-retry-winner-formal-20260918T054617Z\\retry-winner-tcp-p5"
+    }
+  ],
+  "finished": "2026-09-18T06:49:20.045113+00:00"
+}

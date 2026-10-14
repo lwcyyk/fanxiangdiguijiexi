@@ -1,0 +1,30 @@
+{
+  "status": "RQ2_UNKNOWN_IDENTITY_FORMAL_COMPLETE",
+  "family": "unknown-identity",
+  "mode": "formal",
+  "layer": "isolated-production-wrapper-registry-join",
+  "trials": 100,
+  "formal_samples": 100,
+  "by_transport": {
+    "udp": 50,
+    "tcp": 50
+  },
+  "baseline_accepts": 100,
+  "safe_rejects": 100,
+  "unsafe_accepts": 0,
+  "unique_roots": 100,
+  "unique_graphs": 100,
+  "missing_server_id": "operator/L01/r2",
+  "online_registry_mutated": false,
+  "live_registry_unchanged": true,
+  "runtime_drift": [],
+  "health_before": {
+    "19108": 204,
+    "19109": 204
+  },
+  "health_after": {
+    "19108": 204,
+    "19109": 204
+  },
+  "completed": "2026-09-19T08:46:57.430557+00:00"
+}

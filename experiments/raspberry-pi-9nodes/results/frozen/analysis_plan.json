@@ -1,0 +1,36 @@
+{
+  "analysis_id": "RQ5-paper-results-20261006-v1",
+  "scope": "Archived final130 pairs260 blocks only; local read-only postprocessing, no new physical runs or source evidence mutation",
+  "timing": "Post hoc exploratory plan, frozen after collection and preliminary receipt inspection; NOT preregistered",
+  "inclusion": "Exact canonical final13 archive receipt list; every pair0..129 exactly once;26 conditions x5 paired repeats; invalid setup attempts/pilots excluded from target dataset but retained and disclosed",
+  "experimental_unit": "Paired A/B block repeat within condition, n=5; individual requests are not independent replicates; deterministic AB/BA order is balanced, not randomized",
+  "A_B": "22 ordinary conditions A=B0-matched,B=B1-pipelined;4 serial optimization conditions A=B1-serial,B=B1-pipelined; do not pool these estimands",
+  "primary": [
+    "Offered-denominator valid-answer success proportion",
+    "Paired percentage-point success difference"
+  ],
+  "secondary": [
+    "Median block median/P95/P99 among successful valid answers, report available block count",
+    "Geometric mean within-pair block-P50 and P95 ratios where both blocks have success",
+    "Observed offered-denominator valid-answer P95 threshold; mark unattained when fewer than95percent of offered requests succeed",
+    "Successful-request count divided by120s offered window, NOT steady-state throughput/capacity"
+  ],
+  "quantiles": "P50 arithmetic sample median;P95/P99 nearest rank ceil(q*n);match logged evaluator P50/P95;null latency for zero-success blocks",
+  "uncertainty": "Enumerate exact empirical paired bootstrap resamples n^n within each condition, percentile2.5/97.5 intervals for mean success difference and mean log-latency ratio;these quantify resampling variability, not unconditional population guarantees;degenerate success intervals do not prove equivalence",
+  "inferential_diagnostic": "Enumerate two-sided sign-flip reference distribution over paired effects; label sensitivity/model diagnostic, not randomization test because order was deterministic;minimum possible two-sided p at n=5 is0.0625;Holm adjust within separate26-condition endpoint families;no significance claims",
+  "failures": "Retain all offered measurements, non-sent, SERVFAIL, timeout and semantic failures;classify from raw final wire;expected NXDOMAIN is success, not error;warmup and primes reported separately;never resample measured failures",
+  "provenance": "Whole ZIP SHA verified against sealed receipts;stream all ZIP member size/SHA vs BATCH-MANIFEST;extract selected plan/schedule/receipt/raw/summary/oracle data from authenticated archive;independently re-evaluate raw client wire/accounting and logged quantiles;reuse authenticated prior basic identity/cache/path verdicts without claiming new deep security audit",
+  "limitations": [
+    "One physical nine-role testbed",
+    "n=5 pairs per condition, sequential temporal dependence",
+    "Persistent0x50005 undervoltage confound, no stable-power claim",
+    "Control/input repairs between condition batches retained and disclosed",
+    "Conditional-success latency selection bias",
+    "No measured processCPU/RSS time series or isolated stage breakdown",
+    "Whole capture bytes not extra control bytes perquery",
+    "No true maximum capacity estimate from0.25..2QPS sweep",
+    "Full GC/causal/fault audit DEFERRED_NOT_PASS"
+  ],
+  "outputs": "Audited JSON datasets and statistics,26-condition full tables,source-to-claim mapping,Chinese/English result prose,LaTeX insertion fragments,publication-size vector/raster figures,runnable analysis/plot code and checks",
+  "manuscript_policy": "Do not overwrite an unspecified existing manuscript;state changes from legacy36-cell/concurrency/count plan explicitly;external citations not invented;own-experiment claims backed by exact analysis output pointers"
+}

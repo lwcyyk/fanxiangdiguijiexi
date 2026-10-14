@@ -1,0 +1,84 @@
+[
+  {
+    "directory": "rq5-formal26-batch01-20261003T0730Z",
+    "progress_sha256": "dfc3b4945bd5c3bcec338c92aeaa840a9bddbe1c4fedec6aef0c2025cd98c6cc",
+    "batch_number": 1,
+    "active_pair": 0,
+    "valid_pair_prefix_retained_not_duplicated": [],
+    "error": "RuntimeError:block preserved, no automatic rerun:TimeoutExpired:Command '['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', '-o', 'StrictHostKeyChecking=yes', '-i', 'C:\\\\Users\\\\a1887\\\\.ssh\\\\id_ed25519', 'b1304@10.250.0.15', \"sudo -n docker inspect rq5f-79e796865bf6-r1 --format '{{json .State}} {{json .Config.Labels}} {{json .Image}} {{json .HostConfig.PortBindings}}'\"]' timed out after 30 seconds:['observer never ready', 'client: capture result missing', 'management: capture result missing', 'r1: capture result missing', 'r2: capture result missing', 'r3: capture result missing', 'authdns: capture result missing', 'six role coverage missing']"
+  },
+  {
+    "directory": "rq5-formal26-batch01-v4-20261003T0747Z",
+    "progress_sha256": "8e370ca411f39e4e91953ee13d0c194c4e9f5268d0bc77703000fe87e14d9ac3",
+    "batch_number": 1,
+    "active_pair": 0,
+    "valid_pair_prefix_retained_not_duplicated": [],
+    "error": "RuntimeError:block preserved, no automatic rerun:native hot name forwarded beyond single prime or prime path missing:[]"
+  },
+  {
+    "directory": "rq5-formal26-batch01-v5-20261003T0807Z",
+    "progress_sha256": "6758588424804bfc7c2a148e8085de15c1b63854a63f85a2044cc5b1d9f577dd",
+    "batch_number": 1,
+    "active_pair": 5,
+    "valid_pair_prefix_retained_not_duplicated": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "error": "RuntimeError:independent authority fixture unavailable:p0000.ri-test.invalid."
+  },
+  {
+    "directory": "rq5-formal26-batch02-v7-20261003T1208Z",
+    "progress_sha256": "cdf1d4d183e63fe57bf9bb23ad48bc5283852bbff0f2a8cdc337be64b1f68eba",
+    "batch_number": 2,
+    "active_pair": 15,
+    "valid_pair_prefix_retained_not_duplicated": [
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "error": "RuntimeError:block preserved, no automatic rerun:successful uncached question missing actual path:missing000121.measure.p20260905a.ri-test.invalid.:[]"
+  },
+  {
+    "directory": "rq5-formal26-batch07-v8-20261004T0112Z",
+    "progress_sha256": "625dc08bca934b77169e4d9bd077064c0fa46e8b73339d129d0cb59cbda14931",
+    "batch_number": 7,
+    "active_pair": 66,
+    "valid_pair_prefix_retained_not_duplicated": [
+      60,
+      61,
+      62,
+      63,
+      64,
+      65
+    ],
+    "error": "RuntimeError:block preserved, no automatic rerun:RuntimeError:activate:{'r1': 'RuntimeError:r1:activate: worker or full journal failure'}:['observer never ready', 'client: capture result missing', 'management: capture result missing', 'r1: capture result missing', 'r2: capture result missing', 'r3: capture result missing', 'authdns: capture result missing', 'six role coverage missing']"
+  },
+  {
+    "directory": "rq5-formal26-batch07-v9-20261005T0740BJT",
+    "progress_sha256": "07492d55d01ddb2640bc9319fd8e34d76ff570d7de9058ba01ed32547ad6eaa2",
+    "batch_number": 7,
+    "active_pair": 66,
+    "valid_pair_prefix_retained_not_duplicated": [
+      60,
+      61,
+      62,
+      63,
+      64,
+      65
+    ],
+    "error": "RuntimeError:block preserved, no automatic rerun:RuntimeError:r3:derived-cache-reset:1:['observer never ready', 'client: capture result missing', 'management: capture result missing', 'r1: capture result missing', 'r2: capture result missing', 'r3: capture result missing', 'authdns: capture result missing', 'six role coverage missing']"
+  },
+  {
+    "directory": "rq5-formal26-batch09-v10-20261005T0740BJT",
+    "progress_sha256": "4f641405fc9006802e670a0bc4f636d4beb5f487db35dd4a657a57eb5b1d55b4",
+    "batch_number": 9,
+    "active_pair": 80,
+    "valid_pair_prefix_retained_not_duplicated": [],
+    "error": "RuntimeError:block preserved, no automatic rerun:RuntimeError:actual hot prime did not finish successfully:[]"
+  }
+]

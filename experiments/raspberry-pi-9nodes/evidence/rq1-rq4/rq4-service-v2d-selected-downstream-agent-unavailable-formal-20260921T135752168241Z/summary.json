@@ -1,0 +1,15 @@
+{
+  "status": "INCOMPLETE_PRESERVED",
+  "cell": "selected-downstream-agent-unavailable",
+  "mode": "formal",
+  "episodes_planned": 50,
+  "episodes_completed": 7,
+  "episodes_passed": 7,
+  "safe_rejections": 0,
+  "expected_continues": 0,
+  "inconclusive": 7,
+  "final_recovery_queries": 0,
+  "restoration_ok": false,
+  "failure": true,
+  "finished": "2026-09-21T14:04:34.960722+00:00"
+}

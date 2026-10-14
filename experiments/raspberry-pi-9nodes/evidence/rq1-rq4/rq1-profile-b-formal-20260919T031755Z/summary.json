@@ -1,0 +1,17 @@
+{
+  "status": "STOPPED_WITH_EVIDENCE",
+  "condition": "Profile-B",
+  "verified_measured": 0,
+  "verified_preparatory": 0,
+  "completed_batches": 0,
+  "planned_batches": 10,
+  "failure": "KeyError('path')",
+  "final_health": {
+    "19108": 204,
+    "19109": 204
+  },
+  "other_RQ1_conditions_complete": false,
+  "all_RQ1_RQ5_complete": false,
+  "records": [],
+  "finished": "2026-09-19T03:20:19.754885+00:00"
+}

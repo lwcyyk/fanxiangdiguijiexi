@@ -1,0 +1,14 @@
+{
+  "status": "COLLECTED_PENDING_INDEPENDENT_RECHECK",
+  "mode": "pilot",
+  "cell": "component-event-delay",
+  "verified_units": 2,
+  "baseline_accepts": 2,
+  "safe_rejects": 2,
+  "formal_samples": 0,
+  "collected_formal_candidates": 0,
+  "unsafe_or_errors": 0,
+  "physical_trials": 0,
+  "scope": "isolated fresh production Store instances; committed ClientQuery with withheld terminal; three logical-time lookups plus premature proof reservation; ordered in-lease terminal arrival and RESPONSE_BOUND; unique identifiers; not physical DNS trials or 1000 semantic attack types",
+  "finished": "2026-09-20T04:28:40.149984+00:00"
+}

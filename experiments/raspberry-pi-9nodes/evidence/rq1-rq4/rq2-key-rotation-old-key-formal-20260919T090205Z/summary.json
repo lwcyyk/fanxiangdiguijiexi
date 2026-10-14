@@ -1,0 +1,33 @@
+{
+  "status": "RQ2_KEY_ROTATION_OLD_KEY_FORMAL_COMPLETE",
+  "family": "key-rotation-old-key",
+  "mode": "formal",
+  "layer": "isolated-production-wrapper-registry-join",
+  "trials": 100,
+  "formal_samples": 100,
+  "by_transport": {
+    "udp": 50,
+    "tcp": 50
+  },
+  "baseline_accepts": 100,
+  "valid_candidate_identity_signatures": 100,
+  "safe_rejects": 100,
+  "unsafe_accepts": 0,
+  "unique_roots": 100,
+  "unique_graphs": 100,
+  "unique_candidates": 100,
+  "target_server_id": "operator/L01/r2",
+  "private_key_exported": false,
+  "online_registry_mutated": false,
+  "live_registry_unchanged": true,
+  "runtime_drift": [],
+  "health_before": {
+    "19108": 204,
+    "19109": 204
+  },
+  "health_after": {
+    "19108": 204,
+    "19109": 204
+  },
+  "completed": "2026-09-19T09:02:52.873534+00:00"
+}

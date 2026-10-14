@@ -1,0 +1,9 @@
+{
+  "status": "INCOMPLETE_ENGINEERING_EVIDENCE",
+  "complete_pairs": 669,
+  "baseline_accepts": 669,
+  "exact_rejects": 669,
+  "formal_completed_added": 0,
+  "root_cause": "WinError5 in os.replace for mutable controller status; real Windows non-delete-sharing handle reproduction and bounded retry unit passed",
+  "source": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq3-ns13-formal-20260920T110445070558Z"
+}

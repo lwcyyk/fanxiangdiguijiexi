@@ -1,0 +1,17 @@
+{
+  "status": "COLLECTED",
+  "family": "TXID-reuse",
+  "count": 2,
+  "baseline_count": 2,
+  "confirmed_isolation": 2,
+  "store_errors": 0,
+  "lookup_none_count": 2,
+  "own_terminal_selections": 4,
+  "physical_trials": 0,
+  "source_campaign": null,
+  "ready": {
+    "19108": 204,
+    "19109": 204
+  },
+  "finished": "2026-09-20T06:24:52.327580+00:00"
+}

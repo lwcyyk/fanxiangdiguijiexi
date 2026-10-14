@@ -1,0 +1,15 @@
+{
+  "status": "PILOT_COMPLETED",
+  "cell": "selected-downstream-agent-unavailable",
+  "mode": "pilot",
+  "episodes_planned": 2,
+  "episodes_completed": 2,
+  "episodes_passed": 2,
+  "safe_rejections": 0,
+  "expected_continues": 0,
+  "inconclusive": 2,
+  "final_recovery_queries": 0,
+  "restoration_ok": true,
+  "failure": false,
+  "finished": "2026-09-21T13:57:12.824324+00:00"
+}

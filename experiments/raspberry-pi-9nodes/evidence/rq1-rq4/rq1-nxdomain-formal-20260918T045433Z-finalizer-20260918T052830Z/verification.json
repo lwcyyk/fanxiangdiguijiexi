@@ -1,0 +1,121 @@
+{
+  "status": "MEASUREMENTS_COMPLETE_POST_EXIT_FINALIZED",
+  "classification": "formal-condition-result-with-recorded-controller-finalization-defect",
+  "campaign": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-nxdomain-formal-20260918T045433Z",
+  "original_controller_exit": "all measurements and per-batch audits completed; final runtime receipt filename collision",
+  "verified_measured": 200,
+  "udp": 100,
+  "tcp": 100,
+  "unique_roots": 200,
+  "unique_root_attempts": 200,
+  "unique_graph_digests": 200,
+  "http_422": 0,
+  "endpoint_trials": 200,
+  "wire_response_events": 600,
+  "runtime_drift": [],
+  "final_health": {
+    "19108": 204,
+    "19109": 204
+  },
+  "registry_checkpoint": [
+    808425,
+    "0x5ee325c7b68279aba8bf929b7bf8c2dd8d47ba24d8af579243c3744ded541164"
+  ],
+  "norn_checkpoint_match": true,
+  "registry_nodes_match": true,
+  "frozen_scripts_match": true,
+  "phase_records": [
+    {
+      "phase": "NXDOMAIN-udp-p1",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 60,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "NXDOMAIN-udp-p2",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 60,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "NXDOMAIN-udp-p3",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 60,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "NXDOMAIN-udp-p4",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 60,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "NXDOMAIN-udp-p5",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 60,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "NXDOMAIN-tcp-p1",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 60,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "NXDOMAIN-tcp-p2",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 60,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "NXDOMAIN-tcp-p3",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 60,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "NXDOMAIN-tcp-p4",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 60,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "NXDOMAIN-tcp-p5",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 60,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    }
+  ],
+  "original_launch_failure_preserved": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-nxdomain-formal-20260918T045433Z\\launch-failure.json",
+  "created": "2026-09-18T05:31:00.068976+00:00"
+}

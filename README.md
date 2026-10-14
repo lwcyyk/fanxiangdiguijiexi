@@ -1,5 +1,9 @@
 # DNS 全路径服务身份认证
 
+九台树莓派平台的既有实验结果与 RQ1–RQ5 报告见
+[九节点实验结果目录](experiments/raspberry-pi-9nodes/README.md)。该目录保留失败、
+不同实验入口和统计分母；是公开结果子集，不是完整原始归档或全部历史构建映射。
+
 当前集成候选版本为 `0.3.0-norn-knot-rc2`。它组合 Go-Norn 双节点 Registry、
 Knot Resolver 6.3.0 真实内部 Trace 和 Rust V2 数据面；该版本仍是现场 Shadow
 部署前的 Release Candidate，不表示已连接真实服务器或启用生产 DNS 流量。

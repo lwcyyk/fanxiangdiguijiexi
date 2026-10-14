@@ -1,0 +1,64 @@
+{
+  "conditions": 26,
+  "pairs": 130,
+  "blocks": 260,
+  "AB_BA": {
+    "AB": 65,
+    "BA": 65
+  },
+  "measurement_requests": 30600,
+  "warmup_requests": 15300,
+  "mode_totals": {
+    "B0-matched": {
+      "blocks": 110,
+      "offered": 12900,
+      "success": 12897,
+      "failures": {
+        "success": 12897,
+        "timeout": 3
+      }
+    },
+    "B1-serial": {
+      "blocks": 20,
+      "offered": 2400,
+      "success": 2398,
+      "failures": {
+        "success": 2398,
+        "timeout": 1,
+        "SERVFAIL": 1
+      }
+    },
+    "B1-pipelined": {
+      "blocks": 130,
+      "offered": 15300,
+      "success": 15172,
+      "failures": {
+        "success": 15172,
+        "timeout": 6,
+        "SERVFAIL": 122
+      }
+    }
+  },
+  "zero_success_blocks": [
+    {
+      "pair": 44,
+      "profile": "D3-UDP-near",
+      "mode": "B1-pipelined"
+    }
+  ],
+  "measurement_failures": 133,
+  "warmup_failures": 330,
+  "measured_basic_bound_B1_successes": 17570,
+  "source_versions": {
+    "3c9b61fc8c56889694efeaf9b86ef278c8ea55d6c0e42ed7b410d249ec4fecdb": 10,
+    "b4b701434f8bbacd246f9a49889e15b332c2b9481a5ed89eb3a4e9a0ef5202ee": 10,
+    "b25de73b82e840d56ec6dc93b92222f6767b8f288393cc779505ead29179de92": 10,
+    "442da95772ae2f0d11fc25b7ef59bb7471a73e4081b91cd10fcd1cc79d457d36": 102,
+    "7ed6816e3883bda2623762a7728184d87e858383765c645a613a07edf0d34989": 28,
+    "e11ba23375fc17f21f74fcb13cab8ae3563f577c4cac612cf3c66d9d1321359b": 100
+  },
+  "resource_scope": "Host loadavg/free memory before/after warm+measure+drain only; NOT processCPU/RSS time series",
+  "power_stability_claimed": false,
+  "full_GC_causal_fault_audit": "DEFERRED_NOT_PASS",
+  "statistical_scope": "Post hoc exploratory, paired block unit, within-one-testbed resampling intervals"
+}

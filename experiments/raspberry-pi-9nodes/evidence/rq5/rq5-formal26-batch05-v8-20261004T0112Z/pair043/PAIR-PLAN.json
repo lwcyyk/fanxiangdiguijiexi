@@ -1,0 +1,24 @@
+{
+  "pair_number": 43,
+  "repeat": 4,
+  "batch_number": 5,
+  "order_label": "BA",
+  "mode_order": [
+    "B1-pipelined",
+    "B0-matched"
+  ],
+  "condition": {
+    "profile_id": "D3-UDP-near",
+    "depth": 3,
+    "kind": "near",
+    "nominal_transport": "udp",
+    "offered_rate_qps": "1",
+    "nominal_serial_condition": false,
+    "condition_index": 8,
+    "A": "B0-matched",
+    "B": "B1-pipelined"
+  },
+  "schedule_file": "schedules/pair043.json",
+  "schedule_sha256": "2b3acf77c658fd96385f5024dee100eccc29a292418ca4ae8e9fe58da1782eb6",
+  "arrival_hash": "ee56fb729be3e92306f9b27371ab1bf86595648fcda726d7e14ddc5d41b5ffd2"
+}

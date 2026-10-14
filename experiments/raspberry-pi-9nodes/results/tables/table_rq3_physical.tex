@@ -1,0 +1,16 @@
+\begin{table*}[t]
+\centering\small
+\setlength{\tabcolsep}{3.5pt}
+\caption{RQ3 local injections backed by real DNS executions. Counts are negative cases and separate normal controls. All listed negatives were rejected and controls completed. Changed-challenge tests preserve the original response; cross-Root candidates stop at Graph validation before consumption or emit.}
+\label{tab:rq3-physical}
+\begin{tabularx}{\textwidth}{@{}Xr r X@{}}
+\toprule
+Condition & Rejected/cases & Normal controls & Candidate boundary \\
+\midrule
+Held-response substitution & 200/200 & 20/20 & Production emit \\
+Changed-challenge reconsume & 100/100 & 10/10 & Production Store \\
+Crash before emit / reopen & 200/200 & 20/20 & Dedicated process + Store \\
+Cross-Root substitution & 200/200 & 20/20 & Production Graph validator \\
+\bottomrule
+\end{tabularx}
+\end{table*}

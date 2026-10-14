@@ -1,0 +1,36 @@
+{
+  "status": "RQ2_INVALID_SCHEMA_FORMAL_INDEPENDENTLY_FINALIZED",
+  "campaign": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-invalid-schema-formal-20260919T074749Z",
+  "family": "invalid-schema",
+  "layer": "isolated-production-verifier",
+  "formal_samples": 100,
+  "by_transport": {
+    "udp": 50,
+    "tcp": 50
+  },
+  "safe_rejects": 100,
+  "unsafe_accepts": 0,
+  "unique_artifacts": 100,
+  "valid_semantic_fixture_signatures": 100,
+  "baseline_decision": {
+    "decision": "CORRECT_ACCEPT",
+    "snapshot": {
+      "checkpoint_height": 854290,
+      "record_count": 4,
+      "snapshot_version": 42,
+      "state_root": "0xeb930df6b32047fa492a129baf86996450a935ae64c3d2a7b8d1d8c55af22911"
+    },
+    "validator": "ri-chain-adapter::validate_norn_snapshot_artifact"
+  },
+  "manifest_entries": 339,
+  "manifest_mismatches": [],
+  "unexpected_files": [],
+  "runtime_drift": [],
+  "online_registry_mutated": false,
+  "live_registry_unchanged": true,
+  "readiness": {
+    "19108": 204,
+    "19109": 204
+  },
+  "completed": "2026-09-19T07:49:03.282833+00:00"
+}

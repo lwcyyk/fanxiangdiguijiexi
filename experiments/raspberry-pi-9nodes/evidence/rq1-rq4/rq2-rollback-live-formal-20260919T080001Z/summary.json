@@ -1,0 +1,29 @@
+{
+  "status": "RQ2_ROLLBACK_LIVE_FORMAL_COMPLETE",
+  "family": "rollback-live",
+  "mode": "formal",
+  "layer": "isolated-production-verifier",
+  "trials": 100,
+  "formal_samples": 100,
+  "by_transport": {
+    "udp": 50,
+    "tcp": 50
+  },
+  "safe_rejects": 100,
+  "unsafe_accepts": 0,
+  "atomic_state_preserved": 100,
+  "unique_candidates": 100,
+  "restart_process_boundary_trials": 0,
+  "online_registry_mutated": false,
+  "live_registry_unchanged": true,
+  "runtime_drift": [],
+  "health_before": {
+    "19108": 204,
+    "19109": 204
+  },
+  "health_after": {
+    "19108": 204,
+    "19109": 204
+  },
+  "completed": "2026-09-19T08:00:27.652757+00:00"
+}

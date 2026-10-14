@@ -1,0 +1,9 @@
+{
+  "status": "INCOMPLETE_PRESERVED",
+  "verified_queries": 165,
+  "attacks": 150,
+  "controls": 15,
+  "formal_attack_trials": 150,
+  "restoration_ok": true,
+  "finished": "2026-09-21T02:01:56.461718+00:00"
+}

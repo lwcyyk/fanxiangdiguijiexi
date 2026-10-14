@@ -1,0 +1,10 @@
+{
+  "status": "RQ3_EVENT_DELAY_V4_UNIT_FREEZE_PASSED",
+  "rust_tests": 12,
+  "python_tests": 11,
+  "evaluator_sha256": "ca2d25f88232d602d69ebc51b49a2a2be0329f0d5f847594af320442f1275b7b",
+  "source_sha256": "5bb9e45358445a4245dd70b7eb15bdb24741d8e44d33e78c95332af7282ae2b9",
+  "retained_v2_sha256": "1eafec5d428dbea3bfa5d8e981c80b73e6d973ba7ba62aa37e21fb546bb1a6e1",
+  "formal_samples": 0,
+  "completed": "2026-09-20T04:28:04.061930+00:00"
+}

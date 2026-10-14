@@ -1,0 +1,24 @@
+{
+  "pair_number": 1,
+  "repeat": 2,
+  "batch_number": 1,
+  "order_label": "BA",
+  "mode_order": [
+    "B1-pipelined",
+    "B0-matched"
+  ],
+  "condition": {
+    "profile_id": "D3-UDP-hot",
+    "depth": 3,
+    "kind": "hot",
+    "nominal_transport": "udp",
+    "offered_rate_qps": "1",
+    "nominal_serial_condition": false,
+    "condition_index": 0,
+    "A": "B0-matched",
+    "B": "B1-pipelined"
+  },
+  "schedule_file": "schedules/pair001.json",
+  "schedule_sha256": "1dba211c3221244777d401e03b360dbf19af6af3f127c15c09a8d6efdc5558c3",
+  "arrival_hash": "27179a074eda0f54372566d1235155d3244e665eccb257279aafbd86571e7237"
+}

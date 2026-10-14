@@ -1,0 +1,26 @@
+{
+  "status": "READY_FOR_GIT_PUSH",
+  "publication_date": "2026-10-14",
+  "source_copy_hashes_verified": 1422,
+  "files_scanned": 1425,
+  "detected_secret_patterns": 0,
+  "scan_scope": "Pattern scan of text, SVG, and extracted PDF text; DOCX XML checked separately before commit",
+  "canonical_archives": 13,
+  "canonical_pairs": 130,
+  "canonical_blocks": 260,
+  "row_accounting": {
+    "raw_rows": 45900,
+    "measured_rows": 30600,
+    "measured_success": 30467,
+    "measured_failures": 133,
+    "warmup_rows": 15300,
+    "warmup_failures": 330,
+    "near_pair044_measured_rows": 120,
+    "near_pair044_measured_failures": 120
+  },
+  "unchanged_results": true,
+  "no_experiment_rerun": true,
+  "no_statistical_recalculation": true,
+  "excluded": "Full multi-GB ZIPs, private credentials, runtime databases, uncontrolled logs and full-role pcap archives",
+  "file_integrity_is_not_execution_authentication": true
+}

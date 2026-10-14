@@ -1,0 +1,16 @@
+\begin{table*}[t]
+\centering\small
+\setlength{\tabcolsep}{3.5pt}
+\caption{Serial A versus pipelined B at D3, 1 QPS, with five pairs separate from Table~\ref{tab:rq5-selected}, including distinct pipelined samples. Latencies are in ms. B/A is the geometric mean of paired P50 ratios with descriptive empirical paired-bootstrap 2.5--97.5 percentile bounds for the recorded pairs. Pipelined rows have 600/600 valid answers; serial cold rows have 599/600 and serial hot rows 600/600.}
+\label{tab:rq5-serial}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{.18\textwidth}>{\raggedleft\arraybackslash}X>{\raggedleft\arraybackslash}X>{\raggedright\arraybackslash}p{.32\textwidth}>{\raggedleft\arraybackslash}X>{\raggedleft\arraybackslash}X@{}}
+\toprule
+Condition & A P50 & B P50 & Paired P50 B/A [bounds] & A P95 & B P95 \\
+\midrule
+UDP hot & 200.29 & 199.69 & 1.071 [0.992, 1.198] & 582.11 & 626.19 \\
+UDP cold & 992.91 & 957.07 & 0.967 [0.935, 1.001] & 1616.69 & 1504.57 \\
+TCP hot & 246.98 & 242.06 & 0.976 [0.957, 0.997] & 609.37 & 629.03 \\
+TCP cold & 1008.67 & 965.15 & 0.974 [0.948, 1.000] & 1609.91 & 1765.29 \\
+\bottomrule
+\end{tabularx}
+\end{table*}

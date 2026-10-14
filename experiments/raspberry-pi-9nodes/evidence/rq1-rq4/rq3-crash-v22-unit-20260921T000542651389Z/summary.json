@@ -1,0 +1,11 @@
+{
+  "status": "WINDOWS_CRASH_SMOKE_PASSED_ARM_SMOKE_PENDING",
+  "passed": 2,
+  "failed": 0,
+  "ignored": 2,
+  "process_boundary": "distinct child exits 86 after durable consume; new child reopens the same Store",
+  "physical_queries": 0,
+  "formal_samples": 0,
+  "source": "D:\\backup\\paper-execution-v20260921-physical-crash-v22\\rust",
+  "finished": "2026-09-21T00:05:44.198757+00:00"
+}

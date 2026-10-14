@@ -1,0 +1,18 @@
+\begin{table*}[t]
+\centering\small
+\setlength{\tabcolsep}{3.5pt}
+\caption{Native A and pipelined B at D3, 1 QPS, using different paired batches from Table~\ref{tab:rq5-serial}. Latencies (ms) are medians of successful-answer block P50/P95 values. Native returns 600/600 valid answers in every row. All offered requests enter reliability; $n_{\rm lat}$ counts pairs with defined latency, excluding near's zero-success block only from the latency estimate.}
+\label{tab:rq5-selected}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{.20\textwidth}*{4}{>{\raggedleft\arraybackslash}X}>{\raggedleft\arraybackslash}p{.17\textwidth}>{\raggedleft\arraybackslash}p{.05\textwidth}@{}}
+\toprule
+Condition & A P50 & B P50 & A P95 & B P95 & B valid/offered & $n_{\rm lat}$ \\
+\midrule
+UDP hot & 31.69 & 210.29 & 93.31 & 511.75 & 599/600 & 5 \\
+UDP cold & 101.93 & 919.74 & 166.38 & 1463.52 & 599/600 & 5 \\
+TCP hot & 39.78 & 239.85 & 107.53 & 554.18 & 600/600 & 5 \\
+TCP cold & 106.58 & 964.31 & 183.62 & 1502.94 & 600/600 & 5 \\
+UDP near & 103.60 & 962.70 & 179.76 & 2663.06 & 480/600 & 4 \\
+UDP fallback & 191.83 & 1662.39 & 312.74 & 4766.33 & 599/600 & 5 \\
+\bottomrule
+\end{tabularx}
+\end{table*}

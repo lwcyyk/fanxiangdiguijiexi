@@ -1,0 +1,136 @@
+{
+  "status": "LOCAL_REPAIR_REGRESSION_VERIFIED",
+  "cases": [
+    {
+      "order": "main-last",
+      "repeat": 0,
+      "mutation": "none",
+      "terminal_sequence": 6,
+      "parent_sequence": 5,
+      "status": 200,
+      "error": null,
+      "graph_persisted": true
+    },
+    {
+      "order": "main-last",
+      "repeat": 0,
+      "mutation": "non-selected-parent",
+      "terminal_sequence": 6,
+      "parent_sequence": 4,
+      "status": 503,
+      "error": "identity evidence unavailable: no matching final resolver response event",
+      "graph_persisted": false
+    },
+    {
+      "order": "aux-last",
+      "repeat": 0,
+      "mutation": "none",
+      "terminal_sequence": 6,
+      "parent_sequence": 4,
+      "status": 200,
+      "error": null,
+      "graph_persisted": true
+    },
+    {
+      "order": "aux-last",
+      "repeat": 0,
+      "mutation": "non-selected-parent",
+      "terminal_sequence": 6,
+      "parent_sequence": 5,
+      "status": 503,
+      "error": "identity evidence unavailable: no matching final resolver response event",
+      "graph_persisted": false
+    },
+    {
+      "order": "main-last",
+      "repeat": 1,
+      "mutation": "none",
+      "terminal_sequence": 6,
+      "parent_sequence": 5,
+      "status": 200,
+      "error": null,
+      "graph_persisted": true
+    },
+    {
+      "order": "main-last",
+      "repeat": 1,
+      "mutation": "non-selected-parent",
+      "terminal_sequence": 6,
+      "parent_sequence": 4,
+      "status": 503,
+      "error": "identity evidence unavailable: no matching final resolver response event",
+      "graph_persisted": false
+    },
+    {
+      "order": "aux-last",
+      "repeat": 1,
+      "mutation": "none",
+      "terminal_sequence": 6,
+      "parent_sequence": 4,
+      "status": 200,
+      "error": null,
+      "graph_persisted": true
+    },
+    {
+      "order": "aux-last",
+      "repeat": 1,
+      "mutation": "non-selected-parent",
+      "terminal_sequence": 6,
+      "parent_sequence": 5,
+      "status": 503,
+      "error": "identity evidence unavailable: no matching final resolver response event",
+      "graph_persisted": false
+    },
+    {
+      "order": "main-last",
+      "repeat": 2,
+      "mutation": "none",
+      "terminal_sequence": 6,
+      "parent_sequence": 5,
+      "status": 200,
+      "error": null,
+      "graph_persisted": true
+    },
+    {
+      "order": "main-last",
+      "repeat": 2,
+      "mutation": "non-selected-parent",
+      "terminal_sequence": 6,
+      "parent_sequence": 4,
+      "status": 503,
+      "error": "identity evidence unavailable: no matching final resolver response event",
+      "graph_persisted": false
+    },
+    {
+      "order": "aux-last",
+      "repeat": 2,
+      "mutation": "none",
+      "terminal_sequence": 6,
+      "parent_sequence": 4,
+      "status": 200,
+      "error": null,
+      "graph_persisted": true
+    },
+    {
+      "order": "aux-last",
+      "repeat": 2,
+      "mutation": "non-selected-parent",
+      "terminal_sequence": 6,
+      "parent_sequence": 5,
+      "status": 503,
+      "error": "identity evidence unavailable: no matching final resolver response event",
+      "graph_persisted": false
+    }
+  ],
+  "normal_passed": 6,
+  "negative_exact_rejected": 6,
+  "formal_samples": 0,
+  "physical_trials": 0,
+  "online_deployment": false,
+  "ready": {
+    "19108": 204,
+    "19109": 204
+  },
+  "registry": 104,
+  "finished": "2026-09-20T09:59:04.590084+00:00"
+}

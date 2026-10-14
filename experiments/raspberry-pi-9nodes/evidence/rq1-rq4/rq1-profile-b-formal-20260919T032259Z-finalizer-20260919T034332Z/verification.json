@@ -1,0 +1,135 @@
+{
+  "status": "FORMAL_PROFILE_B_COMPLETE_INDEPENDENTLY_VERIFIED",
+  "classification": "formal-rq1-profile-b-condition",
+  "campaign": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq1-profile-b-formal-20260919T032259Z",
+  "verified_measured": 200,
+  "udp": 100,
+  "tcp": 100,
+  "unique_roots": 200,
+  "unique_root_attempts": 200,
+  "unique_graph_digests": 200,
+  "expected_path": [
+    "r1",
+    "r3",
+    "authdns"
+  ],
+  "http_422": 0,
+  "endpoint_trials": 200,
+  "wire_response_events": 400,
+  "runtime_drift": [],
+  "final_health": {
+    "19108": 204,
+    "19109": 204
+  },
+  "registry_checkpoint": [
+    821320,
+    "0xac0504c2f98326bf3485e61e01b1dfeb00dbce2cacdb67fdabcfe6b4953624db"
+  ],
+  "norn_checkpoint_match": true,
+  "registry_nodes_match": true,
+  "frozen_scripts_match": true,
+  "campaign_file_count": 2390,
+  "phase_records": [
+    {
+      "phase": "Profile-B-udp-p1",
+      "transport": "udp",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 40,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "Profile-B-udp-p2",
+      "transport": "udp",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 40,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "Profile-B-udp-p3",
+      "transport": "udp",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 40,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "Profile-B-udp-p4",
+      "transport": "udp",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 40,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "Profile-B-udp-p5",
+      "transport": "udp",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 40,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "Profile-B-tcp-p1",
+      "transport": "tcp",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 40,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "Profile-B-tcp-p2",
+      "transport": "tcp",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 40,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "Profile-B-tcp-p3",
+      "transport": "tcp",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 40,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "Profile-B-tcp-p4",
+      "transport": "tcp",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 40,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    },
+    {
+      "phase": "Profile-B-tcp-p5",
+      "transport": "tcp",
+      "results": 20,
+      "http_422": 0,
+      "wire_status": "MATCHED",
+      "wire_response_events": 40,
+      "endpoint_trials": 20,
+      "endpoint_all_verified": true
+    }
+  ],
+  "created": "2026-09-19T03:43:46.909323+00:00"
+}

@@ -1,0 +1,24 @@
+{
+  "pair_number": 19,
+  "repeat": 5,
+  "batch_number": 2,
+  "order_label": "BA",
+  "mode_order": [
+    "B1-pipelined",
+    "B0-matched"
+  ],
+  "condition": {
+    "profile_id": "D3-UDP-NXDOMAIN",
+    "depth": 3,
+    "kind": "NXDOMAIN",
+    "nominal_transport": "udp",
+    "offered_rate_qps": "1",
+    "nominal_serial_condition": false,
+    "condition_index": 3,
+    "A": "B0-matched",
+    "B": "B1-pipelined"
+  },
+  "schedule_file": "schedules/pair019.json",
+  "schedule_sha256": "e3586fc5d04a5935b78194a77daa75b95485097c5b30e3e22d719799df259f9c",
+  "arrival_hash": "0262b192feed6ade5548f576579c33685f2d30c19f47e47f674731a0031a0e25"
+}

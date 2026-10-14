@@ -1,0 +1,28 @@
+{
+  "status": "RQ2_UNAUTHORIZED_EXTERNAL_BOUNDARY_FORMAL_INDEPENDENTLY_FINALIZED",
+  "campaign": "D:\\ri-physical-lab\\reports\\paper-completion-audit-20260917-01\\full-rq1-rq5-20260917T142008Z\\rq2-unauthorized-external-boundary-formal-20260919T092947Z",
+  "family": "unauthorized-external-boundary",
+  "formal_samples": 100,
+  "by_transport": {
+    "udp": 50,
+    "tcp": 50
+  },
+  "baseline_graph_accepts": 100,
+  "baseline_wrapper_accepts": 100,
+  "safe_rejects": 100,
+  "unsafe_accepts": 0,
+  "unique_roots": 100,
+  "unique_graphs": 100,
+  "private_key_exported": false,
+  "manifest_entries": 641,
+  "manifest_mismatches": [],
+  "unexpected_files": [],
+  "runtime_drift": [],
+  "online_registry_mutated": false,
+  "live_registry_unchanged": true,
+  "readiness": {
+    "19108": 204,
+    "19109": 204
+  },
+  "completed": "2026-09-19T09:32:00.909825+00:00"
+}

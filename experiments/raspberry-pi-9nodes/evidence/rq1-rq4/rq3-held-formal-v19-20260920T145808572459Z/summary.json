@@ -1,0 +1,9 @@
+{
+  "status": "INCOMPLETE_PRESERVED",
+  "verified_queries": 76,
+  "verified_attack_trials": 69,
+  "verified_controls": 7,
+  "complete_campaign": false,
+  "restoration_ok": true,
+  "finished": "2026-09-20T15:38:15.665840+00:00"
+}

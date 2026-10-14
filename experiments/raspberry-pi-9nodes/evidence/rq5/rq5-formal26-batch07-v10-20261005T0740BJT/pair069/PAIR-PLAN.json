@@ -1,0 +1,24 @@
+{
+  "pair_number": 69,
+  "repeat": 5,
+  "batch_number": 7,
+  "order_label": "BA",
+  "mode_order": [
+    "B1-pipelined",
+    "B1-serial"
+  ],
+  "condition": {
+    "profile_id": "D3-serial-TCP-cold",
+    "depth": 3,
+    "kind": "cold",
+    "nominal_transport": "tcp",
+    "offered_rate_qps": "1",
+    "nominal_serial_condition": true,
+    "condition_index": 13,
+    "A": "B1-serial",
+    "B": "B1-pipelined"
+  },
+  "schedule_file": "schedules/pair069.json",
+  "schedule_sha256": "e371709b7d7b05220bc2c296c6710b60a20c1c556e4e01afe2a8f991390c13ef",
+  "arrival_hash": "3b87bf717b0cabbce40a10650b735101b00cdf45910e502ecc8baf3aab1225b9"
+}
